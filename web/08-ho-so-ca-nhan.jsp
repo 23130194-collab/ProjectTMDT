@@ -1,4 +1,66 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page import="model.User" %>
+<%@ page import="java.text.SimpleDateFormat" %>
+<%!
+  private String h(String value) {
+    if (value == null) {
+      return "";
+    }
+    return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;");
+  }
+
+  private String initials(String value) {
+    if (value == null || value.trim().isEmpty()) {
+      return "US";
+    }
+    String[] parts = value.trim().split("\\s+");
+    String first = parts[0].substring(0, 1);
+    String last = parts.length > 1 ? parts[parts.length - 1].substring(0, 1) : "";
+    return (first + last).toUpperCase();
+  }
+
+  private String maskPhone(String phone) {
+    if (phone == null || phone.trim().isEmpty()) {
+      return "Chưa cập nhật";
+    }
+    String digits = phone.replaceAll("\\D+", "");
+    if (digits.length() < 6) {
+      return h(phone);
+    }
+    return digits.substring(0, 4) + "***" + digits.substring(digits.length() - 3);
+  }
+%>
+<%
+  User currentUser = (User) session.getAttribute("user");
+  if (currentUser == null) {
+    response.sendRedirect(request.getContextPath() + "/07-dang-nhap-xac-thuc.jsp");
+    return;
+  }
+
+  String displayName = currentUser.getFullName() != null && !currentUser.getFullName().trim().isEmpty()
+          ? currentUser.getFullName().trim()
+          : currentUser.getUsername();
+  String email = currentUser.getEmail() != null ? currentUser.getEmail() : "";
+  String phone = currentUser.getPhone() != null ? currentUser.getPhone() : "";
+  String avatarText = initials(displayName);
+  String createdText = currentUser.getCreatedAt() != null
+          ? new SimpleDateFormat("MM/yyyy").format(currentUser.getCreatedAt())
+          : "hôm nay";
+  String statusText = currentUser.getStatus() != null ? currentUser.getStatus() : "ACTIVE";
+  String authMessage = (String) session.getAttribute("authMessage");
+  String changePassSuccess = (String) session.getAttribute("changePassSuccess");
+  if (authMessage != null) {
+    session.removeAttribute("authMessage");
+  }
+  if (changePassSuccess != null) {
+    session.removeAttribute("changePassSuccess");
+  }
+%>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -25,17 +87,17 @@
     <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div class="flex items-center gap-4">
         <div id="profileAvatarBig" class="w-16 h-16 rounded-xl bg-blue-600 text-white font-black text-2xl flex items-center justify-center shadow-xs shrink-0">
-          VB
+          <%= h(avatarText) %>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 id="profileDisplayName" class="text-lg font-bold text-slate-900">Nguyễn Văn Bình</h1>
+            <h1 id="profileDisplayName" class="text-lg font-bold text-slate-900"><%= h(displayName) %></h1>
             <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-              Tài Khoản Đã Xác Thực SĐT
+              <%= phone.trim().isEmpty() ? "Tài Khoản Chưa Cập Nhật SĐT" : "Tài Khoản Đã Cập Nhật SĐT" %>
             </span>
           </div>
           <div id="profileMetaText" class="text-xs text-slate-500 mt-1">
-            Thành viên MuaNgay từ tháng 04/2023 • Quận 10, TP. Hồ Chí Minh
+            Thành viên MuaNgay từ <%= h(createdText) %> • <%= h(email) %> • Trạng thái: <%= h(statusText) %>
           </div>
           <div class="flex items-center gap-3 text-xs mt-2 font-medium">
             <span class="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded">
@@ -205,24 +267,24 @@
       <div class="space-y-3 text-xs">
         <div>
           <label class="block font-bold text-slate-700 mb-1">Họ và tên:</label>
-          <input id="inputFullName" type="text" value="Nguyễn Văn Bình" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-500">
+          <input id="inputFullName" type="text" value="<%= h(displayName) %>" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-500">
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-bold text-slate-700 mb-1">Số điện thoại:</label>
-            <input id="inputPhone" type="text" value="0988 123 456" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+            <input id="inputPhone" type="text" value="<%= h(phone) %>" placeholder="Chưa cập nhật" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
           </div>
           <div>
             <label class="block font-bold text-slate-700 mb-1">Email:</label>
-            <input id="inputEmail" type="email" value="binh.nguyen@gmail.com" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+            <input id="inputEmail" type="email" value="<%= h(email) %>" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
           </div>
         </div>
         <div>
           <label class="block font-bold text-slate-700 mb-1">Địa chỉ mặc định (Gặp mặt/Nhận hàng):</label>
-          <input id="inputAddress" type="text" value="142 Tô Hiến Thành, Phường 13, Quận 10, TP.HCM" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+          <input id="inputAddress" type="text" value="" placeholder="Chưa cập nhật" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
         </div>
         <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-900">
-          Tài khoản chính chủ đã liên kết số điện thoại: <strong class="font-mono">0988***456</strong> (Đã cấp huy hiệu Người Bán Uy Tín).
+          Số điện thoại tài khoản: <strong class="font-mono"><%= maskPhone(phone) %></strong>.
         </div>
       </div>
 
@@ -239,26 +301,54 @@
 
   <!-- MODAL ĐỔI MẬT KHẨU -->
   <div id="changePasswordModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+    <form action="${pageContext.request.contextPath}/change-password" method="post" class="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 class="font-bold text-slate-900 text-sm">Đổi Mật Khẩu Đăng Nhập</h3>
-        <button onclick="closeModal('changePasswordModal')" class="text-slate-400 hover:text-slate-600 font-bold text-lg px-2">✕</button>
+        <button type="button" onclick="closeModal('changePasswordModal')" class="text-slate-400 hover:text-slate-600 font-bold text-lg px-2">✕</button>
       </div>
       <div class="space-y-3 text-xs">
+        <% if (request.getAttribute("oldPassword_error") != null) { %>
+          <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-[11px] font-semibold"><%= h((String) request.getAttribute("oldPassword_error")) %></div>
+        <% } %>
+        <% if (request.getAttribute("newPassword_error") != null) { %>
+          <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-[11px] font-semibold"><%= h((String) request.getAttribute("newPassword_error")) %></div>
+        <% } %>
+        <% if (request.getAttribute("confirmPassword_error") != null) { %>
+          <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-[11px] font-semibold"><%= h((String) request.getAttribute("confirmPassword_error")) %></div>
+        <% } %>
         <div>
           <label class="block font-bold text-slate-700 mb-1">Mật khẩu hiện tại:</label>
-          <input type="password" value="12345678" class="w-full p-2.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+          <div class="relative">
+            <input type="password" name="oldPassword" autocomplete="current-password" required class="w-full pl-2.5 pr-10 py-2.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+            <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Hiện mật khẩu">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
         </div>
         <div>
           <label class="block font-bold text-slate-700 mb-1">Mật khẩu mới:</label>
-          <input type="password" placeholder="Nhập mật khẩu mới..." class="w-full p-2.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+          <div class="relative">
+            <input type="password" name="newPassword" autocomplete="new-password" required placeholder="Ít nhất 8 ký tự, có hoa/thường/số/ký tự đặc biệt" class="w-full pl-2.5 pr-10 py-2.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+            <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Hiện mật khẩu">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nhập lại mật khẩu mới:</label>
+          <div class="relative">
+            <input type="password" name="confirmPassword" autocomplete="new-password" required class="w-full pl-2.5 pr-10 py-2.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+            <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Hiện mật khẩu">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
         </div>
       </div>
       <div class="pt-2 flex gap-2">
-        <button onclick="closeModal('changePasswordModal')" class="flex-1 py-2 border border-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-100">Hủy</button>
-        <button onclick="saveNewPassword()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 font-bold text-xs text-white rounded-lg">Lưu Mật Khẩu</button>
+        <button type="button" onclick="closeModal('changePasswordModal')" class="flex-1 py-2 border border-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-100">Hủy</button>
+        <button type="submit" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 font-bold text-xs text-white rounded-lg">Lưu Mật Khẩu</button>
       </div>
-    </div>
+    </form>
   </div>
 
   <!-- TOAST THÔNG BÁO TỨC THÌ -->
@@ -316,6 +406,15 @@
     function closeModal(id) { 
       document.getElementById(id).classList.add('hidden'); 
     }
+    function togglePasswordVisibility(button) {
+      const input = button.parentElement.querySelector('input');
+      const icon = button.querySelector('i');
+      const shouldShow = input.type === 'password';
+
+      input.type = shouldShow ? 'text' : 'password';
+      icon.className = shouldShow ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+      button.setAttribute('aria-label', shouldShow ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+    }
 
     function saveProfileInfo() {
       const newName = document.getElementById('inputFullName').value.trim();
@@ -324,15 +423,10 @@
         document.getElementById('profileDisplayName').innerText = newName;
       }
       if (newAddress) {
-        document.getElementById('profileMetaText').innerText = 'Thành viên MuaNgay từ tháng 04/2023 • ' + newAddress;
+        document.getElementById('profileMetaText').innerText = 'Thành viên MuaNgay từ <%= h(createdText) %> • ' + newAddress;
       }
       closeModal('editProfileModal');
       showToast('Cập nhật thông tin hồ sơ cá nhân thành công!');
-    }
-
-    function saveNewPassword() {
-      closeModal('changePasswordModal');
-      showToast('Đổi mật khẩu tài khoản thành công!');
     }
 
     function showToast(msg) {
@@ -341,6 +435,18 @@
       toast.classList.remove('hidden');
       setTimeout(() => { toast.classList.add('hidden'); }, 3000);
     }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      <% if (request.getAttribute("oldPassword_error") != null || request.getAttribute("newPassword_error") != null || request.getAttribute("confirmPassword_error") != null) { %>
+        openChangePasswordModal();
+      <% } %>
+      <% if (authMessage != null) { %>
+        showToast('<%= h(authMessage) %>');
+      <% } %>
+      <% if (changePassSuccess != null) { %>
+        showToast('<%= h(changePassSuccess) %>');
+      <% } %>
+    });
   </script>
 </body>
 </html>

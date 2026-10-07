@@ -1,4 +1,48 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%!
+  private String h(String value) {
+    if (value == null) {
+      return "";
+    }
+    return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;");
+  }
+
+  private String js(String value) {
+    if (value == null) {
+      return "";
+    }
+    return value
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\r", "")
+            .replace("\n", "\\n");
+  }
+%>
+<%
+  String loginError = (String) request.getAttribute("loginError");
+  String registerError = (String) request.getAttribute("registerError");
+  String forgotError = (String) request.getAttribute("forgotError");
+  String authMessage = (String) session.getAttribute("authMessage");
+  String activeAuthTab = (String) request.getAttribute("activeAuthTab");
+  String accountValue = request.getAttribute("accountValue") != null ? (String) request.getAttribute("accountValue") : "";
+  String registerNameValue = request.getAttribute("registerNameValue") != null ? (String) request.getAttribute("registerNameValue") : "";
+  String registerEmailValue = request.getAttribute("registerEmailValue") != null ? (String) request.getAttribute("registerEmailValue") : "";
+  String forgotEmailValue = request.getAttribute("forgotEmailValue") != null ? (String) request.getAttribute("forgotEmailValue") : "";
+  boolean showRegisterOtp = Boolean.TRUE.equals(request.getAttribute("showRegisterOtp")) || session.getAttribute("registerOtpEmail") != null;
+  boolean hasPendingRegisterPassword = session.getAttribute("pendingRegisterPassword") != null;
+  boolean showResetPasswordForm = Boolean.TRUE.equals(request.getAttribute("showResetPasswordForm")) || session.getAttribute("resetOtpEmail") != null;
+  if (forgotEmailValue.isEmpty() && session.getAttribute("resetOtpEmail") != null) {
+    forgotEmailValue = (String) session.getAttribute("resetOtpEmail");
+  }
+  if (authMessage != null) {
+    session.removeAttribute("authMessage");
+  }
+%>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -41,7 +85,7 @@
 
       <!-- ĐĂNG NHẬP NHANH BẰNG GOOGLE (OAUTH 1 CHẠM) -->
       <div class="space-y-3">
-        <button onclick="simulateGoogleLogin()" class="w-full py-2.5 px-4 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition shadow-xs">
+        <a href="${pageContext.request.contextPath}/login-google" class="w-full py-2.5 px-4 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition shadow-xs">
           <svg class="w-4 h-4" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -49,7 +93,7 @@
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
           </svg>
           <span>Đăng nhập 1 chạm với tài khoản Google</span>
-        </button>
+        </a>
 
         <div class="relative flex items-center justify-center">
           <div class="border-t border-slate-200 w-full"></div>
@@ -58,13 +102,17 @@
       </div>
 
       <!-- FORM 1: ĐĂNG NHẬP -->
-      <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-4 text-xs">
+      <form id="loginForm" action="${pageContext.request.contextPath}/login" method="post" class="space-y-4 text-xs">
+        <% if (loginError != null) { %>
+          <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-[11px] font-semibold"><%= h(loginError) %></div>
+        <% } %>
         <div>
           <label class="block font-bold text-slate-700 mb-1">Email hoặc Số điện thoại:</label>
           <input 
             type="text" 
             id="loginAccount" 
-            value="nguyenvanbinh@gmail.com" 
+            name="account"
+            value="<%= h(accountValue) %>" 
             required 
             placeholder="Ví dụ: 0988123456 hoặc email của bạn"
             class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -78,13 +126,18 @@
               Quên mật khẩu?
             </a>
           </div>
-          <input 
-            type="password" 
-            id="loginPassword" 
-            value="12345678" 
-            required 
-            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
+          <div class="relative">
+            <input 
+              type="password" 
+              id="loginPassword" 
+              name="password"
+              required 
+              class="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+            <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Hiện mật khẩu">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
         </div>
 
         <div class="flex items-center gap-2">
@@ -98,12 +151,18 @@
       </form>
 
       <!-- FORM 2: ĐĂNG KÝ CÓ MÃ XÁC THỰC OTP -->
-      <form id="registerForm" onsubmit="handleRegisterSubmit(event)" class="space-y-3.5 text-xs hidden">
+      <form id="registerForm" action="${pageContext.request.contextPath}/signup" method="post" class="space-y-3.5 text-xs hidden">
+        <input type="hidden" id="registerAction" name="action" value="register">
+        <% if (registerError != null) { %>
+          <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-[11px] font-semibold"><%= h(registerError) %></div>
+        <% } %>
         <div>
           <label class="block font-bold text-slate-700 mb-1">Họ và tên của bạn:</label>
           <input 
             type="text" 
             id="regFullName" 
+            name="fullName"
+            value="<%= h(registerNameValue) %>"
             placeholder="Ví dụ: Trần Văn Nam" 
             required
             class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -116,34 +175,42 @@
             <input 
               type="email" 
               id="regEmail" 
+              name="email"
+              value="<%= h(registerEmailValue) %>"
               placeholder="name@gmail.com" 
               required
               class="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
             <button type="button" onclick="sendOtpCode()" id="btnSendOtp" class="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold rounded-lg text-[11px] whitespace-nowrap transition">
-              Gửi Mã OTP
+              <%= showRegisterOtp ? "Gửi Lại OTP" : "Gửi Mã OTP" %>
             </button>
           </div>
         </div>
 
         <!-- Ô NHẬP MÃ OTP 6 SỐ -->
-        <div id="otpInputGroup" class="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-1.5 hidden">
+        <div id="otpInputGroup" class="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-1.5 <%= showRegisterOtp ? "" : "hidden" %>">
           <label class="block font-bold text-blue-900 text-[11px]">Nhập mã OTP 6 số vừa gửi vào email:</label>
           <div class="flex gap-1.5">
-            <input type="text" maxlength="6" id="otpValue" placeholder="123456" class="w-full p-2 text-center text-sm font-mono tracking-widest font-black bg-white border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="text" maxlength="6" id="otpValue" name="otp" placeholder="123456" class="w-full p-2 text-center text-sm font-mono tracking-widest font-black bg-white border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
           </div>
           <span class="text-[10px] text-blue-700 block">Mã có hiệu lực trong 5 phút. Hãy kiểm tra cả hộp thư Spam.</span>
         </div>
 
         <div>
           <label class="block font-bold text-slate-700 mb-1">Mật khẩu mới:</label>
-          <input 
-            type="password" 
-            id="regPassword" 
-            placeholder="Tối thiểu 6 ký tự" 
-            required
-            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
+          <div class="relative">
+            <input 
+              type="password" 
+              id="regPassword" 
+              name="password"
+              placeholder="<%= showRegisterOtp && hasPendingRegisterPassword ? "Mật khẩu đã được lưu, không cần nhập lại" : "Ít nhất 8 ký tự, có hoa/thường/số/ký tự đặc biệt" %>" 
+              <%= showRegisterOtp && hasPendingRegisterPassword ? "" : "required" %>
+              class="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+            <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Hiện mật khẩu">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
         </div>
 
         <div class="flex items-start gap-2">
@@ -164,31 +231,61 @@
 
   <!-- MODAL QUÊN MẬT KHẨU -->
   <div id="forgotPasswordModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+    <form action="${pageContext.request.contextPath}/forgot-password" method="post" class="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+      <input type="hidden" name="action" value="<%= showResetPasswordForm ? "reset" : "sendOtp" %>">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 class="font-bold text-slate-900 text-sm">Lấy Lại Mật Khẩu</h3>
-        <button onclick="closeForgotPasswordModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg px-2">X</button>
+        <button type="button" onclick="closeForgotPasswordModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg px-2">X</button>
       </div>
 
       <div class="space-y-3 text-xs">
+        <% if (forgotError != null) { %>
+          <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-[11px] font-semibold"><%= h(forgotError) %></div>
+        <% } %>
         <p class="text-slate-600 leading-relaxed">
-          Nhập địa chỉ email đăng ký tài khoản của bạn. MuaNgay sẽ gửi liên kết đặt lại mật khẩu trong 30 giây.
+          <%= showResetPasswordForm
+                  ? "Nhập mã OTP trong email và mật khẩu mới để hoàn tất đặt lại mật khẩu."
+                  : "Nhập địa chỉ email đăng ký tài khoản của bạn. MuaNgay sẽ gửi mã OTP đặt lại mật khẩu." %>
         </p>
         <div>
           <label class="block font-bold text-slate-700 mb-1">Email của bạn:</label>
-          <input type="email" id="forgotEmailInput" value="nguyenvanbinh@gmail.com" class="w-full p-2.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <input type="email" id="forgotEmailInput" name="email" value="<%= h(forgotEmailValue) %>" class="w-full p-2.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
+        <% if (showResetPasswordForm) { %>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Mã OTP:</label>
+            <input type="text" maxlength="6" name="otp" class="w-full p-2.5 text-center font-mono tracking-widest border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Mật khẩu mới:</label>
+            <div class="relative">
+              <input type="password" name="password" autocomplete="new-password" required placeholder="Ít nhất 8 ký tự, có hoa/thường/số/ký tự đặc biệt" class="w-full pl-2.5 pr-10 py-2.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Hiện mật khẩu">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Nhập lại mật khẩu mới:</label>
+            <div class="relative">
+              <input type="password" name="confirmPassword" autocomplete="new-password" required class="w-full pl-2.5 pr-10 py-2.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Hiện mật khẩu">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+            </div>
+          </div>
+        <% } %>
       </div>
 
       <div class="pt-2 flex gap-2">
-        <button onclick="closeForgotPasswordModal()" class="flex-1 py-2 border border-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-100">
+        <button type="button" onclick="closeForgotPasswordModal()" class="flex-1 py-2 border border-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-100">
           Hủy
         </button>
-        <button onclick="submitForgotPassword()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 font-bold text-xs text-white rounded-lg transition">
-          Gửi Yêu Cầu
+        <button type="submit" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 font-bold text-xs text-white rounded-lg transition">
+          <%= showResetPasswordForm ? "Đổi Mật Khẩu" : "Gửi OTP" %>
         </button>
       </div>
-    </div>
+    </form>
   </div>
 
   <!-- TOAST THÔNG BÁO TỨC THÌ -->
@@ -226,46 +323,23 @@
       }
     }
 
-    function handleLoginSubmit(e) {
-      e.preventDefault();
-      showToast('Đăng nhập thành công! Đang chuyển đến trang cá nhân...');
-      setTimeout(() => {
-        window.location.href = '08-ho-so-ca-nhan.jsp';
-      }, 1200);
-    }
-
-    function handleRegisterSubmit(e) {
-      e.preventDefault();
-      const otp = document.getElementById('otpValue').value.trim();
-      if (!otp || otp.length < 6) {
-        showToast('Vui lòng nhập đủ 6 chữ số mã OTP đã gửi về email.');
-        return;
-      }
-      showToast('Tạo tài khoản và xác thực thành công!');
-      setTimeout(() => {
-        window.location.href = '08-ho-so-ca-nhan.jsp';
-      }, 1200);
-    }
-
     function sendOtpCode() {
       const email = document.getElementById('regEmail').value.trim();
+      const fullName = document.getElementById('regFullName').value.trim();
+      const password = document.getElementById('regPassword').value.trim();
+      const otpInputGroup = document.getElementById('otpInputGroup');
+      const isOtpStep = !otpInputGroup.classList.contains('hidden');
+      const registerAction = document.getElementById('registerAction');
       if (!email) {
         showToast('Vui lòng nhập địa chỉ email trước khi nhận mã OTP.');
         return;
       }
-      document.getElementById('otpInputGroup').classList.remove('hidden');
-      document.getElementById('btnSendOtp').textContent = 'Đã gửi lại (60s)';
-      showToast('Đã gửi mã xác thực 6 số tới: ' + email);
-    }
-
-    function simulateGoogleLogin() {
-      showToast('Đang kết nối tài khoản Google...');
-      setTimeout(() => {
-        showToast('Đăng nhập Google thành công! Chào mừng bạn quay lại.');
-        setTimeout(() => {
-          window.location.href = '08-ho-so-ca-nhan.jsp';
-        }, 1000);
-      }, 800);
+      if (!fullName || (!password && !isOtpStep)) {
+        showToast('Vui lòng nhập đầy đủ họ tên và mật khẩu trước khi gửi OTP.');
+        return;
+      }
+      registerAction.value = 'sendOtp';
+      document.getElementById('registerForm').submit();
     }
 
     function openForgotPasswordModal() {
@@ -274,11 +348,15 @@
     function closeForgotPasswordModal() {
       document.getElementById('forgotPasswordModal').classList.add('hidden');
     }
-    function submitForgotPassword() {
-      closeForgotPasswordModal();
-      showToast('Đã gửi hướng dẫn đặt lại mật khẩu vào email của bạn.');
-    }
+    function togglePasswordVisibility(button) {
+      const input = button.parentElement.querySelector('input');
+      const icon = button.querySelector('i');
+      const shouldShow = input.type === 'password';
 
+      input.type = shouldShow ? 'text' : 'password';
+      icon.className = shouldShow ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+      button.setAttribute('aria-label', shouldShow ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+    }
     function showToast(msg) {
       const toast = document.getElementById('toastNotification');
       document.getElementById('toastMsg').textContent = msg;
@@ -287,6 +365,18 @@
         toast.classList.add('hidden');
       }, 3500);
     }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      <% if ("register".equals(activeAuthTab)) { %>
+        switchAuthTab('register');
+      <% } %>
+      <% if (forgotError != null || showResetPasswordForm) { %>
+        openForgotPasswordModal();
+      <% } %>
+      <% if (authMessage != null) { %>
+        showToast('<%= js(authMessage) %>');
+      <% } %>
+    });
   </script>
 </body>
 </html>
