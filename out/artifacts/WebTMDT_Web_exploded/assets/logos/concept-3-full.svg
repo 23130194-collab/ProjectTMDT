@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 48" width="280" height="48" fill="none">
+  <defs>
+    <linearGradient id="c3-full-bg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#312E81" />
+      <stop offset="100%" stop-color="#4F46E5" />
+    </linearGradient>
+    <linearGradient id="c3-full-accent" x1="12" y1="12" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#818CF8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Biểu tượng Icon -->
+  <g transform="translate(0, 0)">
+    <rect width="48" height="48" rx="12" fill="url(#c3-full-bg)" />
+    <path d="M19 18V14C19 11.2386 21.2386 9 24 9C26.7614 9 29 11.2386 29 14V18" stroke="#E0E7FF" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M13 18H35L33 37C33 38.1046 32.1046 39 31 39H17C15.8954 39 15 38.1046 15 37L13 18Z" fill="#1E1B4B" fill-opacity="0.4" stroke="#A5B4FC" stroke-width="2" />
+    <path d="M18 33V23L24 29L30 23V33" stroke="url(#c3-full-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- Chữ Thương Hiệu MuaNgay -->
+  <text x="60" y="27" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="22" font-weight="800" fill="#0F172A" letter-spacing="-0.5">
+    Mua<tspan fill="#4F46E5">Ngay</tspan>
+  </text>
+
+  <!-- Slogan Nhận Diện -->
+  <text x="60" y="41" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="9.5" font-weight="600" fill="#64748B" letter-spacing="-0.2">
+    Cần là Mua Ngay, thừa thì Pass Luôn
+  </text>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="c1-grad-blue" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1D4ED8" />
+      <stop offset="50%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#0D9488" />
+    </linearGradient>
+    <linearGradient id="c1-grad-teal" x1="12" y1="36" x2="40" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+    <filter id="c1-shadow" x="-10%" y="-10%" width="130%" height="130%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#1E3A8A" flood-opacity="0.15" />
+    </filter>
+  </defs>
+
+  <!-- Nền bo góc tinh gọn -->
+  <rect width="48" height="48" rx="12" fill="url(#c1-grad-blue)" />
+
+  <!-- Vòng lặp tuần hoàn cách điệu M & N (Circular Re-Commerce Loop) -->
+  <g filter="url(#c1-shadow)" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Cánh cung Mua (M) đi lên và uốn lượn -->
+    <path d="M12 34V18L19 27L24 21L29 27L36 14" />
+    <!-- Mũi tên tuần hoàn thể hiện luân chuyển giá trị vòng đời mới -->
+    <path d="M31 14H36V19" />
+    <!-- Điểm nhấn vòng tròn trao đổi cân bằng -->
+    <circle cx="24" cy="33" r="2.5" fill="#FFFFFF" stroke="none" />
+  </g>
+</svg>
