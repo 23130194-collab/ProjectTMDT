@@ -75,6 +75,63 @@ public class ProductDAO {
         return list;
     }
 
+    public List<Product> searchProducts(String keyword) {
+        List<Product> list = new ArrayList<>();
+        String sql = "SELECT p.*, pi.image_url FROM products p " +
+                     "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
+                     "WHERE p.title LIKE ? OR p.description LIKE ? " +
+                     "ORDER BY p.id DESC";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            String pattern = "%" + keyword + "%";
+            ps.setString(1, pattern);
+            ps.setString(2, pattern);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Product p = new Product();
+                    p.setId(rs.getInt("id"));
+                    p.setUserId(rs.getInt("user_id"));
+                    p.setCategoryId(rs.getInt("category_id"));
+                    p.setTitle(rs.getString("title"));
+                    p.setDescription(rs.getString("description"));
+                    p.setPrice(rs.getDouble("price"));
+                    p.setConditionStatus(rs.getString("condition_status"));
+                    p.setLocation(rs.getString("location"));
+                    p.setStatus(rs.getString("status"));
+                    p.setCreatedAt(rs.getTimestamp("created_at"));
+                    p.setDeliveryMethod(rs.getInt("delivery_method"));
+                    p.setPrimaryImage(rs.getString("image_url"));
+                    list.add(p);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<Product> getProductSuggestions(String keyword) {
+        List<Product> suggestions = new ArrayList<>();
+        String sql = "SELECT title, price FROM products WHERE title LIKE ? ORDER BY id DESC LIMIT 5";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, "%" + keyword + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Product product = new Product();
+                    product.setTitle(rs.getString("title"));
+                    product.setPrice(rs.getDouble("price"));
+                    suggestions.add(product);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return suggestions;
+    }
+
     public Product getProductById(int id) {
         String sql = "SELECT * FROM products WHERE id = ?";
         try (Connection conn = DBContext.getConnection();

@@ -82,8 +82,18 @@
     <!-- TIÊU ĐỀ KHU VỰC VÀ BỘ LỌC ĐA TIÊU CHÍ (THEO USE CASE UC06) -->
     <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between pb-6 border-b border-slate-200 gap-4">
       <div>
-        <h2 id="sectionTitle" class="text-xl font-bold text-slate-900">Tin Đăng Mới Nhất Quanh Khu Vực Của Bạn</h2>
-        <p id="resultCountText" class="text-xs text-slate-500 mt-1">Đang hiển thị 12 tin đăng có bảo đảm an toàn</p>
+        <h2 id="sectionTitle" class="text-xl font-bold text-slate-900">
+          <c:choose>
+            <c:when test="${not empty searchKeyword}">Kết quả tìm kiếm cho: <c:out value="${searchKeyword}"/></c:when>
+            <c:otherwise>Tin Đăng Mới Nhất Quanh Khu Vực Của Bạn</c:otherwise>
+          </c:choose>
+        </h2>
+        <p id="resultCountText" class="text-xs text-slate-500 mt-1">
+          <c:choose>
+            <c:when test="${not empty searchKeyword}">Tìm thấy ${products.size()} sản phẩm phù hợp</c:when>
+            <c:otherwise>Đang hiển thị ${products.size()} tin đăng mới nhất</c:otherwise>
+          </c:choose>
+        </p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
@@ -126,7 +136,14 @@
       <c:choose>
         <c:when test="${empty products}">
           <div class="col-span-full text-center py-12 text-slate-500">
-            <p>Chưa có sản phẩm nào trên hệ thống. Hãy là người đầu tiên đăng tin!</p>
+            <c:choose>
+              <c:when test="${not empty searchKeyword}">
+                <p>Không tìm thấy sản phẩm phù hợp với từ khóa “<c:out value="${searchKeyword}"/>”.</p>
+              </c:when>
+              <c:otherwise>
+                <p>Chưa có sản phẩm nào trên hệ thống. Hãy là người đầu tiên đăng tin!</p>
+              </c:otherwise>
+            </c:choose>
           </div>
         </c:when>
         <c:otherwise>
