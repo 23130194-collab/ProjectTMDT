@@ -16,9 +16,12 @@ public class Product {
     private Timestamp createdAt;
     private Timestamp updatedAt;
     private String primaryImage;
+    private boolean newProduct;
 
     public String getPrimaryImage() { return primaryImage; }
     public void setPrimaryImage(String primaryImage) { this.primaryImage = primaryImage; }
+    public boolean isNewProduct() { return newProduct; }
+    public void setNewProduct(boolean newProduct) { this.newProduct = newProduct; }
 
     public Product() {
     }

@@ -47,7 +47,7 @@ public class ProductDAO {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
-                     "ORDER BY p.id DESC"; // Lấy tin mới nhất
+                     "ORDER BY p.created_at DESC, p.id DESC"; // Lấy tin mới nhất
         
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -65,6 +65,7 @@ public class ProductDAO {
                 p.setLocation(rs.getString("location"));
                 p.setStatus(rs.getString("status"));
                 p.setCreatedAt(rs.getTimestamp("created_at"));
+                p.setNewProduct(isNewProduct(p.getCreatedAt()));
                 p.setDeliveryMethod(rs.getInt("delivery_method"));
                 p.setPrimaryImage(rs.getString("image_url")); // Set link ảnh
                 list.add(p);
@@ -75,6 +76,42 @@ public class ProductDAO {
         return list;
     }
 
+    // Hàm lấy tối đa các sản phẩm mới nhất để hiển thị ở mục "Sản phẩm mới"
+    public List<Product> getNewestProducts(int limit) {
+        List<Product> list = new ArrayList<>();
+        int safeLimit = limit > 0 ? Math.min(limit, 10) : 10;
+        String sql = "SELECT p.*, pi.image_url FROM products p " +
+                     "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
+                     "WHERE p.created_at >= NOW() - INTERVAL 2 DAY " +
+                     "ORDER BY p.created_at DESC, p.id DESC LIMIT ?";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, safeLimit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Product p = new Product();
+                    p.setId(rs.getInt("id"));
+                    p.setUserId(rs.getInt("user_id"));
+                    p.setCategoryId(rs.getInt("category_id"));
+                    p.setTitle(rs.getString("title"));
+                    p.setDescription(rs.getString("description"));
+                    p.setPrice(rs.getDouble("price"));
+                    p.setConditionStatus(rs.getString("condition_status"));
+                    p.setLocation(rs.getString("location"));
+                    p.setStatus(rs.getString("status"));
+                    p.setCreatedAt(rs.getTimestamp("created_at"));
+                p.setNewProduct(isNewProduct(p.getCreatedAt()));
+                    p.setDeliveryMethod(rs.getInt("delivery_method"));
+                    p.setPrimaryImage(rs.getString("image_url"));
+                    list.add(p);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
     public List<Product> searchProducts(String keyword) {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, pi.image_url FROM products p " +
@@ -100,6 +137,7 @@ public class ProductDAO {
                     p.setLocation(rs.getString("location"));
                     p.setStatus(rs.getString("status"));
                     p.setCreatedAt(rs.getTimestamp("created_at"));
+                p.setNewProduct(isNewProduct(p.getCreatedAt()));
                     p.setDeliveryMethod(rs.getInt("delivery_method"));
                     p.setPrimaryImage(rs.getString("image_url"));
                     list.add(p);
@@ -150,6 +188,7 @@ public class ProductDAO {
                     p.setLocation(rs.getString("location"));
                     p.setStatus(rs.getString("status"));
                     p.setCreatedAt(rs.getTimestamp("created_at"));
+                p.setNewProduct(isNewProduct(p.getCreatedAt()));
                     p.setDeliveryMethod(rs.getInt("delivery_method"));
                     return p;
                 }
@@ -158,5 +197,13 @@ public class ProductDAO {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private boolean isNewProduct(Timestamp createdAt) {
+        if (createdAt == null) {
+            return false;
+        }
+        long twoDaysMillis = 2L * 24 * 60 * 60 * 1000;
+        return System.currentTimeMillis() - createdAt.getTime() <= twoDaysMillis;
     }
 }
