@@ -25,7 +25,6 @@ public class HomeController extends HttpServlet {
         // Gắn vào request để truyền sang file giao diện
         request.setAttribute("products", products);
 
-        request.setAttribute("searchKeyword", "");
 
         // Chuyển hướng sang trang 01-trang-chu.jsp
         request.getRequestDispatcher("01-trang-chu.jsp").forward(request, response);
