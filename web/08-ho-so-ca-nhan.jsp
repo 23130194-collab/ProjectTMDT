@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="model.User" %>
 <%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="java.util.Map" %>
 <%!
   private String h(String value) {
     if (value == null) {
@@ -47,6 +48,10 @@
           : currentUser.getUsername();
   String email = currentUser.getEmail() != null ? currentUser.getEmail() : "";
   String phone = currentUser.getPhone() != null ? currentUser.getPhone() : "";
+  String province = currentUser.getProvince() != null ? currentUser.getProvince() : "";
+  String ward = currentUser.getWard() != null ? currentUser.getWard() : "";
+  String addressDetail = currentUser.getAddressDetail() != null ? currentUser.getAddressDetail() : "";
+  String fullAddress = String.join(", ", java.util.Arrays.asList(addressDetail, ward, province).stream().filter(s -> s != null && !s.trim().isEmpty()).toArray(String[]::new));
   String avatarText = initials(displayName);
   String createdText = currentUser.getCreatedAt() != null
           ? new SimpleDateFormat("MM/yyyy").format(currentUser.getCreatedAt())
@@ -54,11 +59,31 @@
   String statusText = currentUser.getStatus() != null ? currentUser.getStatus() : "ACTIVE";
   String authMessage = (String) session.getAttribute("authMessage");
   String changePassSuccess = (String) session.getAttribute("changePassSuccess");
+  String profileMessage = (String) session.getAttribute("profileMessage");
+  boolean profileMessageError = Boolean.TRUE.equals(session.getAttribute("profileMessageError"));
+  Map<String, String> profileFieldErrors = (Map<String, String>) session.getAttribute("profileFieldErrors");
+  Map<String, String> profileFormValues = (Map<String, String>) session.getAttribute("profileFormValues");
+  if (profileFieldErrors == null) profileFieldErrors = java.util.Collections.emptyMap();
+  if (profileFormValues == null) profileFormValues = java.util.Collections.emptyMap();
+  String editName = profileFormValues.containsKey("fullName") ? profileFormValues.get("fullName") : displayName;
+  String editEmail = profileFormValues.containsKey("email") ? profileFormValues.get("email") : email;
+  String editPhone = profileFormValues.containsKey("phone") ? profileFormValues.get("phone") : phone;
+  String editProvince = profileFormValues.containsKey("province") ? profileFormValues.get("province") : province;
+  String editWard = profileFormValues.containsKey("ward") ? profileFormValues.get("ward") : ward;
+  String editAddressDetail = profileFormValues.containsKey("addressDetail") ? profileFormValues.get("addressDetail") : addressDetail;
   if (authMessage != null) {
     session.removeAttribute("authMessage");
   }
   if (changePassSuccess != null) {
     session.removeAttribute("changePassSuccess");
+  }
+  if (profileMessage != null) {
+    session.removeAttribute("profileMessage");
+    session.removeAttribute("profileMessageError");
+  }
+  if (!profileFieldErrors.isEmpty()) {
+    session.removeAttribute("profileFieldErrors");
+    session.removeAttribute("profileFormValues");
   }
 %>
 <!DOCTYPE html>
@@ -97,7 +122,7 @@
             </span>
           </div>
           <div id="profileMetaText" class="text-xs text-slate-500 mt-1">
-            Thành viên MuaNgay từ <%= h(createdText) %> • <%= h(email) %> • Trạng thái: <%= h(statusText) %>
+            Thành viên MuaNgay từ <%= h(createdText) %> • <%= h(email) %> • Trạng thái: <%= h(statusText) %><%= fullAddress.isEmpty() ? "" : " • " + h(fullAddress) %>
           </div>
           <div class="flex items-center gap-3 text-xs mt-2 font-medium">
             <span class="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded">
@@ -257,31 +282,50 @@
   </main>
 
   <!-- MODAL CHỈNH SỬA THÔNG TIN CÁ NHÂN -->
-  <div id="editProfileModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 text-left">
+  <div id="editProfileModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+    <form id="profileForm" action="${pageContext.request.contextPath}/update-profile" method="post" novalidate class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 text-left my-auto">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 class="font-bold text-slate-900 text-sm uppercase">Chỉnh Sửa Hồ Sơ Cá Nhân</h3>
-        <button onclick="closeModal('editProfileModal')" class="text-slate-400 hover:text-slate-600 font-bold text-lg px-2">✕</button>
+        <button type="button" onclick="closeModal('editProfileModal')" class="text-slate-400 hover:text-slate-600 font-bold text-lg px-2">✕</button>
       </div>
 
       <div class="space-y-3 text-xs">
         <div>
           <label class="block font-bold text-slate-700 mb-1">Họ và tên:</label>
-          <input id="inputFullName" type="text" value="<%= h(displayName) %>" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-500">
+          <input id="inputFullName" name="fullName" type="text" required value="<%= h(editName) %>" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-500 <%= profileFieldErrors.containsKey("fullName") ? "border-red-500 ring-1 ring-red-500" : "" %>" <%= profileFieldErrors.containsKey("fullName") ? "aria-invalid=\"true\"" : "" %>>
+          <p data-error-for="inputFullName" role="alert" class="mt-1 text-[11px] text-red-600 <%= profileFieldErrors.containsKey("fullName") ? "" : "hidden" %>"><%= h(profileFieldErrors.get("fullName")) %></p>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-bold text-slate-700 mb-1">Số điện thoại:</label>
-            <input id="inputPhone" type="text" value="<%= h(phone) %>" placeholder="Chưa cập nhật" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+            <input id="inputPhone" name="phone" type="tel" inputmode="numeric" maxlength="10" pattern="0[0-9]{9}" required value="<%= h(editPhone) %>" placeholder="0xxxxxxxxx" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 <%= profileFieldErrors.containsKey("phone") ? "border-red-500 ring-1 ring-red-500" : "" %>" <%= profileFieldErrors.containsKey("phone") ? "aria-invalid=\"true\"" : "" %>>
+            <p data-error-for="inputPhone" role="alert" class="mt-1 text-[11px] text-red-600 <%= profileFieldErrors.containsKey("phone") ? "" : "hidden" %>"><%= h(profileFieldErrors.get("phone")) %></p>
           </div>
           <div>
             <label class="block font-bold text-slate-700 mb-1">Email:</label>
-            <input id="inputEmail" type="email" value="<%= h(email) %>" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+            <input id="inputEmail" name="email" type="email" required value="<%= h(editEmail) %>" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 <%= profileFieldErrors.containsKey("email") ? "border-red-500 ring-1 ring-red-500" : "" %>" <%= profileFieldErrors.containsKey("email") ? "aria-invalid=\"true\"" : "" %>>
+            <p data-error-for="inputEmail" role="alert" class="mt-1 text-[11px] text-red-600 <%= profileFieldErrors.containsKey("email") ? "" : "hidden" %>"><%= h(profileFieldErrors.get("email")) %></p>
           </div>
         </div>
         <div>
-          <label class="block font-bold text-slate-700 mb-1">Địa chỉ mặc định (Gặp mặt/Nhận hàng):</label>
-          <input id="inputAddress" type="text" value="" placeholder="Chưa cập nhật" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+          <label for="inputProvince" class="block font-bold text-slate-700 mb-1">Tỉnh/thành phố:</label>
+          <select id="inputProvince" name="province" data-saved-province="<%= h(editProvince) %>" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 <%= profileFieldErrors.containsKey("province") ? "border-red-500 ring-1 ring-red-500" : "" %>" <%= profileFieldErrors.containsKey("province") ? "aria-invalid=\"true\"" : "" %>>
+            <option value="">Đang tải tỉnh/thành...</option>
+            <% if (!editProvince.isEmpty()) { %><option value="<%= h(editProvince) %>" selected><%= h(editProvince) %></option><% } %>
+          </select>
+          <p data-error-for="inputProvince" role="alert" class="mt-1 text-[11px] text-red-600 <%= profileFieldErrors.containsKey("province") ? "" : "hidden" %>"><%= h(profileFieldErrors.get("province")) %></p>
+        </div>
+        <div>
+          <label for="inputWard" class="block font-bold text-slate-700 mb-1">Phường/xã:</label>
+          <select id="inputWard" name="ward" data-saved-ward="<%= h(editWard) %>" required disabled class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 <%= profileFieldErrors.containsKey("ward") ? "border-red-500 ring-1 ring-red-500" : "" %>" <%= profileFieldErrors.containsKey("ward") ? "aria-invalid=\"true\"" : "" %>>
+            <option value=""><%= editWard.isEmpty() ? "Chọn tỉnh/thành trước" : h(editWard) %></option>
+          </select>
+          <p data-error-for="inputWard" role="alert" class="mt-1 text-[11px] text-red-600 <%= profileFieldErrors.containsKey("ward") ? "" : "hidden" %>"><%= h(profileFieldErrors.get("ward")) %></p>
+        </div>
+        <div>
+          <label for="inputAddressDetail" class="block font-bold text-slate-700 mb-1">Địa chỉ chi tiết (số nhà, tên đường):</label>
+          <input id="inputAddressDetail" name="addressDetail" type="text" maxlength="255" required value="<%= h(editAddressDetail) %>" placeholder="Ví dụ: 12 Nguyễn Huệ" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 <%= profileFieldErrors.containsKey("addressDetail") ? "border-red-500 ring-1 ring-red-500" : "" %>" <%= profileFieldErrors.containsKey("addressDetail") ? "aria-invalid=\"true\"" : "" %>>
+          <p data-error-for="inputAddressDetail" role="alert" class="mt-1 text-[11px] text-red-600 <%= profileFieldErrors.containsKey("addressDetail") ? "" : "hidden" %>"><%= h(profileFieldErrors.get("addressDetail")) %></p>
         </div>
         <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-900">
           Số điện thoại tài khoản: <strong class="font-mono"><%= maskPhone(phone) %></strong>.
@@ -289,14 +333,14 @@
       </div>
 
       <div class="pt-2 flex gap-2">
-        <button onclick="closeModal('editProfileModal')" class="flex-1 py-2 border border-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-100">
+        <button type="button" onclick="closeModal('editProfileModal')" class="flex-1 py-2 border border-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-100">
           Hủy Bỏ
         </button>
-        <button onclick="saveProfileInfo()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 font-bold text-xs text-white rounded-lg shadow-sm">
+        <button type="submit" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 font-bold text-xs text-white rounded-lg shadow-sm">
           Lưu Thay Đổi
         </button>
       </div>
-    </div>
+    </form>
   </div>
 
   <!-- MODAL ĐỔI MẬT KHẨU -->
@@ -416,18 +460,112 @@
       button.setAttribute('aria-label', shouldShow ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
     }
 
-    function saveProfileInfo() {
-      const newName = document.getElementById('inputFullName').value.trim();
-      const newAddress = document.getElementById('inputAddress').value.trim();
-      if (newName) {
-        document.getElementById('profileDisplayName').innerText = newName;
-      }
-      if (newAddress) {
-        document.getElementById('profileMetaText').innerText = 'Thành viên MuaNgay từ <%= h(createdText) %> • ' + newAddress;
-      }
-      closeModal('editProfileModal');
-      showToast('Cập nhật thông tin hồ sơ cá nhân thành công!');
+    const provinceSelect = document.getElementById('inputProvince');
+    const wardSelect = document.getElementById('inputWard');
+    const savedProvince = provinceSelect.dataset.savedProvince;
+    const savedWard = wardSelect.dataset.savedWard;
+
+    function setFieldError(inputId, message) {
+      const input = document.getElementById(inputId);
+      const error = document.querySelector('[data-error-for="' + inputId + '"]');
+      if (!input || !error) return;
+      error.textContent = message || '';
+      error.classList.toggle('hidden', !message);
+      input.classList.toggle('border-red-500', Boolean(message));
+      input.classList.toggle('ring-1', Boolean(message));
+      input.classList.toggle('ring-red-500', Boolean(message));
+      if (message) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
     }
+
+    document.getElementById('profileForm').addEventListener('submit', (event) => {
+      const name = document.getElementById('inputFullName').value.trim();
+      const email = document.getElementById('inputEmail');
+      const phone = document.getElementById('inputPhone').value.trim();
+      const detail = document.getElementById('inputAddressDetail').value.trim();
+      const phonePattern = /^(03[2-9]|05[25689]|07[06789]|08[1-9]|09[0-9])[0-9]{7}$/;
+      const checks = [
+        ['inputFullName', /^\S+(?:\s+\S+)+$/.test(name) ? '' : 'Nhập họ và tên gồm ít nhất hai từ, có khoảng trắng ở giữa.'],
+        ['inputEmail', email.value.trim() && email.validity.valid ? '' : 'Vui lòng nhập email hợp lệ.'],
+        ['inputPhone', phonePattern.test(phone) ? '' : 'Số điện thoại phải có 10 số và là đầu số di động Việt Nam hợp lệ.'],
+        ['inputProvince', provinceSelect.value ? '' : 'Vui lòng chọn tỉnh/thành phố.'],
+        ['inputWard', wardSelect.value ? '' : 'Vui lòng chọn phường/xã.'],
+        ['inputAddressDetail', detail ? '' : 'Vui lòng nhập số nhà, tên đường hoặc địa chỉ chi tiết.']
+      ];
+      let firstInvalid = null;
+      checks.forEach(([id, message]) => {
+        setFieldError(id, message);
+        if (message && !firstInvalid) firstInvalid = document.getElementById(id);
+      });
+      if (firstInvalid) {
+        event.preventDefault();
+        firstInvalid.focus();
+      }
+    });
+
+    ['inputFullName', 'inputEmail', 'inputPhone', 'inputProvince', 'inputWard', 'inputAddressDetail'].forEach((id) => {
+      const input = document.getElementById(id);
+      input.addEventListener(input.tagName === 'SELECT' ? 'change' : 'input', () => setFieldError(id, ''));
+    });
+
+    async function loadProvinces() {
+      try {
+        const response = await fetch('https://provinces.open-api.vn/api/v2/');
+        if (!response.ok) throw new Error('API tỉnh/thành không phản hồi');
+        const provinces = await response.json();
+        provinceSelect.innerHTML = '<option value="">Chọn tỉnh/thành phố</option>';
+        provinces.forEach((item) => {
+          const option = new Option(item.name, item.name);
+          option.dataset.name = item.name;
+          option.dataset.code = item.code;
+          provinceSelect.add(option);
+        });
+        const saved = [...provinceSelect.options].find((option) => option.dataset.name === savedProvince || option.value === savedProvince);
+        if (saved) {
+          saved.selected = true;
+          await loadWards(saved.dataset.code, savedWard);
+        }
+      } catch (error) {
+        provinceSelect.innerHTML = '<option value="">Không tải được danh sách tỉnh/thành</option>';
+        setFieldError('inputProvince', 'Không tải được danh sách tỉnh/thành. Hãy tải lại trang.');
+        showToast('Không tải được địa chỉ từ API. Hãy thử tải lại trang.');
+      }
+    }
+
+    async function loadWards(provinceCode, selectedWard = '') {
+      wardSelect.disabled = true;
+      wardSelect.innerHTML = '<option value="">Đang tải phường/xã...</option>';
+      try {
+        const response = await fetch('https://provinces.open-api.vn/api/v2/p/' + encodeURIComponent(provinceCode) + '?depth=2');
+        if (!response.ok) throw new Error('API phường/xã không phản hồi');
+        const provinceData = await response.json();
+        wardSelect.innerHTML = '<option value="">Chọn phường/xã</option>';
+        (provinceData.wards || []).forEach((item) => {
+          const option = new Option(item.name, item.name);
+          wardSelect.add(option);
+        });
+        wardSelect.disabled = false;
+        if (selectedWard) wardSelect.value = selectedWard;
+      } catch (error) {
+        wardSelect.innerHTML = '<option value="">Không tải được phường/xã</option>';
+        wardSelect.disabled = true;
+        setFieldError('inputWard', 'Không tải được phường/xã. Hãy kiểm tra kết nối mạng.');
+        showToast('Không tải được phường/xã. Hãy kiểm tra kết nối mạng.');
+      }
+    }
+
+    provinceSelect.addEventListener('change', () => {
+      const selected = provinceSelect.selectedOptions[0];
+      setFieldError('inputProvince', '');
+      setFieldError('inputWard', '');
+      if (!selected || !selected.value) {
+        wardSelect.disabled = true;
+        wardSelect.innerHTML = '<option value="">Chọn tỉnh/thành trước</option>';
+        return;
+      }
+      selected.dataset.name = selected.dataset.name || selected.textContent;
+      loadWards(selected.dataset.code || selected.value);
+    });
 
     function showToast(msg) {
       const toast = document.getElementById('toastNotification');
@@ -437,6 +575,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      loadProvinces();
       <% if (request.getAttribute("oldPassword_error") != null || request.getAttribute("newPassword_error") != null || request.getAttribute("confirmPassword_error") != null) { %>
         openChangePasswordModal();
       <% } %>
@@ -445,6 +584,10 @@
       <% } %>
       <% if (changePassSuccess != null) { %>
         showToast('<%= h(changePassSuccess) %>');
+      <% } %>
+      <% if (profileMessage != null) { %>
+        showToast('<%= h(profileMessage) %>');
+        <% if (profileMessageError || !profileFieldErrors.isEmpty()) { %>openEditProfileModal();<% } %>
       <% } %>
     });
   </script>

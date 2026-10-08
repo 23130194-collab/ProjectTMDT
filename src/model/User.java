@@ -9,6 +9,9 @@ public class User {
     private String fullName;
     private String email;
     private String phone;
+    private String province;
+    private String ward;
+    private String addressDetail;
     private String avatar;
     private String role;
     private int reputationScore;
@@ -79,6 +82,13 @@ public class User {
     public void setPhone(String phone) {
         this.phone = phone;
     }
+
+    public String getProvince() { return province; }
+    public void setProvince(String province) { this.province = province; }
+    public String getWard() { return ward; }
+    public void setWard(String ward) { this.ward = ward; }
+    public String getAddressDetail() { return addressDetail; }
+    public void setAddressDetail(String addressDetail) { this.addressDetail = addressDetail; }
 
     public String getAvatar() {
         return avatar;

@@ -11,6 +11,9 @@ CREATE TABLE users (
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE,
     phone VARCHAR(20) UNIQUE,
+    province VARCHAR(100),
+    ward VARCHAR(150),
+    address_detail VARCHAR(255),
     avatar VARCHAR(255),
     role ENUM('USER', 'ADMIN') DEFAULT 'USER',
     reputation_score INT DEFAULT 0, -- Điểm uy tín

@@ -145,6 +145,41 @@ public class UserDao {
         }
     }
 
+    public boolean isProfileEmailTaken(String email, int userId) {
+        return isProfileValueTaken("email", email, userId);
+    }
+
+    public boolean isProfilePhoneTaken(String phone, int userId) {
+        return isProfileValueTaken("phone", phone, userId);
+    }
+
+    private boolean isProfileValueTaken(String column, String value, int userId) {
+        String sql = "SELECT COUNT(*) FROM users WHERE id <> ? AND " + column + " = ?";
+        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setString(2, value);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next() && rs.getInt(1) > 0; }
+        } catch (SQLException e) {
+            throw new RuntimeException("Không thể kiểm tra thông tin liên hệ.", e);
+        }
+    }
+
+    public void updateProfile(User user) {
+        String sql = "UPDATE users SET full_name = ?, email = ?, phone = ?, province = ?, ward = ?, address_detail = ? WHERE id = ?";
+        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, user.getFullName());
+            ps.setString(2, user.getEmail());
+            ps.setString(3, user.getPhone());
+            ps.setString(4, user.getProvince());
+            ps.setString(5, user.getWard());
+            ps.setString(6, user.getAddressDetail());
+            ps.setInt(7, user.getId());
+            if (ps.executeUpdate() == 0) throw new SQLException("Không tìm thấy tài khoản cần cập nhật.");
+        } catch (SQLException e) {
+            throw new RuntimeException("Không thể cập nhật hồ sơ.", e);
+        }
+    }
+
     public void updateUserStatus(int userId, String newStatus) {
         String sql = "UPDATE users SET status = ? WHERE id = ?";
 
@@ -342,6 +377,9 @@ public class UserDao {
         user.setFullName(rs.getString("full_name"));
         user.setEmail(rs.getString("email"));
         user.setPhone(rs.getString("phone"));
+        user.setProvince(rs.getString("province"));
+        user.setWard(rs.getString("ward"));
+        user.setAddressDetail(rs.getString("address_detail"));
         user.setAvatar(rs.getString("avatar"));
         user.setRole(rs.getString("role"));
         user.setReputationScore(rs.getInt("reputation_score"));
