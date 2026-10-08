@@ -111,24 +111,6 @@
   </div>
 </header>
 
-<c:if test="${not empty sessionScope.searchHistory}">
-  <div id="searchHistoryBar" class="bg-slate-50 border-b border-slate-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center gap-2">
-      <span class="text-[11px] font-semibold text-slate-500">Tìm gần đây:</span>
-      <c:forEach var="term" items="${sessionScope.searchHistory}">
-        <c:url var="historySearchUrl" value="/search">
-          <c:param name="q" value="${term}"/>
-        </c:url>
-        <span class="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200 pl-2.5 pr-1 py-1 text-[11px] text-slate-700">
-            <a class="max-w-40 truncate hover:text-blue-600" href="${historySearchUrl}"><c:out value="${term}"/></a>
-            <button type="button" class="history-bar-delete rounded-full w-5 h-5 text-slate-400 hover:text-red-600 hover:bg-red-50" data-term="<c:out value='${term}'/>" aria-label="Xóa lịch sử: <c:out value='${term}'/>">×</button>
-          </span>
-      </c:forEach>
-      <button id="clearSearchHistoryBar" type="button" class="ml-auto text-[11px] font-semibold text-red-600 hover:text-red-700">Xóa lịch sử</button>
-    </div>
-  </div>
-</c:if>
-
 <script>
   (() => {
     const form = document.getElementById('siteSearchForm');

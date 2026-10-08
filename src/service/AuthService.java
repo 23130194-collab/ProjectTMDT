@@ -53,6 +53,18 @@ public class AuthService {
         userDao.updateUser(user);
     }
 
+    public boolean isProfileEmailTaken(String email, int userId) {
+        return userDao.isProfileEmailTaken(email, userId);
+    }
+
+    public boolean isProfilePhoneTaken(String phone, int userId) {
+        return userDao.isProfilePhoneTaken(phone, userId);
+    }
+
+    public void updateProfile(User user) {
+        userDao.updateProfile(user);
+    }
+
     public boolean isLocked(User user) {
         return user != null && "LOCKED".equalsIgnoreCase(user.getStatus());
     }

@@ -5,10 +5,10 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DBContext {
-    private static final String URL = "jdbc:mysql://localhost:8889/muangay_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC";
+    private static final String URL = "jdbc:mysql://localhost:3306/muangay_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC";
     
     private static final String USER = "root";
-    private static final String PASS = "root";
+    private static final String PASS = "";
 
     public static Connection getConnection() {
         try {
