@@ -1,0 +1,21 @@
+# Compiled class files & build artifacts
+out/
+target/
+
+# IntelliJ IDEA local files
+.idea/workspace.xml
+.idea/shelf/
+.idea/dataSources.local.xml
+.idea/httpRequests/
+
+# Log & temp files
+*.log
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Google OAuth credentials - KHONG commit file nay len Git!
+web/WEB-INF/google-oauth.properties
+src/google-oauth.properties
