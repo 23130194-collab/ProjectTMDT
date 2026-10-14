@@ -71,13 +71,8 @@
 
     <!-- BỘ CHỌN KHU VỰC ĐỊA LÝ (TỈNH / THÀNH PHỐ) -->
     <div class="hidden lg:flex items-center">
-      <select id="provinceSelect" onchange="applyFilters()" class="bg-slate-100 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+      <select id="provinceSelect" class="bg-slate-100 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
         <option value="all">Toàn Quốc</option>
-        <option value="hcm" selected>TP. Hồ Chí Minh</option>
-        <option value="hn">Hà Nội</option>
-        <option value="dn">Đà Nẵng</option>
-        <option value="bd">Bình Dương</option>
-        <option value="ct">Cần Thơ</option>
       </select>
     </div>
 

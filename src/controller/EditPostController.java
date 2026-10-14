@@ -88,6 +88,15 @@ public class EditPostController extends HttpServlet {
                         }
                     } catch (Exception e) {}
                     existing.setCategoryId(categoryId);
+                    existing.setProvince(req.getParameter("province"));
+                    existing.setWard(req.getParameter("ward"));
+                    existing.setAddressDetail(req.getParameter("address_detail"));
+                    existing.setDealType("give".equals(req.getParameter("deal_type")) ? "GIVE" : "SELL");
+                    try {
+                        existing.setDeliveryMethod(Integer.parseInt(req.getParameter("delivery_method")));
+                    } catch (NumberFormatException ignored) {
+                        // Keep the existing delivery method if the form omitted it.
+                    }
 
                     boolean updated = productDAO.updateProduct(existing);
                     if (updated) {

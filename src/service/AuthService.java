@@ -29,6 +29,14 @@ public class AuthService {
         return userDao.getUserByEmail(email);
     }
 
+    /**
+     * Tìm user theo email Google. Nếu chưa có thì tạo mới tự động.
+     * Dùng cho luồng đăng nhập / đăng ký bằng Google OAuth.
+     */
+    public User findOrCreateGoogleUser(String email, String fullName, String avatarUrl) {
+        return userDao.findOrCreateGoogleUser(email, fullName, avatarUrl);
+    }
+
     public User getUserByAccount(String account) {
         return userDao.getUserByAccount(account);
     }
@@ -51,18 +59,6 @@ public class AuthService {
 
     public void updateUser(User user) {
         userDao.updateUser(user);
-    }
-
-    public boolean isProfileEmailTaken(String email, int userId) {
-        return userDao.isProfileEmailTaken(email, userId);
-    }
-
-    public boolean isProfilePhoneTaken(String phone, int userId) {
-        return userDao.isProfilePhoneTaken(phone, userId);
-    }
-
-    public void updateProfile(User user) {
-        userDao.updateProfile(user);
     }
 
     public boolean isLocked(User user) {

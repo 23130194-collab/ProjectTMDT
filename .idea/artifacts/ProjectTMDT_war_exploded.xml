@@ -1,13 +1,20 @@
 <component name="ArtifactManager">
+<<<<<<<< HEAD:.idea/artifacts/ProjectTMDT_war_exploded.xml
+  <artifact type="exploded-war" name="ProjectTMDT:war exploded">
+    <output-path>$PROJECT_DIR$/out/artifacts/ProjectTMDT_war_exploded</output-path>
+    <root id="root">
+========
   <artifact type="exploded-war" name="ProjectTMDT:Web exploded">
     <output-path>$PROJECT_DIR$/out/artifacts/ProjectTMDT_Web_exploded</output-path>
     <root id="root">
       <element id="javaee-facet-resources" facet="ProjectTMDT/web/Web" />
+>>>>>>>> origin/Tien:.idea/artifacts/ProjectTMDT_Web_exploded.xml
       <element id="directory" name="WEB-INF">
         <element id="directory" name="classes">
           <element id="module-output" name="ProjectTMDT" />
         </element>
       </element>
+      <element id="javaee-facet-resources" facet="ProjectTMDT/web/Web" />
     </root>
   </artifact>
 </component>
