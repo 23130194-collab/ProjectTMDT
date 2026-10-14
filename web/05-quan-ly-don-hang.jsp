@@ -1,4 +1,57 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page import="model.User" %>
+<%@ page import="dao.OrderDAO" %>
+<%@ page import="dao.OrderDAO.OrderSummary" %>
+<%@ page import="java.text.NumberFormat" %>
+<%@ page import="java.util.List" %>
+<%@ page import="java.util.Locale" %>
+<%!
+  private String h(String value) {
+    if (value == null) {
+      return "";
+    }
+    return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;");
+  }
+
+  private String orderStatusText(String status) {
+    if ("DEPOSITED".equalsIgnoreCase(status)) return "Đã đặt cọc";
+    if ("SHIPPING".equalsIgnoreCase(status)) return "Đang giao hàng / kiểm tra";
+    if ("COMPLETED".equalsIgnoreCase(status)) return "Đã hoàn tất";
+    if ("CANCELLED".equalsIgnoreCase(status)) return "Đã hủy";
+    if ("DISPUTED".equalsIgnoreCase(status)) return "Đang khiếu nại";
+    return "Đang đàm phán";
+  }
+
+  private String orderBadgeClass(String status) {
+    if ("COMPLETED".equalsIgnoreCase(status)) return "text-xs text-green-700 font-bold bg-green-50 px-3 py-1 rounded-full border border-green-200";
+    if ("CANCELLED".equalsIgnoreCase(status) || "DISPUTED".equalsIgnoreCase(status)) return "text-xs text-red-700 font-bold bg-red-50 px-3 py-1 rounded-full border border-red-200";
+    if ("SHIPPING".equalsIgnoreCase(status)) return "text-xs text-blue-700 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200";
+    return "text-xs text-amber-700 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200";
+  }
+%>
+<%
+  User ordersCurrentUser = (User) session.getAttribute("user");
+  boolean ordersLoggedIn = ordersCurrentUser != null;
+  OrderDAO orderDAO = new OrderDAO();
+  List<OrderSummary> accountOrders = ordersLoggedIn
+          ? orderDAO.getOrderSummariesForUser(ordersCurrentUser.getId())
+          : java.util.Collections.emptyList();
+  NumberFormat moneyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
+  int accountOrderCount = accountOrders.size();
+  int accountBuyCount = 0;
+  int accountSellCount = 0;
+  double accountEscrowTotal = 0;
+  for (OrderSummary item : accountOrders) {
+    if (item.buyerId == ordersCurrentUser.getId()) accountBuyCount++;
+    if (item.sellerId == ordersCurrentUser.getId()) accountSellCount++;
+    accountEscrowTotal += item.depositAmount;
+  }
+%>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -26,18 +79,39 @@
       <div>
         <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Quản Lý Đơn Hàng & Trạng Thái Giữ Tiền An Toàn</h1>
         <p class="text-xs text-slate-500 mt-1">
-          Theo dõi 4 đơn hàng: 2 đơn Hẹn gặp trực tiếp (Đặt cọc giữ chỗ) và 2 đơn Giao tận nhà qua bưu điện (Dùng thử kiểm tra máy trong 48 giờ)
+          <%= ordersLoggedIn
+                  ? "Theo dõi các giao dịch mua/bán phát sinh từ tài khoản hiện tại."
+                  : "Theo dõi 4 đơn hàng demo: 2 đơn Hẹn gặp trực tiếp và 2 đơn Giao tận nhà qua bưu điện." %>
         </p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2 text-xs">
         <span class="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-lg font-bold">
-          Tổng Tiền Đang Được Sàn Giữ An Toàn: 29.850.000 đ
+          Tổng Tiền Đang Được Sàn Giữ An Toàn: <%= ordersLoggedIn ? moneyFormat.format(Math.round(accountEscrowTotal)) + " đ" : "29.850.000 đ" %>
         </span>
       </div>
     </div>
 
     <!-- TABS BỘ LỌC ĐƠN HÀNG: TẤT CẢ, HẸN GẶP, GIAO TẬN NHÀ, ĐƠN MUA, ĐƠN BÁN -->
+    <% if (ordersLoggedIn) { %>
+    <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3 text-xs font-semibold">
+      <button onclick="filterOrders('all')" id="btnFilterAll" class="px-3.5 py-2 rounded-lg bg-blue-600 text-white transition shadow-xs">
+        Tất Cả (<%= accountOrderCount %> Đơn)
+      </button>
+      <button onclick="filterOrders('channel1')" id="btnFilterChannel1" data-filter-hidden="true" class="hidden px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition">
+        Hẹn Gặp Trực Tiếp (0 Đơn)
+      </button>
+      <button onclick="filterOrders('channel2')" id="btnFilterChannel2" data-filter-hidden="true" class="hidden px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition">
+        Giao Tận Nhà Dùng Thử 48H (0 Đơn)
+      </button>
+      <button onclick="filterOrders('buy')" id="btnFilterBuy" class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition">
+        Đơn Tôi Mua (<%= accountBuyCount %> Đơn)
+      </button>
+      <button onclick="filterOrders('sell')" id="btnFilterSell" class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition">
+        Đơn Tôi Bán (<%= accountSellCount %> Đơn)
+      </button>
+    </div>
+    <% } else { %>
     <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3 text-xs font-semibold">
       <button onclick="filterOrders('all')" id="btnFilterAll" class="px-3.5 py-2 rounded-lg bg-blue-600 text-white transition shadow-xs">
         Tất Cả (4 Đơn Hàng)
@@ -55,9 +129,85 @@
         Đơn Tôi Bán (2 Đơn)
       </button>
     </div>
+    <% } %>
 
     <!-- DANH SÁCH 4 ĐƠN HÀNG CHI TIẾT -->
     <div class="space-y-6" id="ordersListContainer">
+    <% if (ordersLoggedIn) { %>
+      <% if (accountOrders.isEmpty()) { %>
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
+        <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-lg font-bold">0</div>
+        <h2 class="mt-3 text-sm font-bold text-slate-900">Tài khoản này chưa có đơn hàng</h2>
+        <p class="mt-1 text-xs text-slate-500">Khi bạn đặt cọc, mua hàng hoặc bán được sản phẩm, đơn sẽ xuất hiện tại đây.</p>
+        <a href="01-trang-chu.jsp" class="inline-flex mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition">
+          Về trang chủ
+        </a>
+      </div>
+      <% } else { %>
+        <% for (OrderSummary item : accountOrders) {
+          boolean mineBuy = item.buyerId == ordersCurrentUser.getId();
+          String type = mineBuy ? "buy" : "sell";
+          String partnerName = mineBuy ? item.sellerName : item.buyerName;
+          double remain = Math.max(0, item.agreedPrice - item.depositAmount);
+        %>
+      <div id="order-card-db-<%= item.id %>" data-channel="account" data-type="<%= type %>" class="order-card bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 uppercase tracking-wider">
+              Giao dịch MuaNgay
+            </span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold <%= mineBuy ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-purple-50 text-purple-700 border border-purple-200" %>">
+              <%= mineBuy ? "Tôi Là Người Mua" : "Tôi Là Người Bán" %>
+            </span>
+            <span class="text-xs font-mono text-slate-400">Mã đơn: #MN-<%= item.id %></span>
+          </div>
+          <div class="<%= orderBadgeClass(item.status) %>">
+            Trạng thái: <%= h(orderStatusText(item.status)) %>
+          </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex gap-3.5 items-start">
+            <img src="<%= h(item.productImage) %>" alt="<%= h(item.productTitle) %>" class="w-20 h-20 rounded-lg object-cover shrink-0 border border-slate-200">
+            <div>
+              <h2 class="font-bold text-sm text-slate-900"><%= h(item.productTitle) %></h2>
+              <p class="text-[11px] text-slate-500 mt-0.5">
+                <%= mineBuy ? "Người bán" : "Người mua" %>: <strong><%= h(partnerName) %></strong>
+              </p>
+              <div class="mt-2 flex flex-wrap gap-2 text-[11px]">
+                <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700">Giá gốc: <%= moneyFormat.format(Math.round(item.productPrice)) %> đ</span>
+                <span class="px-2 py-0.5 rounded bg-green-50 text-green-700 border border-green-200">Giá chốt: <%= moneyFormat.format(Math.round(item.agreedPrice)) %> đ</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1 w-full md:w-72">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Tiền cọc sàn giữ:</span>
+              <span class="font-bold text-amber-700"><%= moneyFormat.format(Math.round(item.depositAmount)) %> đ</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Còn lại:</span>
+              <span class="font-bold text-slate-900"><%= moneyFormat.format(Math.round(remain)) %> đ</span>
+            </div>
+            <div class="text-[11px] text-slate-500 pt-1 border-t border-slate-200">
+              Dữ liệu lấy theo tài khoản đang đăng nhập.
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+          <a href="04-chat-tra-gia-vietqr.jsp" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-xs text-center">
+            Mở chat giao dịch
+          </a>
+          <a href="product-detail?id=<%= item.productId %>" class="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-lg transition shadow-xs text-center">
+            Xem sản phẩm
+          </a>
+        </div>
+      </div>
+        <% } %>
+      <% } %>
+    <% } else { %>
 
       <!-- ========================================== -->
       <!-- ĐƠN 1: GIAO TẬN NHÀ (TÔI LÀ NGƯỜI MUA) - IPHONE 13 PRO MAX -->
@@ -350,6 +500,7 @@
         </div>
 
       </div>
+    <% } %>
 
     </div>
 
@@ -694,7 +845,10 @@
 
       // Reset style nút
       [btnAll, btnCh1, btnCh2, btnBuy, btnSell].forEach(b => {
+        if (!b) return;
+        const shouldStayHidden = b.dataset.filterHidden === 'true';
         b.className = 'px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition';
+        if (shouldStayHidden) b.classList.add('hidden');
       });
 
       if (type === 'all') {

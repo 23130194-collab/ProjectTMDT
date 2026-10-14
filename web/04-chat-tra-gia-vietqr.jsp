@@ -1,4 +1,44 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page import="model.User" %>
+<%@ page import="dao.OrderDAO" %>
+<%!
+  private String h(String value) {
+    if (value == null) {
+      return "";
+    }
+    return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;");
+  }
+
+  private String initials(String name) {
+    if (name == null || name.trim().isEmpty()) {
+      return "TK";
+    }
+    String[] parts = name.trim().split("\\s+");
+    String first = parts[0].substring(0, 1);
+    String last = parts.length > 1 ? parts[parts.length - 1].substring(0, 1) : "";
+    return (first + last).toUpperCase();
+  }
+%>
+<%
+  User chatCurrentUser = (User) session.getAttribute("user");
+  boolean chatLoggedIn = chatCurrentUser != null;
+  int chatOrderCount = chatLoggedIn ? new OrderDAO().countOrdersForUser(chatCurrentUser.getId()) : 0;
+  String chatDisplayName = "";
+  String chatAvatarImage = "";
+  String chatAvatarText = "TK";
+  if (chatLoggedIn) {
+    chatDisplayName = chatCurrentUser.getFullName() != null && !chatCurrentUser.getFullName().trim().isEmpty()
+            ? chatCurrentUser.getFullName().trim()
+            : chatCurrentUser.getUsername();
+    chatAvatarImage = chatCurrentUser.getAvatar() != null ? chatCurrentUser.getAvatar().trim() : "";
+    chatAvatarText = initials(chatDisplayName);
+  }
+%>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -26,9 +66,17 @@
       <span class="text-xs font-semibold text-slate-600">Đàm Phán Trả Giá & Ký Quỹ Bảo Đảm</span>
     </div>
     <div class="flex items-center gap-3">
-      <a href="05-quan-ly-don-hang.jsp" class="text-xs font-semibold text-slate-700 hover:text-blue-600">Quản lý đơn hàng (2)</a>
+      <a href="05-quan-ly-don-hang.jsp" class="text-xs font-semibold text-slate-700 hover:text-blue-600">
+        Quản lý đơn hàng<%= chatLoggedIn ? " (" + chatOrderCount + ")" : "" %>
+      </a>
       <a href="01-trang-chu.jsp" class="text-xs font-medium text-slate-500 hover:text-blue-600">Về trang chủ</a>
-      <a href="08-ho-so-ca-nhan.jsp" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">VB</a>
+      <a href="<%= chatLoggedIn ? "08-ho-so-ca-nhan.jsp" : "07-dang-nhap-xac-thuc.jsp" %>" title="<%= chatLoggedIn ? h(chatDisplayName) : "Đăng nhập" %>" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold overflow-hidden">
+        <% if (chatLoggedIn && !chatAvatarImage.isEmpty()) { %>
+          <img src="<%= h(chatAvatarImage) %>" alt="Ảnh đại diện" class="w-full h-full rounded-full object-cover">
+        <% } else { %>
+          <%= h(chatLoggedIn ? chatAvatarText : "ĐN") %>
+        <% } %>
+      </a>
     </div>
   </header>
 
@@ -242,7 +290,7 @@
 
       <!-- THANH NHẬP LIỆU GỬI TIN NHẮN -->
       <div class="p-3 border-t border-slate-200 bg-white flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
-        <div class="flex items-center gap-1.5">
+        <div id="chatQuickActions" class="flex items-center gap-1.5">
           <button onclick="sendQuickAction('image')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold whitespace-nowrap transition border border-slate-200">
             Gửi Ảnh
           </button>
@@ -254,6 +302,7 @@
           </button>
         </div>
         <form onsubmit="handleSendMessage(event)" class="flex-1 flex items-center gap-2 w-full sm:w-auto">
+          <input id="chatImageInput" type="file" accept="image/*" class="hidden" onchange="handleImageSelected(event)">
           <input 
             id="chatInput"
             type="text" 
@@ -309,6 +358,7 @@
           <div>
             <label class="block text-xs font-medium text-slate-700 mb-1">Mức giá bạn muốn đề xuất (VNĐ):</label>
             <input id="customOfferPrice" type="number" value="37000000" step="500000" class="w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold text-green-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <p id="offerProductHint" class="mt-1 text-[10px] text-slate-500"></p>
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-700 mb-1">Lời nhắn gửi đối tác:</label>
@@ -559,7 +609,21 @@
 
   <!-- SCRIPT XỬ LÝ TOÀN BỘ TƯƠNG TÁC CHAT VÀ NÚT BẤM -->
   <script>
+    const CHAT_LOGGED_IN = <%= chatLoggedIn %>;
+    const INITIAL_PARAMS = new URLSearchParams(window.location.search);
+    const INITIAL_PRODUCT_ID = INITIAL_PARAMS.get('productId');
+    const INITIAL_ACTION = INITIAL_PARAMS.get('action');
     let currentRole = 'buyer';
+    let currentConversationId = 0;
+    let initialOfferHandled = false;
+    let chatState = {
+      currentUser: null,
+      buyerConversations: [],
+      sellerConversations: [],
+      selectedConversation: null,
+      messages: []
+    };
+    let refreshTimer = null;
 
     function switchRole(role) {
       currentRole = role;
@@ -568,66 +632,462 @@
         document.getElementById('sellerThreadsList').classList.add('hidden');
         document.getElementById('roleBuyerBtn').className = 'flex-1 py-2.5 text-center text-blue-600 border-b-2 border-blue-600 transition font-bold';
         document.getElementById('roleSellerBtn').className = 'flex-1 py-2.5 text-center text-slate-500 hover:text-slate-900 transition font-bold';
-        selectBuyerThread(1);
+        const firstBuyer = chatState.buyerConversations[0];
+        if (firstBuyer) selectBuyerThread(firstBuyer.id);
       } else {
         document.getElementById('buyerThreadsList').classList.add('hidden');
         document.getElementById('sellerThreadsList').classList.remove('hidden');
         document.getElementById('roleSellerBtn').className = 'flex-1 py-2.5 text-center text-blue-600 border-b-2 border-blue-600 transition font-bold';
         document.getElementById('roleBuyerBtn').className = 'flex-1 py-2.5 text-center text-slate-500 hover:text-slate-900 transition font-bold';
-        selectSellerThread(1);
+        const firstSeller = chatState.sellerConversations[0];
+        if (firstSeller) selectSellerThread(firstSeller.id);
       }
     }
 
     function selectBuyerThread(id) {
-      document.querySelectorAll('#buyerThreadsList .chat-thread').forEach(el => {
-        el.className = 'chat-thread p-3 hover:bg-slate-100 cursor-pointer transition';
-      });
-      const activeEl = document.getElementById('buyer-thread-' + id);
-      if (activeEl) activeEl.className = 'chat-thread p-3 bg-blue-50/90 border-l-4 border-blue-600 cursor-pointer transition';
-
-      if (id === 1) {
-        document.getElementById('targetName').innerText = 'Nguyễn Văn Tuấn (Người Bán)';
-        document.getElementById('targetStatus').innerText = 'Đang trực tuyến • Quận 10, TP.HCM';
-        document.getElementById('productTitle').innerText = 'iPhone 18 Pro Max Đỏ Burgundy 256GB';
-        document.getElementById('productPrice').innerText = 'Giá gốc: 38.000.000 đ';
-        document.getElementById('productThumb').src = 'assets/images/iphone-18-pro-mau-do-anh-dao-dam-1-iphone-18-pro-mau-do-burgundy-co-gi-dac-biet-1.jpg';
-        document.getElementById('quickDepositBar').classList.remove('hidden');
-        document.getElementById('dualHandshakeBlock').classList.remove('hidden');
-      } else {
-        document.getElementById('targetName').innerText = 'Trần Quốc Bảo (Người Bán)';
-        document.getElementById('targetStatus').innerText = 'Đang trực tuyến • Quận 1, TP.HCM';
-        document.getElementById('productTitle').innerText = 'iPhone 13 Pro Max 128GB VN/A';
-        document.getElementById('productPrice').innerText = 'Giá gốc: 14.800.000 đ';
-        document.getElementById('productThumb').src = 'assets/images/products/iphone-13-pro-max.jpg';
-        document.getElementById('quickDepositBar').classList.add('hidden');
-        document.getElementById('dualHandshakeBlock').classList.add('hidden');
-      }
+      selectThread('buyer', id);
     }
 
     function selectSellerThread(id) {
-      document.querySelectorAll('#sellerThreadsList .chat-thread').forEach(el => {
-        el.className = 'chat-thread p-3 hover:bg-slate-100 cursor-pointer transition';
-      });
-      const activeEl = document.getElementById('seller-thread-' + id);
-      if (activeEl) activeEl.className = 'chat-thread p-3 bg-blue-50/90 border-l-4 border-blue-600 cursor-pointer transition';
+      selectThread('seller', id);
+    }
 
-      if (id === 1) {
-        document.getElementById('targetName').innerText = 'Lê Minh Khang (Khách Mua Hàng)';
-        document.getElementById('targetStatus').innerText = 'Tài khoản chính chủ • Quận Tân Bình, TP.HCM';
-        document.getElementById('productTitle').innerText = 'Bàn làm việc gỗ thông 1m2';
-        document.getElementById('productPrice').innerText = 'Giá cho tặng: Miễn phí 0 đ';
-        document.getElementById('productThumb').src = 'assets/images/products/ban-go-thong.jpg';
-        document.getElementById('quickDepositBar').classList.add('hidden');
-        document.getElementById('dualHandshakeBlock').classList.remove('hidden');
-      } else {
-        document.getElementById('targetName').innerText = 'Hoàng Thị Yến (Khách Mua Hàng)';
-        document.getElementById('targetStatus').innerText = 'Đang trực tuyến • Quận Phú Nhuận, TP.HCM';
-        document.getElementById('productTitle').innerText = 'Máy giặt Electrolux Inverter 8kg';
-        document.getElementById('productPrice').innerText = 'Giá bán: 3.800.000 đ';
-        document.getElementById('productThumb').src = 'assets/images/products/may-giat-electrolux.jpg';
-        document.getElementById('quickDepositBar').classList.remove('hidden');
-        document.getElementById('dualHandshakeBlock').classList.remove('hidden');
+    function selectThread(role, id) {
+      currentRole = role;
+      currentConversationId = id;
+      loadChat(role, id);
+    }
+
+    async function loadChat(role = currentRole, conversationId = currentConversationId, keepScroll = false) {
+      if (!CHAT_LOGGED_IN) {
+        return;
       }
+
+      const params = new URLSearchParams();
+      params.set('role', role);
+      if (conversationId) params.set('conversationId', conversationId);
+      if (!conversationId && INITIAL_PRODUCT_ID) params.set('productId', INITIAL_PRODUCT_ID);
+
+      try {
+        const response = await fetch('chat-data?' + params.toString(), { headers: { 'Accept': 'application/json' } });
+        const data = await response.json();
+        if (!data.success) {
+          renderEmptyState(data.message || 'Không thể tải dữ liệu chat.');
+          return;
+        }
+
+        chatState = data;
+        currentRole = data.activeRole || role;
+        currentConversationId = data.selectedConversationId || 0;
+        renderChatState(keepScroll);
+      } catch (error) {
+        renderEmptyState('Không kết nối được dữ liệu chat. Vui lòng kiểm tra server và database.');
+        console.error(error);
+      }
+    }
+
+    function renderChatState(keepScroll) {
+      document.getElementById('roleBuyerBtn').innerText = 'Tôi Là Người Mua (' + chatState.buyerConversations.length + ')';
+      document.getElementById('roleSellerBtn').innerText = 'Tôi Là Người Bán (' + chatState.sellerConversations.length + ')';
+
+      renderThreadList('buyer', chatState.buyerConversations);
+      renderThreadList('seller', chatState.sellerConversations);
+
+      if (currentRole === 'seller') {
+        document.getElementById('buyerThreadsList').classList.add('hidden');
+        document.getElementById('sellerThreadsList').classList.remove('hidden');
+        document.getElementById('roleSellerBtn').className = 'flex-1 py-2.5 text-center text-blue-600 border-b-2 border-blue-600 transition font-bold';
+        document.getElementById('roleBuyerBtn').className = 'flex-1 py-2.5 text-center text-slate-500 hover:text-slate-900 transition font-bold';
+      } else {
+        document.getElementById('buyerThreadsList').classList.remove('hidden');
+        document.getElementById('sellerThreadsList').classList.add('hidden');
+        document.getElementById('roleBuyerBtn').className = 'flex-1 py-2.5 text-center text-blue-600 border-b-2 border-blue-600 transition font-bold';
+        document.getElementById('roleSellerBtn').className = 'flex-1 py-2.5 text-center text-slate-500 hover:text-slate-900 transition font-bold';
+      }
+
+      renderConversationHeader();
+      renderMessages(keepScroll);
+      renderComposerActions();
+      renderQuickDepositBar();
+      maybeOpenInitialOffer();
+    }
+
+    <%--function renderComposerActions() {--%>
+    <%--  const actions = document.getElementById('chatQuickActions');--%>
+    <%--  const input = document.getElementById('chatInput');--%>
+    <%--  if (!actions || !input) return;--%>
+
+    <%--  const c = chatState.selectedConversation;--%>
+    <%--  const canOffer = c && Number(c.productPrice) > 0;--%>
+    <%--  const offerButton = canOffer--%>
+    <%--    ? '<button id="offerActionBtn" onclick="openOfferModal()" class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg text-xs font-semibold whitespace-nowrap transition border border-amber-300">Trả Giá</button>'--%>
+    <%--    : '<button id="offerActionBtn" type="button" disabled title="Tin tặng miễn phí không hỗ trợ đề xuất trả giá" class="px-2.5 py-1.5 bg-slate-100 text-slate-400 rounded-lg text-xs font-semibold whitespace-nowrap border border-slate-200 cursor-not-allowed">Trả Giá</button>';--%>
+
+    <%--  if (currentRole === 'seller') {--%>
+    <%--    actions.innerHTML = `--%>
+    <%--      <button onclick="triggerImageUpload()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold whitespace-nowrap transition border border-slate-200">Gửi Ảnh</button>--%>
+    <%--      ${offerButton}--%>
+    <%--      <button onclick="sendQuickAction('location')" class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold whitespace-nowrap transition border border-blue-200">Hẹn Gặp</button>--%>
+    <%--      <button onclick="sendQuickAction('available')" class="px-2.5 py-1.5 bg-green-50 hover:bg-green-100 text-green-800 rounded-lg text-xs font-semibold whitespace-nowrap transition border border-green-200">Còn Hàng</button>--%>
+    <%--    `;--%>
+    <%--    input.placeholder = 'Nhập tin nhắn trả lời khách mua (Enter để gửi)...';--%>
+    <%--    return;--%>
+    <%--  }--%>
+
+    <%--  actions.innerHTML = `--%>
+    <%--    <button onclick="triggerImageUpload()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold whitespace-nowrap transition border border-slate-200">Gửi Ảnh</button>--%>
+    <%--    ${offerButton}--%>
+    <%--    <button onclick="sendQuickAction('location')" class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold whitespace-nowrap transition border border-blue-200">Hẹn Gặp</button>--%>
+    <%--  `;--%>
+    <%--  input.placeholder = 'Nhập tin nhắn đàm phán (Enter để gửi)...';--%>
+    <%--}--%>
+    function renderComposerActions() {
+      const actions = document.getElementById('chatQuickActions');
+      const input = document.getElementById('chatInput');
+      if (!actions || !input) return;
+
+      const c = chatState.selectedConversation;
+      const canOffer = !!c && Number(c.productPrice) > 0;
+
+      // Dùng hàm tạo nút, tránh template literal để JSP không nuốt ký tự dollar-brace
+      function makeBtn(label, onclick, classes) {
+        return '<button type="button" onclick="' + onclick + '" class="' + classes + '">' + label + '</button>';
+      }
+
+      const base = 'px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition border ';
+
+      const imageBtn = makeBtn(
+              'Gửi Ảnh',
+              'triggerImageUpload()',
+              base + 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+      );
+
+      const locationBtn = makeBtn(
+              'Hẹn Gặp',
+              "sendQuickAction('location')",
+              base + 'bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200'
+      );
+
+      const availableBtn = makeBtn(
+              'Còn Hàng',
+              "sendQuickAction('available')",
+              base + 'bg-green-50 hover:bg-green-100 text-green-800 border-green-200'
+      );
+
+      let offerBtn;
+      if (canOffer) {
+        offerBtn = '<button id="offerActionBtn" type="button" onclick="openOfferModal()" class="' +
+                base + 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300">Trả Giá</button>';
+      } else {
+        const reason = !c
+                ? 'Hãy chọn một cuộc trò chuyện trước'
+                : 'Tin tặng miễn phí không hỗ trợ đề xuất trả giá';
+        offerBtn = '<button id="offerActionBtn" type="button" disabled title="' + reason + '" class="' +
+                base + 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed">Trả Giá</button>';
+      }
+
+      if (currentRole === 'seller') {
+        actions.innerHTML = imageBtn + offerBtn + locationBtn + availableBtn;
+        input.placeholder = 'Nhập tin nhắn trả lời khách mua (Enter để gửi)...';
+      } else {
+        actions.innerHTML = imageBtn + offerBtn + locationBtn;
+        input.placeholder = 'Nhập tin nhắn đàm phán (Enter để gửi)...';
+      }
+    }
+
+    function renderThreadList(role, conversations) {
+      const list = document.getElementById(role + 'ThreadsList');
+      const keyword = (document.getElementById('searchChatInput').value || '').trim().toLowerCase();
+      const filtered = conversations.filter(item => {
+        return !keyword ||
+          (item.targetName || '').toLowerCase().includes(keyword) ||
+          (item.productTitle || '').toLowerCase().includes(keyword) ||
+          (item.lastMessage || '').toLowerCase().includes(keyword);
+      });
+
+      if (!filtered.length) {
+        const emptyText = keyword ? 'Không tìm thấy cuộc trò chuyện phù hợp.' : 'Chưa có cuộc trò chuyện nào.';
+        list.innerHTML = '<div class="p-4 text-center text-[11px] text-slate-500">' + emptyText + '</div>';
+        return;
+      }
+
+      list.innerHTML = filtered.map(item => {
+        const active = item.id === currentConversationId;
+        const wrapperClass = active
+          ? 'chat-thread p-3 bg-blue-50/90 border-l-4 border-blue-600 cursor-pointer transition'
+          : 'chat-thread p-3 hover:bg-slate-100 cursor-pointer transition';
+        const titleClass = active
+          ? 'text-xs font-semibold text-blue-800 mt-0.5 truncate'
+          : 'text-xs font-semibold text-slate-700 mt-0.5 truncate';
+        const lastClass = item.lastMessageType === 'PROPOSAL'
+          ? 'text-[11px] text-amber-700 font-bold truncate mt-0.5'
+          : 'text-[11px] text-slate-500 truncate mt-0.5';
+        const lastText = getThreadLastText(item);
+
+        return '<div onclick="select' + capitalize(role) + 'Thread(' + item.id + ')" id="' + role + '-thread-' + item.id + '" class="' + wrapperClass + '">' +
+          '<div class="flex items-center justify-between">' +
+            '<span class="font-bold text-xs text-slate-900">' + escapeHtml(item.targetName) + '</span>' +
+            '<span class="text-[10px] text-slate-400">' + escapeHtml(item.lastTimeText) + '</span>' +
+          '</div>' +
+          '<div class="' + titleClass + '">' + escapeHtml(item.productTitle) + '</div>' +
+          '<p class="' + lastClass + '">' + escapeHtml(lastText) + '</p>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderConversationHeader() {
+      const c = chatState.selectedConversation;
+      if (!c) {
+        document.getElementById('targetAvatar').innerText = 'MN';
+        document.getElementById('targetName').innerText = 'Chưa chọn hội thoại';
+        document.getElementById('targetStatus').innerText = 'Hãy chọn một cuộc trò chuyện ở cột trái';
+        document.getElementById('productTitle').innerText = 'Chưa có sản phẩm';
+        document.getElementById('productPrice').innerText = 'Giá gốc: --';
+        document.getElementById('productThumb').src = 'assets/images/products/iphone-13-pro-max.jpg';
+        return;
+      }
+      document.getElementById('targetAvatar').innerText = c.partnerInitials || 'MN';
+      document.getElementById('targetName').innerText = c.targetName;
+      document.getElementById('targetStatus').innerText = c.targetStatus;
+      document.getElementById('productTitle').innerText = c.productTitle;
+      document.getElementById('productPrice').innerText = 'Giá gốc: ' + c.productPriceText;
+      document.getElementById('productThumb').src = c.productImage;
+    }
+
+    function renderMessages(keepScroll) {
+      const container = document.getElementById('messagesContainer');
+      const shouldStickBottom = !keepScroll || container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+      const c = chatState.selectedConversation;
+
+      if (!c) {
+        renderEmptyState('Chưa có hội thoại nào. Hãy bắt đầu trao đổi từ trang chi tiết sản phẩm.');
+        return;
+      }
+
+      if (!chatState.messages.length) {
+        renderEmptyState('Chưa có tin nhắn trong hội thoại này. Hãy gửi lời chào để bắt đầu trao đổi.');
+        return;
+      }
+
+      let html = '<div class="text-center"><span class="text-[10px] font-semibold text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full uppercase tracking-wider">Hôm nay</span></div>';
+      let latestProposal = null;
+      let latestProposalIndex = -1;
+      let escrowStarted = false;
+
+      chatState.messages.forEach((message, index) => {
+        if (message.messageType === 'PROPOSAL') {
+          latestProposal = message;
+          latestProposalIndex = index;
+        }
+        if (message.messageType === 'SYSTEM' && /cọc|TẠM KHÓA|bàn giao|hoàn tất|giải ngân/i.test(message.content || '')) {
+          escrowStarted = true;
+        }
+        html += renderMessageBubble(message);
+      });
+
+      if (latestProposal) {
+        html += renderOfferCard(latestProposal, c, getOfferState(latestProposalIndex, c));
+      }
+      if (escrowStarted) {
+        html += renderHandshakeCard(c);
+      }
+      container.innerHTML = html;
+
+      if (shouldStickBottom) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+
+    function renderMessageBubble(message) {
+      if (isImageMessage(message.content)) {
+        const imageUrl = getImageMessageUrl(message.content);
+        const align = message.mine ? 'justify-end' : 'justify-start';
+        const bubble = message.mine
+          ? 'bg-blue-600 rounded-tr-none'
+          : 'bg-white border border-slate-200 rounded-tl-none';
+        return '<div class="flex ' + align + '">' +
+          '<div class="' + bubble + ' p-2 rounded-2xl text-xs max-w-xs shadow-sm">' +
+            '<img src="' + escapeHtml(imageUrl) + '" alt="Ảnh trong tin nhắn" class="max-w-full max-h-64 rounded-xl object-contain bg-white">' +
+          '</div></div>';
+      }
+
+      if (message.messageType === 'SYSTEM') {
+        return '<div class="flex justify-center">' +
+          '<div class="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-xl text-[11px] max-w-md shadow-sm text-center">' +
+          escapeHtml(message.content) +
+          '</div></div>';
+      }
+
+      if (message.messageType === 'PROPOSAL') {
+        const align = message.mine ? 'justify-end' : 'justify-start';
+        const bubble = message.mine
+          ? 'bg-amber-500 text-slate-950 rounded-tr-none'
+          : 'bg-amber-50 border border-amber-300 text-amber-950 rounded-tl-none';
+        return '<div class="flex ' + align + '">' +
+          '<div class="' + bubble + ' p-3 rounded-2xl text-xs max-w-md shadow-sm">' +
+            '<div class="font-bold mb-1">Đề xuất trả giá: ' + escapeHtml(message.proposedPriceText) + '</div>' +
+            '<div>' + escapeHtml(message.content) + '</div>' +
+          '</div></div>';
+      }
+
+      if (message.mine) {
+        return '<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none text-xs max-w-md shadow-sm">' +
+          escapeHtml(message.content) +
+        '</div></div>';
+      }
+      return '<div class="flex justify-start"><div class="bg-white border border-slate-200 text-slate-800 p-3 rounded-2xl rounded-tl-none text-xs max-w-md shadow-sm">' +
+        escapeHtml(message.content) +
+      '</div></div>';
+    }
+
+    function renderOfferCard(proposal, conversation, offerState) {
+      const proposedPrice = Number(proposal.proposedPrice) || 0;
+      const depositAmount = calculateDepositAmount(proposedPrice);
+      const remain = formatMoney(Math.max(0, proposedPrice - depositAmount));
+      const badge = offerState.badge;
+      const badgeClass = offerState.badgeClass;
+      const sellerActions = currentRole === 'seller' && offerState.status === 'pending'
+        ? '<div class="grid grid-cols-2 gap-2 pt-1">' +
+            '<button type="button" onclick="respondToOffer(true)" class="py-1.5 bg-green-600 hover:bg-green-700 text-white font-bold text-[11px] rounded-lg transition">Đồng Ý Giá Này</button>' +
+            '<button type="button" onclick="respondToOffer(false)" class="py-1.5 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[11px] rounded-lg border border-slate-200 transition">Thương Lượng Thêm</button>' +
+          '</div>'
+        : '';
+      const buyerRetryAction = currentRole === 'buyer' && offerState.status === 'rejected'
+        ? '<div class="pt-1"><button type="button" onclick="openOfferModal()" class="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[11px] rounded-lg transition">Gửi Giá Mới</button></div>'
+        : '';
+      return '<div class="flex justify-center my-1" id="offerCardBlock">' +
+        '<div class="bg-amber-50 border-2 border-amber-400 rounded-xl p-4 w-full max-w-md shadow-sm space-y-2.5">' +
+          '<div class="flex items-center justify-between border-b border-amber-200 pb-1.5">' +
+            '<span class="text-[11px] font-bold text-amber-900 uppercase tracking-wider">Đề Xuất Trả Giá Mới</span>' +
+            '<span id="offerStatusBadge" class="' + badgeClass + '">' + badge + '</span>' +
+          '</div>' +
+          '<div class="flex items-baseline justify-between"><div>' +
+            '<span class="text-[11px] text-slate-600 block">Giá chốt giao dịch:</span>' +
+            '<span id="offerPriceDisplay" class="text-xl font-bold text-red-600">' + escapeHtml(proposal.proposedPriceText) + '</span>' +
+          '</div><span class="text-xs text-slate-400 line-through">Giá gốc: ' + escapeHtml(conversation.productPriceText) + '</span></div>' +
+          '<p id="offerNoteDisplay" class="text-[11px] text-amber-900 italic">Lời nhắn: "' + escapeHtml(proposal.content) + '"</p>' +
+          '<div class="pt-1 text-[11px] text-slate-600 bg-white/70 p-2 rounded border border-amber-200">' +
+            'Tiền cọc giữ máy: <strong class="text-slate-900">' + escapeHtml(formatMoney(depositAmount)) + '</strong>. ' +
+            'Số tiền còn lại <strong class="text-slate-900">' + escapeHtml(remain) + '</strong> thanh toán trực tiếp khi test máy xong.' +
+          '</div>' +
+          sellerActions +
+          buyerRetryAction +
+        '</div></div>';
+    }
+
+    function getOfferState(proposalIndex, conversation) {
+      const fallback = chatState.messages[proposalIndex] && chatState.messages[proposalIndex].mine
+        ? {
+            status: 'pending',
+            badge: 'Đang chờ phản hồi',
+            badgeClass: 'text-[10px] text-amber-800 font-bold bg-amber-100 px-1.5 py-0.5 rounded'
+          }
+        : {
+            status: 'pending',
+            badge: 'Đề xuất từ đối tác',
+            badgeClass: 'text-[10px] text-blue-700 font-bold bg-blue-100 px-1.5 py-0.5 rounded'
+          };
+
+      const sellerResponse = chatState.messages.slice(proposalIndex + 1).find(message => {
+        return message.senderId === conversation.sellerId && message.messageType !== 'PROPOSAL';
+      });
+      if (!sellerResponse) {
+        return fallback;
+      }
+
+      const responseText = sellerResponse.content || '';
+      if (/đồng ý|chốt|ok|okay/i.test(responseText)) {
+        return {
+          status: 'accepted',
+          badge: 'Người bán đã đồng ý',
+          badgeClass: 'text-[10px] text-green-700 font-bold bg-green-100 px-1.5 py-0.5 rounded'
+        };
+      }
+      if (/chưa phù hợp|thương lượng thêm|từ chối|đề xuất lại/i.test(responseText)) {
+        return {
+          status: 'rejected',
+          badge: 'Đã từ chối - chờ giá mới',
+          badgeClass: 'text-[10px] text-red-700 font-bold bg-red-100 px-1.5 py-0.5 rounded'
+        };
+      }
+      return fallback;
+    }
+
+    function calculateDepositAmount(price) {
+      const value = Number(price) || 0;
+      if (value <= 0) return 0;
+      const roundedTenPercent = Math.round(value * 0.1 / 100000) * 100000;
+      const preferredDeposit = Math.min(1000000, Math.max(200000, roundedTenPercent));
+      return Math.min(value, preferredDeposit);
+    }
+
+    function maybeOpenInitialOffer() {
+      if (initialOfferHandled || INITIAL_ACTION !== 'offer') {
+        return;
+      }
+      const c = chatState.selectedConversation;
+      if (!c) {
+        return;
+      }
+      initialOfferHandled = true;
+      if (Number(c.productPrice) <= 0) {
+        alert('Tin tặng miễn phí không hỗ trợ đề xuất trả giá.');
+        return;
+      }
+      setTimeout(openOfferModal, 120);
+    }
+
+    function renderHandshakeCard(conversation) {
+      return '<div class="flex justify-center my-2" id="dualHandshakeBlock">' +
+        '<div class="bg-blue-50 border-2 border-blue-400 rounded-xl p-4 w-full max-w-md shadow-sm space-y-3">' +
+          '<div class="flex items-center justify-between border-b border-blue-200 pb-2">' +
+            '<span class="text-xs font-bold text-blue-900 uppercase tracking-wider">Xác Nhận Đã Nhận Máy & Trả Tiền</span>' +
+            '<span class="text-[10px] text-blue-700 font-semibold">Gặp Mặt Trực Tiếp</span>' +
+          '</div>' +
+          '<p class="text-[11px] text-slate-600 leading-relaxed">Hai bên gặp mặt tại điểm hẹn và test món đồ cẩn thận. Cả hai cùng bấm xác nhận để Sàn mở khóa tiền cọc ' + escapeHtml(conversation.depositText) + ' cho người bán:</p>' +
+          '<div class="space-y-2">' +
+            '<div class="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 text-xs">' +
+              '<span class="text-slate-700">Người Mua:</span>' +
+              '<span id="buyerHandshakeStatus" class="text-green-700 font-bold bg-green-50 px-2 py-0.5 rounded border border-green-200">Đã xác nhận nhận hàng & trả tiền</span>' +
+            '</div>' +
+            '<div class="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 text-xs">' +
+              '<span class="text-slate-700">Người Bán (' + escapeHtml(conversation.partnerName) + '):</span>' +
+              '<button id="sellerConfirmBtn" onclick="openHandshakeModal()" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white font-bold rounded text-[11px] shadow-sm transition">Mở Bàn Giao (QR / PIN)</button>' +
+            '</div>' +
+          '</div>' +
+          '<button onclick="openHandshakeModal()" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shadow-sm transition text-center">Mở Giao Diện Bàn Giao Tại Chỗ (Mã QR & Mã PIN 4 Số)</button>' +
+          '<div id="handshakeFooterNote" class="text-[10px] text-slate-500 italic">Khi hai bên quét mã QR hoặc nhập mã PIN 8912, Sàn sẽ chuyển tiền cọc vào tài khoản của Người Bán và tích lũy điểm uy tín cho cả hai bên.</div>' +
+        '</div></div>';
+    }
+
+    function renderQuickDepositBar() {
+      const bar = document.getElementById('quickDepositBar');
+      const c = chatState.selectedConversation;
+      const latestProposalIndex = findLatestProposalIndex();
+      const offerState = latestProposalIndex >= 0 && c ? getOfferState(latestProposalIndex, c) : null;
+      const dealPrice = c ? Number(c.dealPrice) || 0 : 0;
+      const depositAmount = calculateDepositAmount(dealPrice);
+      if (currentRole === 'seller' || !c || !offerState || offerState.status !== 'accepted' || depositAmount <= 0) {
+        bar.classList.add('hidden');
+        return;
+      }
+      bar.className = 'px-4 py-2 bg-amber-50 border-t border-amber-200 flex items-center justify-between text-xs shrink-0';
+      bar.innerHTML = '<span class="text-amber-900 font-medium text-[11px]">Giá đã chốt: ' + escapeHtml(c.dealPriceText) + '. Đặt cọc ' + escapeHtml(formatMoney(depositAmount)) + ' qua VietQR để tạm khóa bài đăng chống người khác mua mất!</span>' +
+        '<button onclick="openQrModal()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-md shadow-sm transition shrink-0">Xem Mã VietQR Cọc</button>';
+    }
+
+    function findLatestProposalIndex() {
+      for (let i = chatState.messages.length - 1; i >= 0; i--) {
+        if (chatState.messages[i].messageType === 'PROPOSAL') {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    function renderEmptyState(message) {
+      document.getElementById('messagesContainer').innerHTML =
+        '<div class="h-full flex items-center justify-center text-center text-xs text-slate-500 p-6">' + escapeHtml(message) + '</div>';
     }
 
     // Modal QR
@@ -635,82 +1095,188 @@
     function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
     function confirmPaymentDone() {
       closeQrModal();
-      appendBotMessage("Hệ thống Webhook: Đã nhận thành công 1.000.000 đ tiền cọc từ Quý khách! Tin đăng đã chuyển sang trạng thái [TẠM KHÓA GIAO DỊCH].");
+      const c = chatState.selectedConversation;
+      persistMessage("Hệ thống Webhook: Đã nhận thành công " + (c ? c.depositText : "tiền cọc") + " từ Quý khách! Tin đăng đã chuyển sang trạng thái [TẠM KHÓA GIAO DỊCH].", 'SYSTEM');
       const quickBar = document.getElementById('quickDepositBar');
       if (quickBar) {
-        quickBar.innerHTML = '<span class="text-green-700 font-bold text-[11px]">Đã nạp cọc 1.000.000 đ thành công qua VietQR. Tin đăng đã được khóa bảo vệ!</span><span class="text-[10px] text-slate-500 font-medium">Mã GD: #VNQR-9921</span>';
+        quickBar.innerHTML = '<span class="text-green-700 font-bold text-[11px]">Đã nạp cọc ' + escapeHtml(c ? c.depositText : '') + ' thành công qua VietQR. Tin đăng đã được khóa bảo vệ!</span><span class="text-[10px] text-slate-500 font-medium">Mã GD: #VNQR-' + Date.now().toString().slice(-4) + '</span>';
         quickBar.className = 'px-4 py-2 bg-green-50 border-t border-green-200 flex items-center justify-between text-xs shrink-0';
       }
     }
 
     // Modal Trả Giá
-    function openOfferModal() { document.getElementById('offerModal').classList.remove('hidden'); }
+    function openOfferModal() {
+      const c = chatState.selectedConversation;
+      if (!c) {
+        alert('Bạn cần chọn một hội thoại trước khi trả giá.');
+        return;
+      }
+      if (Number(c.productPrice) <= 0) {
+        alert('Tin tặng miễn phí không hỗ trợ đề xuất trả giá.');
+        return;
+      }
+      hydrateOfferModal(c);
+      document.getElementById('offerModal').classList.remove('hidden');
+    }
     function closeOfferModal() { document.getElementById('offerModal').classList.add('hidden'); }
-    function submitCustomOffer() {
-      const price = document.getElementById('customOfferPrice').value;
+    async function submitCustomOffer() {
+      const price = parseInt(document.getElementById('customOfferPrice').value, 10) || 0;
       const note = document.getElementById('customOfferNote').value;
-      const formattedPrice = parseInt(price).toLocaleString('vi-VN') + ' đ';
+      const c = chatState.selectedConversation;
+      if (!c || Number(c.productPrice) <= 0) {
+        alert('Tin tặng miễn phí không hỗ trợ đề xuất trả giá.');
+        return;
+      }
+      if (price <= 0) {
+        alert('Vui lòng nhập mức giá đề xuất lớn hơn 0.');
+        return;
+      }
+      const formattedPrice = formatMoney(price);
       
       closeOfferModal();
-      document.getElementById('offerPriceDisplay').innerText = formattedPrice;
-      document.getElementById('offerNoteDisplay').innerText = 'Lời nhắn: "' + note + '"';
-      document.getElementById('offerStatusBadge').innerText = 'Đang chờ phản hồi';
-      document.getElementById('offerStatusBadge').className = 'text-[10px] text-amber-800 font-bold bg-amber-100 px-1.5 py-0.5 rounded';
-      
-      appendUserMessage('Em xin phép gửi đề xuất trả giá: ' + formattedPrice + '. Lời nhắn: ' + note);
-      
-      setTimeout(() => {
-        document.getElementById('offerStatusBadge').innerText = 'Đối tác đã đồng ý';
-        document.getElementById('offerStatusBadge').className = 'text-[10px] text-green-700 font-bold bg-green-100 px-1.5 py-0.5 rounded';
-        appendBotMessage('Mình đồng ý với mức giá ' + formattedPrice + ' nhé! Bạn tiến hành đặt cọc để giữ hàng nha.');
-      }, 1500);
+      await persistMessage(note || ('Em xin phép gửi đề xuất trả giá: ' + formattedPrice), 'PROPOSAL', price);
+    }
+
+    function hydrateOfferModal(conversation) {
+      const priceInput = document.getElementById('customOfferPrice');
+      const noteInput = document.getElementById('customOfferNote');
+      const hint = document.getElementById('offerProductHint');
+      const productPrice = Number(conversation.productPrice) || 0;
+      const suggestedPrice = Math.max(0, productPrice - 500000);
+      priceInput.value = String(suggestedPrice || productPrice);
+      priceInput.max = String(productPrice);
+      if (hint) {
+        hint.innerText = conversation.productTitle + ' • Giá gốc: ' + conversation.productPriceText;
+      }
+      if (noteInput && !noteInput.dataset.touched) {
+        noteInput.value = 'Em quan tâm ' + conversation.productTitle + '. Anh/chị xem giúp em mức giá này được không ạ?';
+      }
     }
 
     function sendQuickAction(type) {
       if (type === 'image') {
-        appendUserMessage('[Đã đính kèm ảnh chụp thực tế món đồ]');
-        setTimeout(() => { appendBotMessage('Ảnh rõ nét lắm bạn nhé!'); }, 1200);
+        triggerImageUpload();
       } else if (type === 'location') {
-        appendUserMessage('Cho em xin địa chỉ chính xác và khung giờ chiều nay để qua xem nhé!');
-        setTimeout(() => { appendBotMessage('Địa chỉ: 142 Tô Hiến Thành, Phường 13, Quận 10. Bạn cứ qua tầm 16h30 nhé!'); }, 1200);
+        const message = currentRole === 'seller'
+          ? 'Mình gửi lịch hẹn xem hàng tại địa điểm đã đăng. Bạn nhắn giúp mình khung giờ thuận tiện nhé!'
+          : 'Cho em xin địa chỉ chính xác và khung giờ chiều nay để qua xem nhé!';
+        persistMessage(message, 'TEXT');
+      } else if (type === 'available') {
+        persistMessage('Sản phẩm vẫn còn bạn nhé. Bạn có thể trao đổi thêm hoặc hẹn lịch xem hàng.', 'TEXT');
       }
     }
 
-    function handleSendMessage(e) {
+    function triggerImageUpload() {
+      const input = document.getElementById('chatImageInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    async function handleImageSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        alert('Vui lòng chọn file ảnh.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Ảnh tối đa 5MB. Vui lòng chọn ảnh nhỏ hơn.');
+        return;
+      }
+      await uploadChatImage(file);
+    }
+
+    async function uploadChatImage(file) {
+      if (!CHAT_LOGGED_IN) {
+        alert('Bạn cần đăng nhập để gửi ảnh.');
+        return false;
+      }
+      if (!currentConversationId) {
+        alert('Bạn chưa có hội thoại nào để gửi ảnh.');
+        return false;
+      }
+
+      const body = new FormData();
+      body.set('conversationId', currentConversationId);
+      body.set('messageType', 'IMAGE');
+      body.set('imageFile', file);
+
+      try {
+        const response = await fetch('chat-data', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+          body
+        });
+        const data = await response.json();
+        if (!data.success) {
+          alert(data.message || 'Không thể gửi ảnh.');
+          return false;
+        }
+        await loadChat(currentRole, currentConversationId);
+        return true;
+      } catch (error) {
+        console.error(error);
+        alert('Không upload được ảnh. Vui lòng thử lại.');
+        return false;
+      }
+    }
+
+    function respondToOffer(accepted) {
+      const latestProposal = [...chatState.messages].reverse().find(message => message.messageType === 'PROPOSAL');
+      const priceText = latestProposal ? latestProposal.proposedPriceText : 'mức giá này';
+      const message = accepted
+        ? 'Mình đồng ý với mức giá ' + priceText + '. Bạn có thể tiếp tục đặt cọc trên sàn để giữ hàng nhé.'
+        : 'Mình đã xem đề xuất ' + priceText + '. Mức này chưa phù hợp, mình thương lượng thêm nhé.';
+      persistMessage(message, 'TEXT');
+    }
+
+    async function handleSendMessage(e) {
       e.preventDefault();
       const input = document.getElementById('chatInput');
       const text = input.value.trim();
       if (!text) return;
 
-      appendUserMessage(text);
-      input.value = '';
-
-      setTimeout(() => {
-        const replies = [
-          "Dạ món đồ vẫn còn bạn nhé, đồ nguyên bản hoạt động tốt ạ!",
-          "Vâng, chiều nay từ 16h30 bạn cứ ghé xem trực tiếp nhé.",
-          "Dạ được bạn ơi, bạn cứ đặt cọc trên sàn là hệ thống tự khóa tin cho bạn ngay."
-        ];
-        appendBotMessage(replies[Math.floor(Math.random() * replies.length)]);
-      }, 1000);
+      const sent = await persistMessage(text, 'TEXT');
+      if (sent) {
+        input.value = '';
+      }
     }
 
-    function appendUserMessage(text) {
-      const container = document.getElementById('messagesContainer');
-      const div = document.createElement('div');
-      div.className = 'flex justify-end';
-      div.innerHTML = `<div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none text-xs max-w-md shadow-sm">\${escapeHtml(text)}</div>`;
-      container.appendChild(div);
-      container.scrollTop = container.scrollHeight;
-    }
+    async function persistMessage(content, messageType, proposedPrice) {
+      if (!CHAT_LOGGED_IN) {
+        alert('Bạn cần đăng nhập để sử dụng tin nhắn thật.');
+        return false;
+      }
+      if (!currentConversationId) {
+        alert('Bạn chưa có hội thoại nào để gửi tin nhắn. Hãy mở chat từ trang chi tiết sản phẩm hoặc chọn một hội thoại ở cột trái.');
+        return false;
+      }
+      const body = new URLSearchParams();
+      body.set('conversationId', currentConversationId);
+      body.set('content', content);
+      body.set('messageType', messageType || 'TEXT');
+      if (proposedPrice) body.set('proposedPrice', proposedPrice);
 
-    function appendBotMessage(text) {
-      const container = document.getElementById('messagesContainer');
-      const div = document.createElement('div');
-      div.className = 'flex justify-start';
-      div.innerHTML = `<div class="bg-white border border-slate-200 text-slate-800 p-3 rounded-2xl rounded-tl-none text-xs max-w-md shadow-sm">\${escapeHtml(text)}</div>`;
-      container.appendChild(div);
-      container.scrollTop = container.scrollHeight;
+      try {
+        const response = await fetch('chat-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', 'Accept': 'application/json' },
+          body: body.toString()
+        });
+        const data = await response.json();
+        if (!data.success) {
+          alert(data.message || 'Không thể gửi tin nhắn.');
+          return false;
+        }
+        await loadChat(currentRole, currentConversationId);
+        return true;
+      } catch (error) {
+        console.error(error);
+        alert('Không kết nối được server chat. Tin nhắn chưa được gửi.');
+        return false;
+      }
     }
 
     function confirmSellerHandshake() {
@@ -812,12 +1378,50 @@
         `;
       }
 
-      appendBotMessage('Hệ thống MuaNgay: Giao dịch hoàn tất thành công tại điểm hẹn. Tiền cọc 1.000.000 đ đã được giải ngân cho Người Bán. Bài đăng đã đóng trạng thái ĐÃ BÁN. Cảm ơn bạn đã gửi đánh giá uy tín!');
+      persistMessage('Hệ thống MuaNgay: Giao dịch hoàn tất thành công tại điểm hẹn. Tiền cọc đã được giải ngân cho Người Bán. Bài đăng đã đóng trạng thái ĐÃ BÁN. Cảm ơn bạn đã gửi đánh giá uy tín!', 'SYSTEM');
+    }
+
+    function capitalize(text) {
+      return text.charAt(0).toUpperCase() + text.slice(1);
+    }
+
+    function formatMoney(value) {
+      return (Number(value) || 0).toLocaleString('vi-VN') + ' đ';
+    }
+
+    function getThreadLastText(item) {
+      if (item.lastMessageType === 'PROPOSAL' && item.lastProposedPrice > 0) {
+        return 'Đang đề xuất trả giá: ' + item.lastProposedPriceText;
+      }
+      if (isImageMessage(item.lastMessage)) {
+        return 'Đã gửi ảnh';
+      }
+      return item.lastMessage;
+    }
+
+    function isImageMessage(content) {
+      return typeof content === 'string' && content.startsWith('IMAGE::');
+    }
+
+    function getImageMessageUrl(content) {
+      return isImageMessage(content) ? content.substring('IMAGE::'.length) : '';
     }
 
     function escapeHtml(string) {
       return String(string).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+
+    document.getElementById('searchChatInput').addEventListener('input', () => {
+      if (CHAT_LOGGED_IN) {
+        renderChatState(true);
+      }
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+      if (CHAT_LOGGED_IN) {
+        loadChat('buyer');
+        refreshTimer = setInterval(() => loadChat(currentRole, currentConversationId, true), 5000);
+      }
+    });
   </script>
 
 </body>

@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="model.User" %>
+<%@ page import="dao.OrderDAO" %>
 <%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%!
   private String h(String value) {
@@ -18,6 +19,7 @@
   User currentUser = (User) session.getAttribute("user");
   String avatarText = "";
   String avatarImage = "";
+  int orderCount = currentUser != null ? new OrderDAO().countOrdersForUser(currentUser.getId()) : 0;
   if (currentUser != null) {
     avatarImage = currentUser.getAvatar() != null ? currentUser.getAvatar().trim() : "";
     String displayName = currentUser.getFullName() != null && !currentUser.getFullName().trim().isEmpty()
@@ -85,7 +87,7 @@
         <%= currentUser == null ? "Đăng nhập" : "Đăng xuất" %>
       </a>
       <a href="05-quan-ly-don-hang.jsp" class="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition border border-slate-200">
-        Đơn hàng (2)
+        Đơn hàng<%= currentUser != null ? " (" + orderCount + ")" : "" %>
       </a>
       <a href="04-chat-tra-gia-vietqr.jsp" class="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition relative">
         Tin nhắn
