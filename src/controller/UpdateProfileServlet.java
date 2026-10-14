@@ -32,8 +32,10 @@ public class UpdateProfileServlet extends HttpServlet {
         String fullName = trim(request.getParameter("fullName"));
         String email = trim(request.getParameter("email"));
         String phone = trim(request.getParameter("phone"));
-        String province = trim(request.getParameter("province"));
-        String ward = trim(request.getParameter("ward"));
+        // Disabled selects are omitted from form submissions. Preserve the existing
+        // value in that case so a failed or partial form cannot erase a saved address.
+        String province = parameterOrCurrent(request, "province", current.getProvince());
+        String ward = parameterOrCurrent(request, "ward", current.getWard());
         String addressDetail = trim(request.getParameter("addressDetail"));
 
         Map<String, String> errors = validate(fullName, email, phone, province, ward, addressDetail);
@@ -76,6 +78,8 @@ public class UpdateProfileServlet extends HttpServlet {
         User updated = authService.getUserById(current.getId());
         if (updated != null) updated.setPassword(null);
         session.setAttribute("user", updated);
+        session.removeAttribute("profileFieldErrors");
+        session.removeAttribute("profileFormValues");
         session.setAttribute("profileMessage", "Đã cập nhật thông tin cá nhân.");
         session.removeAttribute("profileMessageError");
         response.sendRedirect(request.getContextPath() + PROFILE_PAGE);
@@ -109,5 +113,10 @@ public class UpdateProfileServlet extends HttpServlet {
 
     private String trim(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private String parameterOrCurrent(HttpServletRequest request, String name, String currentValue) {
+        String value = request.getParameter(name);
+        return value == null ? trim(currentValue) : trim(value);
     }
 }
