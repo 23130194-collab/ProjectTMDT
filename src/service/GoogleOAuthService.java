@@ -20,7 +20,7 @@ public class GoogleOAuthService {
 
     private static String CLIENT_ID = "183680477500-f523c4gkktdp6at2qf9bnhrdcapio7aa.apps.googleusercontent.com";
     private static String CLIENT_SECRET = "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";
-    private static String REDIRECT_URI = "http://localhost:8080/ProjectTMDT_Web_exploded/login-google";
+    private static String REDIRECT_URI = "http://localhost:8080/ProjectTMDT_war_exploded/login-google";
 
     private static final String AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
     private static final String TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
