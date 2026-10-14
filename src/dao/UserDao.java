@@ -115,6 +115,43 @@ public class UserDao {
         }
     }
 
+    public User findOrCreateGoogleUser(String email, String fullName, String avatarUrl) {
+        User user = getUserByEmail(email);
+        if (user != null) {
+            if ((user.getAvatar() == null || user.getAvatar().trim().isEmpty()) && avatarUrl != null && !avatarUrl.trim().isEmpty()) {
+                String sql = "UPDATE users SET avatar = ? WHERE id = ?";
+                try (Connection conn = DBContext.getConnection();
+                     PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setString(1, avatarUrl.trim());
+                    ps.setInt(2, user.getId());
+                    ps.executeUpdate();
+                    user.setAvatar(avatarUrl.trim());
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+            return user;
+        }
+
+        String username = buildUniqueUsername(email, fullName);
+        String randomPass = java.util.UUID.randomUUID().toString();
+        String sql = "INSERT INTO users(username, password, full_name, email, avatar, role, status) VALUES (?, ?, ?, ?, ?, 'USER', 'ACTIVE')";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, randomPass);
+            ps.setString(3, fullName != null && !fullName.trim().isEmpty() ? fullName.trim() : username);
+            ps.setString(4, email.trim());
+            ps.setString(5, avatarUrl != null ? avatarUrl.trim() : null);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Không thể tạo tài khoản từ Google.", e);
+        }
+
+        return getUserByEmail(email);
+    }
+
     public void updatePassword(String email, String password) {
         String sql = "UPDATE users SET password = ? WHERE email = ?";
 
