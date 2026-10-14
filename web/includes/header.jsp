@@ -69,13 +69,8 @@
 
     <!-- BỘ CHỌN KHU VỰC ĐỊA LÝ (TỈNH / THÀNH PHỐ) -->
     <div class="hidden lg:flex items-center">
-      <select id="provinceSelect" onchange="applyFilters()" class="bg-slate-100 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+      <select id="provinceSelect" class="bg-slate-100 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
         <option value="all">Toàn Quốc</option>
-        <option value="hcm" selected>TP. Hồ Chí Minh</option>
-        <option value="hn">Hà Nội</option>
-        <option value="dn">Đà Nẵng</option>
-        <option value="bd">Bình Dương</option>
-        <option value="ct">Cần Thơ</option>
       </select>
     </div>
 
@@ -94,10 +89,10 @@
       <a href="06-quan-tri-admin.jsp" class="hidden md:inline-block px-2.5 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 rounded-lg transition border border-purple-200">
         Admin Sàn
       </a>
-      <a href="03-dang-tin.jsp" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-bold rounded-lg shadow-sm transition">
+      <a href="${pageContext.request.contextPath}/post-ad" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-bold rounded-lg shadow-sm transition">
         Đăng Tin Miễn Phí
       </a>
-      <a href="08-ho-so-ca-nhan.jsp" title="Hồ sơ cá nhân" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold hover:ring-2 hover:ring-blue-400 transition shrink-0">
+      <a href="${pageContext.request.contextPath}/my-posts" title="Hồ sơ cá nhân" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold hover:ring-2 hover:ring-blue-400 transition shrink-0">
         <% if (currentUser == null) { %>
           <i class="fa-solid fa-user text-sm"></i>
         <% } else if (!avatarImage.isEmpty()) { %>
@@ -110,24 +105,6 @@
 
   </div>
 </header>
-
-<c:if test="${not empty sessionScope.searchHistory}">
-  <div id="searchHistoryBar" class="bg-slate-50 border-b border-slate-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center gap-2">
-      <span class="text-[11px] font-semibold text-slate-500">Tìm gần đây:</span>
-      <c:forEach var="term" items="${sessionScope.searchHistory}">
-        <c:url var="historySearchUrl" value="/search">
-          <c:param name="q" value="${term}"/>
-        </c:url>
-        <span class="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200 pl-2.5 pr-1 py-1 text-[11px] text-slate-700">
-            <a class="max-w-40 truncate hover:text-blue-600" href="${historySearchUrl}"><c:out value="${term}"/></a>
-            <button type="button" class="history-bar-delete rounded-full w-5 h-5 text-slate-400 hover:text-red-600 hover:bg-red-50" data-term="<c:out value='${term}'/>" aria-label="Xóa lịch sử: <c:out value='${term}'/>">×</button>
-          </span>
-      </c:forEach>
-      <button id="clearSearchHistoryBar" type="button" class="ml-auto text-[11px] font-semibold text-red-600 hover:text-red-700">Xóa lịch sử</button>
-    </div>
-  </div>
-</c:if>
 
 <script>
   (() => {

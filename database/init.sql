@@ -11,6 +11,11 @@ CREATE TABLE users (
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE,
     phone VARCHAR(20) UNIQUE,
+    province VARCHAR(100),
+    ward VARCHAR(150),
+    address_detail VARCHAR(255),
+    delivery_method TINYINT NOT NULL DEFAULT 1,
+    deal_type ENUM('SELL', 'GIVE') NOT NULL DEFAULT 'SELL',
     avatar VARCHAR(255),
     role ENUM('USER', 'ADMIN') DEFAULT 'USER',
     reputation_score INT DEFAULT 0, -- Điểm uy tín
@@ -34,8 +39,11 @@ CREATE TABLE products (
     description TEXT,
     price DECIMAL(15, 2) NOT NULL,
     condition_status ENUM('NEW', 'LIKE_NEW', 'GOOD', 'FAIR') DEFAULT 'GOOD', -- Mới, Cũ như mới, Cũ...
-    location VARCHAR(100), -- Khu vực (VD: TP.HCM)
-    status ENUM('PENDING', 'ACTIVE', 'SOLD', 'HIDDEN', 'REJECTED') DEFAULT 'PENDING', -- PENDING chờ duyệt
+    location VARCHAR(100), -- Địa điểm cũ, chỉ dùng để hiển thị tin chưa được chuẩn hóa
+    province VARCHAR(100),
+    ward VARCHAR(150),
+    address_detail VARCHAR(255),
+    status ENUM('PENDING', 'ACTIVE', 'SOLD', 'HIDDEN', 'REJECTED', 'DELETE') DEFAULT 'PENDING', -- PENDING chờ duyệt, DELETE là xóa mềm
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
@@ -115,13 +123,14 @@ INSERT INTO users (username, password, full_name, email, phone, role) VALUES
 ('admin', 'admin123', 'Quản Trị Viên', 'admin@muangay.vn', '0999999999', 'ADMIN');
 
 INSERT INTO categories (name, icon) VALUES 
-('Điện thoại', 'fa-mobile-alt'),
-('Máy tính / Laptop', 'fa-laptop'),
-('Xe cộ', 'fa-motorcycle');
+('Điện Tử & Thiết Bị Số', 'fa-laptop'),
+('Xe Cộ & Phương Tiện', 'fa-motorcycle'),
+('Điện Lạnh & Gia Dụng', 'fa-snowflake'),
+('Nội Thất & Đồ Gia Đình', 'fa-couch');
 
-INSERT INTO products (user_id, category_id, title, description, price, condition_status, location, status) VALUES 
-(1, 1, 'iPhone 15 Pro Max 256GB Titan Tự Nhiên', 'Máy đẹp 99%, pin 100%, còn BH Apple 6 tháng.', 25000000, 'LIKE_NEW', 'TP. Hồ Chí Minh', 'ACTIVE'),
-(2, 2, 'Macbook Pro M2 16GB 512GB', 'Lên đời cần pass lại, máy dùng kỹ móp xước nhẹ.', 28500000, 'GOOD', 'Hà Nội', 'ACTIVE');
+INSERT INTO products (user_id, category_id, title, description, price, condition_status, province, ward, address_detail, status) VALUES
+(1, 1, 'iPhone 15 Pro Max 256GB Titan Tự Nhiên', 'Máy đẹp 99%, pin 100%, còn BH Apple 6 tháng.', 25000000, 'LIKE_NEW', 'Thành phố Hồ Chí Minh', 'Phường Bến Nghé', 'Quận 1', 'ACTIVE'),
+(2, 2, 'Macbook Pro M2 16GB 512GB', 'Lên đời cần pass lại, máy dùng kỹ móp xước nhẹ.', 28500000, 'GOOD', 'Thành phố Hà Nội', 'Phường Cầu Giấy', 'Cầu Giấy', 'ACTIVE');
 
 INSERT INTO product_images (product_id, image_url, is_primary) VALUES 
 (1, 'assets/images/products/iphone-13-pro-max.jpg', TRUE),
