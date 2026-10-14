@@ -2,6 +2,8 @@
 <%@ page import="model.User" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.util.Map" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.fmt" prefix="fmt" %>
 <%!
   private String h(String value) {
     if (value == null) {
@@ -148,13 +150,13 @@
     <!-- TABS ĐIỀU HƯỚNG NỘI DUNG TRANG CÁ NHÂN -->
     <div class="flex border-b border-slate-200 space-x-2 text-xs font-bold">
       <button id="profileTabPosts" onclick="switchProfileSection('posts')" class="pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition">
-        Tin Tôi Đang Đăng Bán (2)
+        Tin Tôi Đang Đăng Bán (<c:choose><c:when test="${not empty myPosts}">${myPosts.size()}</c:when><c:otherwise>0</c:otherwise></c:choose>)
       </button>
       <button id="profileTabSaved" onclick="switchProfileSection('saved')" class="pb-3 px-3 text-slate-500 hover:text-slate-900 transition">
-        Tin Đã Lưu Yêu Thích (2)
+        Tin Đã Lưu Yêu Thích
       </button>
       <button id="profileTabReviews" onclick="switchProfileSection('reviews')" class="pb-3 px-3 text-slate-500 hover:text-slate-900 transition">
-        Đánh Giá Từ Khách Hàng (24)
+        Đánh Giá Từ Khách Hàng
       </button>
     </div>
 
@@ -165,75 +167,116 @@
       <div class="flex items-center justify-between text-xs">
         <div class="flex items-center gap-2">
           <span class="text-slate-500">Xem theo:</span>
-          <select id="postStatusFilter" class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="all">Tất cả bài đăng</option>
-            <option value="active" selected>Đang rao bán</option>
+          <select id="postStatusFilter" onchange="filterPosts(this.value)" class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="all" selected>Tất cả bài đăng</option>
+            <option value="active">Đang rao bán</option>
+            <option value="pending">Chờ duyệt</option>
             <option value="sold">Đã bán xong</option>
           </select>
         </div>
 
-        <a href="03-dang-tin.jsp" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-lg transition shadow-xs">
+        <a href="post-ad" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-lg transition shadow-xs">
           + Đăng món đồ mới
         </a>
       </div>
 
-      <!-- DANH SÁCH BÀI ĐĂNG 1 -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-3.5">
-          <img src="assets/images/products/iphone-13-pro-max.jpg" alt="iPhone 13 Pro Max" class="w-16 h-16 rounded-lg object-cover shrink-0 border border-slate-200">
-          <div>
-            <span class="font-bold text-slate-900 text-sm block">iPhone 13 Pro Max 128GB Xanh Sierra bản VN/A</span>
-            <div class="flex items-center gap-2 text-xs mt-1">
-              <span class="text-green-600 font-bold">14.800.000 đ</span>
-              <span>•</span>
-              <span class="text-slate-500">Đăng 25 phút trước</span>
-              <span>•</span>
-              <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Đang hiển thị</span>
+
+
+      <c:choose>
+        <c:when test="${not empty myPosts}">
+          <c:forEach var="post" items="${myPosts}">
+            <div class="post-item bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                 data-status="${post.status}">
+              <div class="flex items-center gap-3.5">
+                <c:choose>
+                  <c:when test="${not empty post.primaryImage}">
+                    <img src="${post.primaryImage}" alt="${post.title}" class="w-16 h-16 rounded-lg object-cover shrink-0 border border-slate-200">
+                  </c:when>
+                  <c:otherwise>
+                    <div class="w-16 h-16 rounded-lg bg-slate-200 flex items-center justify-center shrink-0 border border-slate-200">
+                      <span class="text-slate-400 text-[10px]">No img</span>
+                    </div>
+                  </c:otherwise>
+                </c:choose>
+                <div>
+                  <span class="font-bold text-slate-900 text-sm block">${post.title}</span>
+                  <div class="flex items-center gap-2 text-xs mt-1 flex-wrap">
+                    <c:choose>
+                      <c:when test="${post.price == 0}">
+                        <span class="text-amber-600 font-bold">Miễn phí 0 đ</span>
+                      </c:when>
+                      <c:otherwise>
+                        <span class="text-green-600 font-bold"><fmt:formatNumber value="${post.price}" type="number" groupingUsed="true" maxFractionDigits="0"/> đ</span>
+                      </c:otherwise>
+                    </c:choose>
+                    <span>•</span>
+                    <span class="text-slate-500">
+                      <fmt:formatDate value="${post.createdAt}" pattern="dd/MM/yyyy HH:mm"/>
+                    </span>
+                    <span>•</span>
+                    <c:choose>
+                      <c:when test="${post.status == 'ACTIVE'}">
+                        <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Đang hiển thị</span>
+                      </c:when>
+                      <c:when test="${post.status == 'PENDING'}">
+                        <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">Chờ duyệt</span>
+                      </c:when>
+                      <c:when test="${post.status == 'SOLD'}">
+                        <span class="px-2 py-0.5 rounded bg-slate-200 text-slate-600 text-[10px] font-bold">Đã bán</span>
+                      </c:when>
+                      <c:when test="${post.status == 'HIDDEN'}">
+                        <span class="px-2 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold">Đã ẩn</span>
+                      </c:when>
+                      <c:otherwise>
+                        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">${post.status}</span>
+                      </c:otherwise>
+                    </c:choose>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                <!-- Xem bài -->
+                <a href="product-detail?id=${post.id}" class="px-3 py-1.5 border border-slate-300 hover:bg-slate-100 rounded-lg text-xs font-semibold text-slate-700">
+                  Xem bài
+                </a>
+
+                <!-- Sửa bài -->
+                <a href="edit-post?id=${post.id}" class="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold border border-blue-200">
+                  Sửa Tin
+                </a>
+
+                <!-- Đánh dấu đã bán (chỉ hiện khi chưa bán) -->
+                <c:if test="${post.status != 'SOLD'}">
+                  <form action="update-post-status" method="post" style="display:inline" onsubmit="return confirm('Bạn muốn đánh dấu đã bán cho bài đăng này?')">
+                    <input type="hidden" name="productId" value="${post.id}">
+                    <input type="hidden" name="status" value="SOLD">
+                    <button type="submit" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium">
+                      Đã Bán
+                    </button>
+                  </form>
+                </c:if>
+
+                <!-- Xóa bài -->
+                <form action="delete-post" method="post" style="display:inline" onsubmit="return confirm('Bạn có chắc muốn xóa bài đăng này? Hành động này không thể hoàn tác.')">
+                  <input type="hidden" name="productId" value="${post.id}">
+                  <button type="submit" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold border border-red-200">
+                    Xóa
+                  </button>
+                </form>
+              </div>
             </div>
+          </c:forEach>
+        </c:when>
+        <c:otherwise>
+          <div class="bg-white rounded-xl border border-slate-200 p-8 shadow-xs text-center">
+            <p class="text-sm text-slate-500">Bạn chưa có bài đăng nào.</p>
+            <a href="post-ad" class="inline-block mt-3 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-lg transition">
+              Đăng tin ngay
+            </a>
           </div>
-        </div>
-
-        <div class="flex items-center gap-2 shrink-0">
-          <a href="02-chi-tiet-san-pham.jsp" class="px-3 py-1.5 border border-slate-300 hover:bg-slate-100 rounded-lg text-xs font-semibold text-slate-700">
-            Xem bài
-          </a>
-          <button onclick="boostPostModal('iPhone 13 Pro Max')" class="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold border border-blue-200">
-            Đẩy Tin
-          </button>
-          <button onclick="toggleSold(this)" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium">
-            Đã Bán
-          </button>
-        </div>
-      </div>
-
-      <!-- DANH SÁCH BÀI ĐĂNG 2 -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-3.5">
-          <img src="assets/images/products/ban-go-thong.jpg" alt="Bàn làm việc gỗ" class="w-16 h-16 rounded-lg object-cover shrink-0 border border-slate-200">
-          <div>
-            <span class="font-bold text-slate-900 text-sm block">Bàn làm việc gỗ thông 1m2 tháo lắp gọn gàng</span>
-            <div class="flex items-center gap-2 text-xs mt-1">
-              <span class="text-amber-600 font-bold">Miễn phí 0 đ</span>
-              <span>•</span>
-              <span class="text-slate-500">Đăng hôm qua</span>
-              <span>•</span>
-              <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Đang hiển thị</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2 shrink-0">
-          <a href="02-chi-tiet-san-pham.jsp" class="px-3 py-1.5 border border-slate-300 hover:bg-slate-100 rounded-lg text-xs font-semibold text-slate-700">
-            Xem bài
-          </a>
-          <button onclick="boostPostModal('Bàn làm việc gỗ')" class="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold border border-blue-200">
-            Đẩy Tin
-          </button>
-          <button onclick="toggleSold(this)" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium">
-            Đã Bán
-          </button>
-        </div>
-      </div>
+        </c:otherwise>
+      </c:choose>
 
     </section>
 
@@ -423,6 +466,24 @@
         document.getElementById('sectionReviews').classList.remove('hidden');
         document.getElementById('profileTabReviews').className = 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition';
       }
+    }
+
+    function filterPosts(statusValue) {
+      const items = document.querySelectorAll('.post-item');
+      items.forEach(function(item) {
+        const status = (item.dataset.status || '').toLowerCase();
+        if (statusValue === 'all') {
+          item.style.display = '';
+        } else if (statusValue === 'active' && status === 'active') {
+          item.style.display = '';
+        } else if (statusValue === 'pending' && status === 'pending') {
+          item.style.display = '';
+        } else if (statusValue === 'sold' && status === 'sold') {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
     }
 
     function toggleSold(btn) {

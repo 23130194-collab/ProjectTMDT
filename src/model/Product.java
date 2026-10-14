@@ -17,6 +17,14 @@ public class Product {
     private Timestamp updatedAt;
     private String primaryImage;
     private boolean newProduct;
+    private String specifications;
+    private String dealType; // "SELL" hoặc "GIVE"
+
+    public String getSpecifications() { return specifications; }
+    public void setSpecifications(String specifications) { this.specifications = specifications; }
+
+    public String getDealType() { return dealType; }
+    public void setDealType(String dealType) { this.dealType = dealType; }
 
     public String getPrimaryImage() { return primaryImage; }
     public void setPrimaryImage(String primaryImage) { this.primaryImage = primaryImage; }

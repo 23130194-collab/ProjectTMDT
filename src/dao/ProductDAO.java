@@ -11,8 +11,8 @@ public class ProductDAO {
 
     // Hàm thêm sản phẩm mới vào Database, trả về ID của sản phẩm vừa tạo
     public int insertProduct(Product product) {
-        String sql = "INSERT INTO products (user_id, category_id, title, description, price, condition_status, location, status, delivery_method) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO products (user_id, category_id, title, description, price, condition_status, specifications, location, status, delivery_method) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         int generatedId = 0;
         
         try (Connection conn = DBContext.getConnection();
@@ -24,9 +24,10 @@ public class ProductDAO {
             ps.setString(4, product.getDescription());
             ps.setDouble(5, product.getPrice());
             ps.setString(6, product.getConditionStatus());
-            ps.setString(7, product.getLocation());
-            ps.setString(8, product.getStatus()); // 'PENDING'
-            ps.setInt(9, product.getDeliveryMethod());
+            ps.setString(7, product.getSpecifications());
+            ps.setString(8, product.getLocation());
+            ps.setString(9, product.getStatus()); // 'PENDING'
+            ps.setInt(10, product.getDeliveryMethod());
             
             ps.executeUpdate();
             
@@ -67,6 +68,7 @@ public class ProductDAO {
                 p.setCreatedAt(rs.getTimestamp("created_at"));
                 p.setNewProduct(isNewProduct(p.getCreatedAt()));
                 p.setDeliveryMethod(rs.getInt("delivery_method"));
+                p.setSpecifications(rs.getString("specifications"));
                 p.setPrimaryImage(rs.getString("image_url")); // Set link ảnh
                 list.add(p);
             }
@@ -103,6 +105,7 @@ public class ProductDAO {
                     p.setCreatedAt(rs.getTimestamp("created_at"));
                 p.setNewProduct(isNewProduct(p.getCreatedAt()));
                     p.setDeliveryMethod(rs.getInt("delivery_method"));
+                    p.setSpecifications(rs.getString("specifications"));
                     p.setPrimaryImage(rs.getString("image_url"));
                     list.add(p);
                 }
@@ -139,6 +142,7 @@ public class ProductDAO {
                     p.setCreatedAt(rs.getTimestamp("created_at"));
                 p.setNewProduct(isNewProduct(p.getCreatedAt()));
                     p.setDeliveryMethod(rs.getInt("delivery_method"));
+                    p.setSpecifications(rs.getString("specifications"));
                     p.setPrimaryImage(rs.getString("image_url"));
                     list.add(p);
                 }
@@ -190,6 +194,7 @@ public class ProductDAO {
                     p.setCreatedAt(rs.getTimestamp("created_at"));
                 p.setNewProduct(isNewProduct(p.getCreatedAt()));
                     p.setDeliveryMethod(rs.getInt("delivery_method"));
+                    p.setSpecifications(rs.getString("specifications"));
                     return p;
                 }
             }
@@ -205,5 +210,104 @@ public class ProductDAO {
         }
         long twoDaysMillis = 2L * 24 * 60 * 60 * 1000;
         return System.currentTimeMillis() - createdAt.getTime() <= twoDaysMillis;
+    }
+
+    // Lấy danh sách bài đăng theo userId (cho trang hồ sơ cá nhân)
+    public List<Product> getProductsByUserId(int userId) {
+        List<Product> list = new ArrayList<>();
+        String sql = "SELECT p.*, pi.image_url FROM products p " +
+                     "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
+                     "WHERE p.user_id = ? ORDER BY p.created_at DESC";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Product p = new Product();
+                    p.setId(rs.getInt("id"));
+                    p.setUserId(rs.getInt("user_id"));
+                    p.setCategoryId(rs.getInt("category_id"));
+                    p.setTitle(rs.getString("title"));
+                    p.setDescription(rs.getString("description"));
+                    p.setPrice(rs.getDouble("price"));
+                    p.setConditionStatus(rs.getString("condition_status"));
+                    p.setLocation(rs.getString("location"));
+                    p.setStatus(rs.getString("status"));
+                    p.setCreatedAt(rs.getTimestamp("created_at"));
+                    p.setNewProduct(isNewProduct(p.getCreatedAt()));
+                    p.setDeliveryMethod(rs.getInt("delivery_method"));
+                    p.setSpecifications(rs.getString("specifications"));
+                    p.setPrimaryImage(rs.getString("image_url"));
+                    list.add(p);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // Cập nhật trạng thái bài đăng (ACTIVE, SOLD, HIDDEN...)
+    public boolean updateProductStatus(int productId, int userId, String newStatus) {
+        String sql = "UPDATE products SET status = ? WHERE id = ? AND user_id = ?";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newStatus);
+            ps.setInt(2, productId);
+            ps.setInt(3, userId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    // Xóa bài đăng (chỉ chủ sở hữu mới được xóa)
+    public boolean deleteProduct(int productId, int userId) {
+        // Xóa ảnh trước (ON DELETE CASCADE sẽ lo, nhưng để chắc chắn)
+        String sqlImg = "DELETE FROM product_images WHERE product_id = ? AND product_id IN (SELECT id FROM products WHERE user_id = ?)";
+        String sqlProd = "DELETE FROM products WHERE id = ? AND user_id = ?";
+        try (Connection conn = DBContext.getConnection()) {
+            // Xóa ảnh
+            try (PreparedStatement ps = conn.prepareStatement(sqlImg)) {
+                ps.setInt(1, productId);
+                ps.setInt(2, userId);
+                ps.executeUpdate();
+            }
+            // Xóa sản phẩm
+            try (PreparedStatement ps = conn.prepareStatement(sqlProd)) {
+                ps.setInt(1, productId);
+                ps.setInt(2, userId);
+                return ps.executeUpdate() > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    // Cập nhật thông tin bài đăng (sửa bài)
+    public boolean updateProduct(Product product) {
+        String sql = "UPDATE products SET title = ?, description = ?, price = ?, category_id = ?, " +
+                     "condition_status = ?, specifications = ?, location = ?, delivery_method = ? " +
+                     "WHERE id = ? AND user_id = ?";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, product.getTitle());
+            ps.setString(2, product.getDescription());
+            ps.setDouble(3, product.getPrice());
+            ps.setInt(4, product.getCategoryId());
+            ps.setString(5, product.getConditionStatus());
+            ps.setString(6, product.getSpecifications());
+            ps.setString(7, product.getLocation());
+            ps.setInt(8, product.getDeliveryMethod());
+            ps.setInt(9, product.getId());
+            ps.setInt(10, product.getUserId());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }
