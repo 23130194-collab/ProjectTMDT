@@ -1,10 +1,34 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page import="model.Product" %>
+<%@ page import="util.JsonUtil" %>
+<%@ page import="java.util.Map" %>
+<%@ page import="model.User" %>
+<%
+  Product editProduct = (Product) request.getAttribute("editProduct");
+  boolean isEditMode = (editProduct != null);
+  // Kiểm tra trạng thái đăng nhập để truyền vào JS
+  boolean isLoggedIn = (session != null && session.getAttribute("user") != null);
+  // Chuẩn bị các giá trị mặc định hoặc lấy từ editProduct
+  String formTitle    = isEditMode ? editProduct.getTitle() : "";
+  String formPrice    = isEditMode ? (editProduct.getPrice() == 0 ? "" : String.valueOf((long)editProduct.getPrice())) : "";
+  String formDesc     = isEditMode ? (editProduct.getDescription() != null ? editProduct.getDescription() : "") : "";
+  int    formCatId    = isEditMode ? editProduct.getCategoryId() : 1;
+  int    formDelivery = isEditMode ? editProduct.getDeliveryMethod() : 1;
+  String formLocation = isEditMode && editProduct.getLocation() != null ? editProduct.getLocation() : "";
+  String formDealType = isEditMode && "GIVE".equals(editProduct.getDealType()) ? "give" : "sell";
+  // Đọc specs JSON thành Map để truyền sang JS
+  Map<String,String> editSpecs = isEditMode ? JsonUtil.jsonToMap(editProduct.getSpecifications()) : new java.util.HashMap<>();
+  if (editSpecs == null) editSpecs = new java.util.HashMap<>();
+  // Serialize specs sang JS object string an toàn bằng JsonUtil
+  String specsJsObj = isEditMode ? JsonUtil.mapToJson(editSpecs) : "{}";
+
+%>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Đăng Tin Mua Bán & Thanh Lý - MuaNgay</title>
+  <title><%= isEditMode ? "Sửa Tin Đăng - MuaNgay" : "Đăng Tin Mua Bán & Thanh Lý - MuaNgay" %></title>
   <link rel="icon" type="image/svg+xml" href="assets/logos/muangay-logo-icon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,11 +45,13 @@
   <!-- BIỂU MẪU ĐĂNG TIN C2C ĐA NĂNG -->
   <main class="max-w-3xl mx-auto px-4 py-8 flex-1 w-full relative">
     
-    <form action="post-ad" method="POST" enctype="multipart/form-data" class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-8">
-      
+    <form action="<%= isEditMode ? "edit-post" : "post-ad" %>" method="POST" enctype="multipart/form-data" class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-8">
+      <% if (isEditMode) { %>
+        <input type="hidden" name="productId" value="<%= editProduct.getId() %>">
+      <% } %>
       <div>
-        <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Đăng Tin Mua Bán & Thanh Lý Đồ Dùng</h1>
-        <p class="text-xs text-slate-500 mt-1">Tiếp cận hàng ngàn người mua trong khu vực với cơ chế đặt cọc giữ chỗ an tâm</p>
+        <h1 class="text-xl sm:text-2xl font-bold text-slate-900"><%= isEditMode ? "Sửa Tin Đăng" : "Đăng Tin Mua Bán & Thanh Lý Đồ Dùng" %></h1>
+        <p class="text-xs text-slate-500 mt-1"><%= isEditMode ? "Cập nhật thông tin bài đăng của bạn" : "Tiếp cận hàng ngàn người mua trong khu vực với cơ chế đặt cọc giữ chỗ an tâm" %></p>
       </div>
 
       <!-- BƯỚC 1: HÌNH THỨC ĐĂNG TIN -->
@@ -34,23 +60,20 @@
           Bước 1: Chọn hình thức đăng tin <span class="text-red-500">*</span>
         </label>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          
-          <label class="flex flex-col p-3.5 border-2 border-blue-600 bg-blue-50/50 rounded-xl cursor-pointer">
+          <label class="flex flex-col p-3.5 border-2 <%= "sell".equals(formDealType) ? "border-blue-600 bg-blue-50/50" : "border-slate-200 hover:border-slate-300" %> rounded-xl cursor-pointer">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-blue-900">Bán Thanh Lý</span>
-              <input type="radio" name="deal_type" value="sell" checked class="w-4 h-4 text-blue-600">
+              <span class="text-xs font-bold <%= "sell".equals(formDealType) ? "text-blue-900" : "text-slate-800" %>">Bán Thanh Lý</span>
+              <input type="radio" name="deal_type" value="sell" <%= "sell".equals(formDealType) ? "checked" : "" %> class="w-4 h-4 text-blue-600">
             </div>
             <span class="text-[11px] text-blue-700 mt-1">Bán lấy tiền với giá niêm yết (hỗ trợ người mua trả giá)</span>
           </label>
-
-          <label class="flex flex-col p-3.5 border-2 border-slate-200 hover:border-slate-300 rounded-xl cursor-pointer">
+          <label class="flex flex-col p-3.5 border-2 <%= "give".equals(formDealType) ? "border-blue-600 bg-blue-50/50" : "border-slate-200 hover:border-slate-300" %> rounded-xl cursor-pointer">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-slate-800">Tặng Miễn Phí (0đ)</span>
-              <input type="radio" name="deal_type" value="give" class="w-4 h-4 text-blue-600">
+              <input type="radio" name="deal_type" value="give" <%= "give".equals(formDealType) ? "checked" : "" %> class="w-4 h-4 text-blue-600">
             </div>
             <span class="text-[11px] text-slate-500 mt-1">Tặng miễn phí cho người thực sự có nhu cầu</span>
           </label>
-
         </div>
       </div>
 
@@ -80,31 +103,44 @@
             type="text" 
             name="title" placeholder="Ví dụ: iPhone 18 Pro Max Đỏ Burgundy 256GB chính hãng hoặc MacBook Pro M3" 
             required
-            value="iPhone 18 Pro Max Đỏ Burgundy 256GB chính hãng VN/A, pin 100% fullbox"
+            value="<%= formTitle %>"
             class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">Danh mục hàng hóa</label>
-            <select name="categoryId" class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option selected>Điện Tử & Thiết Bị Số</option>
-              <option>Xe Cộ & Phương Tiện</option>
-              <option>Điện Lạnh & Gia Dụng</option>
-              <option>Nội Thất & Đồ Gia Đình</option>
-              <option>Thời Trang & Đồ Cá Nhân</option>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Danh mục hàng hóa <span class="text-red-500">*</span></label>
+            <select id="categorySelect" name="categoryId" class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="renderCategorySpecs(this.value)">
+              <option value="1" <%= formCatId == 1 ? "selected" : "" %>>Điện Tử & Thiết Bị Số</option>
+              <option value="2" <%= formCatId == 2 ? "selected" : "" %>>Xe Cộ & Phương Tiện</option>
+              <option value="3" <%= formCatId == 3 ? "selected" : "" %>>Điện Lạnh & Gia Dụng</option>
+              <option value="4" <%= formCatId == 4 ? "selected" : "" %>>Nội Thất & Đồ Gia Đình</option>
             </select>
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">Giá bán mong muốn (VNĐ)</label>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Giá bán mong muốn (VNĐ) <span class="text-red-500">*</span></label>
             <input 
               type="text" 
-              name="price" value="38000000"
+              name="price" value="<%= formPrice %>"
               required
               class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-red-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+          </div>
+        </div>
+
+        <!-- THÔNG SỐ ĐẶC THÙ THEO DANH MỤC (DYNAMIC SPECIFICATIONS) -->
+        <div id="dynamicSpecsWrapper" class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3.5 transition-all">
+          <div class="flex flex-wrap items-center justify-between pb-2.5 border-b border-slate-200 gap-2">
+            <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+              Kê khai thông số & Tình trạng chi tiết: <span id="categoryNameTitle" class="text-blue-600 ml-1">Điện Tử & Thiết Bị Số</span>
+            </span>
+            <span class="text-[11px] text-slate-500 font-medium">Mục có dấu <span class="text-red-500 font-bold">*</span> là bắt buộc</span>
+          </div>
+
+          <div id="specsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           </div>
         </div>
 
@@ -112,7 +148,7 @@
           <label class="block text-xs font-medium text-slate-700 mb-1">Mô tả tình trạng chi tiết</label>
           <textarea name="description" rows="4" 
             class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
-          >Cần pass lại iPhone 18 Pro Max 256GB màu Đỏ Burgundy cực đẹp keng 99.9% không một vết xước. Máy mua chính hãng mã VN/A, pin chuẩn 100%, bảo hành Apple Care dài hạn, fullbox trùng IMEI.</textarea>
+          ><%= formDesc %></textarea>
         </div>
       </div>
 
@@ -123,16 +159,16 @@
         </label>
         
         <div class="space-y-2.5">
-          <label class="flex items-start gap-3 p-3.5 border-2 border-blue-600 bg-blue-50/50 rounded-xl cursor-pointer">
-            <input type="radio" name="delivery_method" value="1" checked class="mt-0.5 w-4 h-4 text-blue-600 rounded">
+          <label class="flex items-start gap-3 p-3.5 border-2 <%= formDelivery == 1 ? "border-blue-600 bg-blue-50/50" : "border border-slate-200" %> rounded-xl cursor-pointer">
+            <input type="radio" name="delivery_method" value="1" <%= formDelivery == 1 ? "checked" : "" %> class="mt-0.5 w-4 h-4 text-blue-600 rounded">
             <div>
               <span class="text-xs font-bold text-slate-900 block">1. Hẹn gặp trực tiếp (Người mua cọc giữ chỗ 10%)</span>
               <p class="text-[11px] text-slate-600 mt-0.5">Phù hợp với mặt hàng Xe cộ, Đồ cồng kềnh. Người mua đặt cọc trước qua VietQR để hẹn giờ xem đồ, chống bỏ hẹn.</p>
             </div>
           </label>
 
-          <label class="flex items-start gap-3 p-3.5 border border-slate-200 rounded-xl cursor-pointer">
-            <input type="radio" name="delivery_method" value="2" class="mt-0.5 w-4 h-4 text-slate-600 rounded">
+          <label class="flex items-start gap-3 p-3.5 border <%= formDelivery == 2 ? "border-2 border-blue-600 bg-blue-50/50" : "border-slate-200" %> rounded-xl cursor-pointer">
+            <input type="radio" name="delivery_method" value="2" <%= formDelivery == 2 ? "checked" : "" %> class="mt-0.5 w-4 h-4 text-slate-600 rounded">
             <div>
               <span class="text-xs font-bold text-slate-900 block">2. Giao hàng qua bưu điện / shipper (Khách được dùng thử 48h)</span>
               <p class="text-[11px] text-slate-600 mt-0.5">Mặt hàng Xe cộ yêu cầu thử xe trực tiếp nên phương thức này được tạm tắt.</p>
@@ -150,7 +186,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-[11px] font-medium text-slate-700 mb-1">Tỉnh / Thành phố</label>
-            <select class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select name="province" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option selected>TP. Hồ Chí Minh</option>
               <option>Hà Nội</option>
               <option>Đà Nẵng</option>
@@ -161,7 +197,7 @@
 
           <div>
             <label class="block text-[11px] font-medium text-slate-700 mb-1">Quận / Huyện</label>
-            <select class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select name="district" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option selected>Quận 10</option>
               <option>Quận 1</option>
               <option>Quận Bình Thạnh</option>
@@ -174,7 +210,8 @@
         <div>
           <label class="block text-[11px] font-medium text-slate-700 mb-1">Địa chỉ cụ thể (Đường, Phường/Xã)</label>
           <input 
-            type="text" 
+            type="text"
+            name="address_detail"
             value="Đường Tô Hiến Thành, Phường 13"
             class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -230,11 +267,11 @@
 
       <!-- NÚT XUẤT BẢN BÀI ĐĂNG -->
       <div class="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
-        <a href="home" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">
+        <a href="my-posts" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">
           Hủy bỏ
         </a>
         <button type="submit" class="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-bold rounded-lg shadow-sm transition">
-          Đăng Tin Miễn Phí Ngay
+          <%= isEditMode ? "Lưu Thay Đổi" : "Đăng Tin Miễn Phí Ngay" %>
         </button>
       </div>
 
@@ -264,12 +301,146 @@
   <jsp:include page="includes/footer.jsp" />
 
   <script>
-    function handlePostSubmit(e) {
-      e.preventDefault();
-      document.getElementById('successModal').classList.remove('hidden');
-      setTimeout(() => {
-        window.location.href = '01-trang-chu.jsp';
-      }, 2000);
+    // =====================================================================
+    // LUỒNG LƯU & PHỤC HỒI FORM KHI CHƯA ĐĂNG NHẬP
+    // =====================================================================
+    const POST_AD_DRAFT_KEY = 'muangay_post_ad_draft';
+    const IS_LOGGED_IN = <%= isLoggedIn %>;
+    const IS_EDIT_MODE = <%= isEditMode %>;
+    const CONTEXT_PATH = '${pageContext.request.contextPath}';
+
+    // --- HÀM LƯU TOÀN BỘ FORM VÀO localStorage ---
+    function saveFormDraft() {
+      const form = document.querySelector('form[action="post-ad"]');
+      if (!form) return;
+
+      const draft = {};
+
+      // Thu thập tất cả input/textarea/select có name
+      form.querySelectorAll('input[name], textarea[name], select[name]').forEach(el => {
+        const name = el.name;
+        if (!name || name === 'images') return; // Bỏ qua file upload
+
+        if (el.type === 'radio' || el.type === 'checkbox') {
+          if (el.checked) draft[name] = el.value;
+        } else {
+          draft[name] = el.value;
+        }
+      });
+
+      try {
+        console.log('[MuaNgay] Đang lưu draft form:', draft);
+        localStorage.setItem(POST_AD_DRAFT_KEY, JSON.stringify(draft));
+        console.log('[MuaNgay] Lưu draft thành công.');
+      } catch (e) {
+        console.warn('Không thể lưu draft:', e);
+      }
+    }
+
+    // --- HÀM PHỤC HỒI FORM TỪ localStorage ---
+    function restoreFormDraft() {
+      let draft;
+      try {
+        const raw = localStorage.getItem(POST_AD_DRAFT_KEY);
+        if (!raw) return false;
+        draft = JSON.parse(raw);
+      } catch (e) {
+        localStorage.removeItem(POST_AD_DRAFT_KEY);
+        return false;
+      }
+
+      if (!draft || Object.keys(draft).length === 0) return false;
+      console.log('[MuaNgay] Đang phục hồi draft form:', draft);
+
+      // ── BƯỚC 1: Phục hồi radio buttons ──────────────────────────────────
+      // deal_type (Bán / Tặng)
+      if (draft.deal_type) {
+        const dealEl = document.querySelector(`input[name="deal_type"][value="${draft.deal_type}"]`);
+        if (dealEl) dealEl.checked = true;
+      }
+      // delivery_method
+      if (draft.delivery_method) {
+        const deliveryEl = document.querySelector(`input[name="delivery_method"][value="${draft.delivery_method}"]`);
+        if (deliveryEl) deliveryEl.checked = true;
+      }
+      // vip_boost
+      if (draft.vip_boost) {
+        const vipEl = document.querySelector(`input[name="vip_boost"][value="${draft.vip_boost}"]`);
+        if (vipEl) vipEl.checked = true;
+      }
+
+      // ── BƯỚC 2: Dispatch change events để cập nhật styling UI ────────────
+      const checkedDeal = document.querySelector('input[name="deal_type"]:checked');
+      if (checkedDeal) checkedDeal.dispatchEvent(new Event('change', { bubbles: true }));
+
+      const checkedDelivery = document.querySelector('input[name="delivery_method"]:checked');
+      if (checkedDelivery) checkedDelivery.dispatchEvent(new Event('change', { bubbles: true }));
+
+      // ── BƯỚC 3: Phục hồi danh mục & render specs ────────────────────────
+      const catEl = document.getElementById('categorySelect');
+      if (catEl && draft.categoryId) {
+        catEl.value = draft.categoryId;
+        window._pendingSpecsDraft = draft;
+        renderCategorySpecs(catEl.value, {});
+      }
+
+      // ── BƯỚC 4: Phục hồi các text fields TÁC BIỆT sau cùng ──────────────
+      // (Phải đặt SAU dispatch events vì event handlers có thể reset giá trị)
+      function setField(name, value) {
+        if (value === undefined || value === null) return;
+        const el = document.querySelector(`[name="${name}"]`);
+        if (el) {
+          el.value = value;
+          console.log(`[MuaNgay] Đã phục hồi [${name}] = "${value}"`);
+        } else {
+          console.warn(`[MuaNgay] Không tìm thấy field [${name}]`);
+        }
+      }
+
+      setField('title',          draft.title);
+      setField('description',    draft.description);
+      setField('address_detail', draft.address_detail);
+      setField('province',       draft.province);
+      setField('district',       draft.district);
+
+      // Giá: chỉ set nếu không phải chế độ Tặng (chế độ Tặng thì event đã set = '0')
+      if (draft.deal_type !== 'give') {
+        setField('price', draft.price);
+      }
+
+      // Xóa draft sau khi đã phục hồi xong
+      localStorage.removeItem(POST_AD_DRAFT_KEY);
+      console.log('[MuaNgay] Phục hồi draft hoàn tất.');
+      return true;
+    }
+
+    // --- CHẶN SUBMIT: NẾU CHƯA ĐĂNG NHẬP, LƯU FORM RỒI REDIRECT ---
+    document.addEventListener('DOMContentLoaded', function () {
+      // Chỉ xử lý form đăng tin mới (không phải chỉnh sửa)
+      if (IS_EDIT_MODE) return;
+
+      const form = document.querySelector('form[action="post-ad"]');
+      if (!form) return;
+
+      form.addEventListener('submit', function (e) {
+        if (!IS_LOGGED_IN) {
+          e.preventDefault(); // Ngăn submit
+          saveFormDraft();
+          // Redirect sang trang login với tham số redirect=post-ad
+          window.location.href = CONTEXT_PATH + '/login?redirect=post-ad';
+        }
+        // Nếu đã đăng nhập → submit bình thường, đồng thời xóa draft cũ
+        else {
+          localStorage.removeItem(POST_AD_DRAFT_KEY);
+        }
+      });
+    });
+
+    // --- PHỤC HỒI FORM KHI VỪA ĐĂNG NHẬP THÀNH CÔNG ---
+    // Chạy ngay khi script load để phục hồi sớm nhất có thể
+    if (IS_LOGGED_IN && !IS_EDIT_MODE && localStorage.getItem(POST_AD_DRAFT_KEY)) {
+      // Đánh dấu cần phục hồi sau khi DOM ready và specs đã render
+      window._needRestoreDraft = true;
     }
   </script>
 
@@ -451,7 +622,293 @@
           }
         });
       });
+
+      // KHỞI TẠO THÔNG SỐ DANH MỤC BAN ĐẦU
+      const catSelect = document.getElementById('categorySelect');
+      if (catSelect) {
+        const editSpecsFromServer = <%=specsJsObj%>;
+        renderCategorySpecs(catSelect.value, editSpecsFromServer);
+      }
+
+      // PHỤC HỒI DRAFT SAU KHI ĐÃ ĐĂNG NHẬP THÀNH CÔNG
+      if (window._needRestoreDraft) {
+        const restored = restoreFormDraft();
+        if (restored) {
+          // Hiển thị banner thông báo phục hồi nội dung
+          showDraftRestoredBanner();
+        }
+        window._needRestoreDraft = false;
+      }
     });
+
+    // --- BANNER THÔNG BÁO KHI FORM ĐƯỢC PHỤC HỒI ---
+    function showDraftRestoredBanner() {
+      const banner = document.createElement('div');
+      banner.id = 'draftRestoredBanner';
+      banner.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:10px;padding:10px 20px;background:#1e3a5f;color:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.25);font-size:12px;font-weight:600;max-width:90vw;animation:slideDown 0.35s ease';
+      banner.innerHTML = `
+        <svg style="flex-shrink:0" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>✔ Nội dung bạn đã nhập trước đó đã được khôi phục tự động!</span>
+        <button onclick="this.parentElement.remove()" style="margin-left:8px;background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:12px">×</button>
+      `;
+      document.body.appendChild(banner);
+      // CSS animation
+      const style = document.createElement('style');
+      style.textContent = '@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+      document.head.appendChild(style);
+      // Tự động đóng sau 5 giây
+      setTimeout(() => { if (banner.parentElement) banner.remove(); }, 5000);
+    }
+
+    // DỮ LIỆU CẤU HÌNH CÁC DROPDOWN CHO TỪNG DANH MỤC
+    const categorySpecsData = {
+      '1': {
+        title: 'Điện Tử & Thiết Bị Số',
+        fields: [
+          {
+            name: 'spec_device_type',
+            label: 'Loại thiết bị',
+            required: true,
+            options: ['-- Chọn loại thiết bị --', 'Điện thoại thông minh', 'Máy tính bảng (Tablet)', 'Laptop / Máy tính xách tay', 'Máy tính để bàn (PC)', 'Đồng hồ thông minh (Smartwatch)', 'Tai nghe & Âm thanh', 'Thiết bị số khác']
+          },
+          {
+            name: 'spec_brand',
+            label: 'Hãng sản xuất',
+            required: true,
+            options: ['-- Chọn hãng sản xuất --', 'Apple', 'Samsung', 'Xiaomi', 'OPPO', 'Dell', 'Asus', 'Lenovo / ThinkPad', 'HP', 'Sony', 'Acer', 'Hãng khác']
+          },
+          {
+            name: 'spec_model',
+            label: 'Dòng máy',
+            required: true,
+            options: ['-- Chọn dòng máy --', 'iPhone 18 Pro Max', 'iPhone 18 Pro', 'iPhone 18', 'iPhone 17 Pro Max', 'iPhone 16 Pro Max', 'iPhone 15 Pro Max', 'iPhone 14 / 13 Pro Max', 'Galaxy S24 Ultra', 'Galaxy S23 / S22', 'Galaxy Z Fold / Flip', 'MacBook Pro M3 / M2', 'MacBook Air M3 / M2 / M1', 'iPad Pro / Air', 'Dell XPS / Inspiron', 'Asus ROG / Zenbook', 'ThinkPad X1 / T Series', 'Dòng máy khác']
+          },
+          {
+            name: 'spec_condition',
+            label: 'Tình trạng ngoại quan',
+            required: true,
+            options: ['-- Chọn tình trạng máy --', 'Mới 100% (Nguyên seal)', 'Đẹp keng 99% (Không trầy xước)', 'Đẹp 98% - 95% (Xước lông mèo nhẹ)', 'Cũ 90% (Cấn móp góc nhẹ)', 'Cũ nhiều theo thời gian']
+          },
+          {
+            name: 'spec_capacity',
+            label: 'Dung lượng / RAM',
+            required: false,
+            options: ['-- Chọn dung lượng / RAM --', '64GB', '128GB', '256GB', '512GB', '1TB', 'RAM 8GB / SSD 256GB', 'RAM 16GB / SSD 512GB', 'RAM 32GB trở lên']
+          },
+          {
+            name: 'spec_color',
+            label: 'Màu sắc',
+            required: false,
+            options: ['-- Chọn màu sắc --', 'Đỏ Burgundy', 'Titan Tự Nhiên / Xám Titan', 'Đen Phantom / Space Black', 'Trắng Starlight / Bạc Silver', 'Xanh Midnight / Xanh Dương', 'Vàng Gold', 'Màu khác']
+          },
+          {
+            name: 'spec_battery',
+            label: 'Tình trạng Pin',
+            required: false,
+            options: ['-- Chọn tình trạng pin --', 'Pin 100% hoàn hảo', 'Pin 95% - 99%', 'Pin 90% - 94%', 'Pin 80% - 89%', 'Pin dưới 80% (Báo bảo trì)', 'Đã thay pin mới chính hãng']
+          },
+          {
+            name: 'spec_warranty',
+            label: 'Phụ kiện & Bảo hành',
+            required: false,
+            options: ['-- Chọn phụ kiện & bảo hành --', 'Fullbox đầy đủ hộp & sạc cáp zin', 'Có sạc cáp zin, không hộp', 'Chỉ có máy trần', 'Còn bảo hành Apple Care / Hãng dài hạn', 'Hết bảo hành hãng']
+          }
+        ]
+      },
+      '2': {
+        title: 'Xe Cộ & Phương Tiện',
+        fields: [
+          {
+            name: 'spec_vehicle_type',
+            label: 'Loại phương tiện',
+            required: true,
+            options: ['-- Chọn loại phương tiện --', 'Xe máy tay ga', 'Xe máy số', 'Xe máy côn tay', 'Xe máy điện', 'Xe đạp điện', 'Ô tô con (4 - 7 chỗ)', 'Xe đạp thể thao']
+          },
+          {
+            name: 'spec_vehicle_brand',
+            label: 'Hãng xe',
+            required: true,
+            options: ['-- Chọn hãng xe --', 'Honda', 'Yamaha', 'Piaggio / Vespa', 'VinFast', 'Suzuki', 'Toyota', 'Hyundai', 'Kia', 'Mazda', 'Hãng khác']
+          },
+          {
+            name: 'spec_vehicle_model',
+            label: 'Dòng xe / Đời xe',
+            required: true,
+            options: ['-- Chọn dòng xe --', 'Honda SH (125i / 150i / 160i / 350i)', 'Honda Vision', 'Honda Air Blade (125 / 160)', 'Honda Lead', 'Honda Wave Alpha / RSX', 'Yamaha Exciter (150 / 155 VVA)', 'Yamaha Grande / Janus', 'Vespa Sprint / Primavera', 'VinFast Klara / Feliz / Evo', 'VinFast VF3 / VF5', 'Dòng xe khác']
+          },
+          {
+            name: 'spec_reg_year',
+            label: 'Năm đăng ký',
+            required: true,
+            options: ['-- Chọn năm đăng ký cavet --', '2026', '2025', '2024', '2023', '2022', '2021', '2020', '2018 - 2019', 'Trước 2018']
+          },
+          {
+            name: 'spec_legal_status',
+            label: 'Tình trạng giấy tờ',
+            required: true,
+            options: ['-- Chọn tình trạng giấy tờ --', 'Chính chủ - Công chứng sang tên ngay', 'Giấy tờ hợp lệ (Cavet gốc)', 'Xe biển số đẹp / Đã rút hồ sơ gốc', 'Xe không chính chủ']
+          },
+          {
+            name: 'spec_odo',
+            label: 'Số km đã đi (Odo)',
+            required: false,
+            options: ['-- Chọn số km đã đi --', 'Dưới 5.000 km (Xe lướt như mới)', '5.000 km - 10.000 km', '10.000 km - 20.000 km', '20.000 km - 40.000 km', 'Trên 40.000 km']
+          },
+          {
+            name: 'spec_engine_capacity',
+            label: 'Dung tích động cơ',
+            required: false,
+            options: ['-- Chọn dung tích động cơ --', 'Dưới 50cc (Không cần bằng lái)', '110cc', '125cc', '150cc - 160cc', 'Phân khối lớn (>175cc)', 'Động cơ điện']
+          },
+          {
+            name: 'spec_engine_condition',
+            label: 'Tình trạng máy móc',
+            required: false,
+            options: ['-- Chọn tình trạng máy móc --', 'Máy nguyên zin 100%, ốc tán chưa mở', 'Máy êm ái, bảo dưỡng định kỳ', 'Có dán keo trong bảo vệ từ lúc mua', 'Dàn áo có xước nhẹ theo thời gian']
+          }
+        ]
+      },
+      '3': {
+        title: 'Điện Lạnh & Gia Dụng',
+        fields: [
+          {
+            name: 'spec_appliance_type',
+            label: 'Loại thiết bị',
+            required: true,
+            options: ['-- Chọn loại thiết bị --', 'Tủ lạnh', 'Máy giặt', 'Máy sấy quần áo', 'Máy lạnh (Điều hòa nhiệt độ)', 'Nồi chiên không dầu', 'Lò vi sóng / Lò nướng', 'Máy lọc nước', 'Máy lọc không khí', 'Bếp điện từ / Bếp hồng ngoại', 'Thiết bị gia dụng khác']
+          },
+          {
+            name: 'spec_appliance_brand',
+            label: 'Thương hiệu',
+            required: true,
+            options: ['-- Chọn thương hiệu --', 'Panasonic', 'Toshiba', 'Electrolux', 'LG', 'Samsung', 'Daikin', 'Casper', 'Philips', 'Sunhouse', 'Hãng khác']
+          },
+          {
+            name: 'spec_appliance_power',
+            label: 'Công suất / Dung tích',
+            required: true,
+            options: ['-- Chọn dung tích / công suất --', 'Tủ lạnh: Dưới 200 Lít (1 - 2 người)', 'Tủ lạnh: 200 - 350 Lít (3 - 5 người)', 'Tủ lạnh: Trên 350 Lít (Side-by-Side)', 'Máy giặt: Dưới 8.5 kg', 'Máy giặt: 9 kg - 10.5 kg', 'Máy giặt: Trên 11 kg', 'Máy lạnh: 1.0 HP (Ngựa)', 'Máy lạnh: 1.5 HP (Ngựa)', 'Máy lạnh: 2.0 HP (Ngựa)', 'Khác']
+          },
+          {
+            name: 'spec_operation_status',
+            label: 'Tình trạng hoạt động',
+            required: true,
+            options: ['-- Chọn tình trạng hoạt động --', 'Đang dùng cực tốt, làm lạnh / giặt cực êm', 'Công nghệ Inverter tiết kiệm điện', 'Nguyên bản 100%, chưa từng sửa chữa', 'Đã vệ sinh sạch sẽ, nạp đầy đủ gas']
+          },
+          {
+            name: 'spec_appliance_condition',
+            label: 'Tình trạng ngoại quan',
+            required: true,
+            options: ['-- Chọn ngoại quan --', 'Mới keng 98% - 99% không tì vết', 'Còn đẹp 90% - 95%', 'Có ố vàng hoặc trầy xước nhẹ ngoài vỏ', 'Cũ bình thường theo thời gian']
+          },
+          {
+            name: 'spec_appliance_support',
+            label: 'Chính sách hỗ trợ',
+            required: false,
+            options: ['-- Chọn hỗ trợ của người bán --', 'Bao test tại nhà 7 ngày, lỗi hoàn tiền', 'Có hỗ trợ công lắp đặt hoặc tiền chở', 'Tặng kèm dây cấp, ống đồng, phụ kiện', 'Người mua tự vận chuyển']
+          }
+        ]
+      },
+      '4': {
+        title: 'Nội Thất & Đồ Gia Đình',
+        fields: [
+          {
+            name: 'spec_furniture_type',
+            label: 'Loại đồ dùng',
+            required: true,
+            options: ['-- Chọn loại đồ nội thất --', 'Bàn làm việc / Bàn gaming', 'Ghế công thái học (Ergonomic) / Ghế văn phòng', 'Sofa & Bàn trà phòng khách', 'Tủ quần áo', 'Giường ngủ & Nệm', 'Kệ tivi / Kệ sách', 'Bàn ăn & Ghế ăn', 'Đồ nội thất khác']
+          },
+          {
+            name: 'spec_material',
+            label: 'Chất liệu chính',
+            required: true,
+            options: ['-- Chọn chất liệu chính --', 'Gỗ tự nhiên (Sồi, Xoan đào, Cao su...)', 'Gỗ công nghiệp MDF lõi xanh chống ẩm', 'Khung sắt sơn tĩnh điện chắc chắn', 'Lưới thoáng khí cao cấp (Ghế Ergonomic)', 'Da PU / Da microfiber', 'Vải nỉ / Vải bố mềm mại', 'Chất liệu khác']
+          },
+          {
+            name: 'spec_dimensions',
+            label: 'Kích thước',
+            required: true,
+            options: ['-- Chọn kích thước --', 'Bàn 100 x 50 x 75 cm (Gọn gàng)', 'Bàn 120 x 60 x 75 cm (Tiêu chuẩn)', 'Bàn 140 x 70 x 75 cm (Rộng rãi)', 'Giường 1m2 x 2m (Đơn)', 'Giường 1m6 x 2m (Đôi)', 'Giường 1m8 x 2m (King size)', 'Tủ quần áo 2 - 3 cánh', 'Kích thước khác (Ghi rõ trong mô tả)']
+          },
+          {
+            name: 'spec_furniture_color',
+            label: 'Màu sắc',
+            required: true,
+            options: ['-- Chọn tông màu chính --', 'Màu vân gỗ sồi tự nhiên', 'Màu nâu cafe / Cánh gián', 'Màu trắng hiện đại', 'Màu đen sang trọng', 'Màu xám ghi / Ghi sáng', 'Màu be / Kem nhã nhặn', 'Màu khác']
+          },
+          {
+            name: 'spec_furniture_condition',
+            label: 'Tình trạng ngoại quan',
+            required: true,
+            options: ['-- Chọn tình trạng sản phẩm --', 'Đẹp keng 99% như vừa khui thùng', 'Đẹp 95% không trầy xước bề mặt', 'Còn tốt 90% (Có cấn góc hoặc sờn nhẹ)', 'Kết cấu vững chãi, không lung lay ọp ẹp']
+          },
+          {
+            name: 'spec_transport',
+            label: 'Tháo lắp & Vận chuyển',
+            required: false,
+            options: ['-- Chọn cách vận chuyển --', 'Đã tháo rời gọn gàng, chở được bằng xe máy', 'Có thể hỗ trợ người mua tháo lắp tại chỗ', 'Đồ nguyên khối, cần chở bằng xe ba gác / xe tải']
+          }
+        ]
+      }
+    };
+
+    function renderCategorySpecs(catId, preSelectedSpecs) {
+      const data = categorySpecsData[catId];
+      const titleEl = document.getElementById('categoryNameTitle');
+      const container = document.getElementById('specsContainer');
+      if (!data || !container) return;
+
+      if (titleEl) titleEl.textContent = data.title;
+      container.innerHTML = '';
+
+      // Nếu không truyền preSelectedSpecs thì dùng object rỗng
+      const specs = preSelectedSpecs || {};
+
+      // Lấy draft (lưu theo field.name) nếu có để phục hồi specs
+      const draftSpecs = window._pendingSpecsDraft || null;
+
+      data.fields.forEach(field => {
+        const div = document.createElement('div');
+        div.className = 'flex flex-col';
+
+        const label = document.createElement('label');
+        label.className = 'block text-[11px] font-semibold text-slate-700 mb-1';
+        label.innerHTML = field.label + (field.required ? ' <span class="text-red-500 font-bold">*</span>' : ' <span class="text-slate-400 font-normal text-[10px]">(Tùy chọn)</span>');
+
+        const select = document.createElement('select');
+        select.name = field.name;
+        select.className = 'w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-2xs';
+        if (field.required) {
+          select.required = true;
+        }
+
+        const savedValue = specs[field.label] || '';
+        const draftValue = draftSpecs ? (draftSpecs[field.name] || '') : '';
+
+        field.options.forEach((opt, idx) => {
+          const option = document.createElement('option');
+          if (idx === 0) {
+            option.value = '';
+            option.textContent = opt;
+          } else {
+            option.value = opt;
+            option.textContent = opt;
+            if ((savedValue && opt === savedValue) || (!savedValue && draftValue && opt === draftValue)) {
+              option.selected = true;
+            }
+          }
+          select.appendChild(option);
+        });
+
+        div.appendChild(label);
+        div.appendChild(select);
+        container.appendChild(div);
+      });
+
+      if (window._pendingSpecsDraft) {
+        window._pendingSpecsDraft = null;
+      }
+    }
   </script>
 </body>
 </html>

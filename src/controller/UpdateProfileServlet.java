@@ -15,7 +15,7 @@ import java.util.Map;
 
 @WebServlet(name = "UpdateProfileServlet", value = "/update-profile")
 public class UpdateProfileServlet extends HttpServlet {
-    private static final String PROFILE_PAGE = "/08-ho-so-ca-nhan.jsp";
+    private static final String PROFILE_PAGE = "/my-posts";
     private static final String VIETNAM_MOBILE_PATTERN = "^(03[2-9]|05[25689]|07[06789]|08[1-9]|09[0-9])[0-9]{7}$";
     private final AuthService authService = new AuthService();
 
