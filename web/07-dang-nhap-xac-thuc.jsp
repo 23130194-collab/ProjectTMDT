@@ -42,8 +42,6 @@
   if (authMessage != null) {
     session.removeAttribute("authMessage");
   }
-  // Lưu URL cần redirect sau khi login (cho luồng đăng tin trước khi đăng nhập)
-  String redirectUrl = request.getAttribute("redirectUrl") != null ? (String) request.getAttribute("redirectUrl") : "";
 %>
 <!DOCTYPE html>
 <html lang="vi">
@@ -105,8 +103,6 @@
 
       <!-- FORM 1: ĐĂNG NHẬP -->
       <form id="loginForm" action="${pageContext.request.contextPath}/login" method="post" class="space-y-4 text-xs">
-        <!-- Hidden field để giữ URL redirect sau khi đăng nhập thành công -->
-        <input type="hidden" name="redirectUrl" id="loginRedirectUrl" value="<%= h(redirectUrl) %>">
         <% if (loginError != null) { %>
           <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-[11px] font-semibold"><%= h(loginError) %></div>
         <% } %>
