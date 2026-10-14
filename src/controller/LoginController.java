@@ -18,6 +18,11 @@ public class LoginController extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // Đọc tham số redirect để sau khi login thành công có thể quay về đúng trang
+        String redirect = request.getParameter("redirect");
+        if (redirect != null && !redirect.trim().isEmpty()) {
+            request.setAttribute("redirectUrl", redirect.trim());
+        }
         request.getRequestDispatcher("/07-dang-nhap-xac-thuc.jsp").forward(request, response);
     }
 
@@ -63,8 +68,19 @@ public class LoginController extends HttpServlet {
 
         if ("ADMIN".equalsIgnoreCase(user.getRole())) {
             response.sendRedirect(request.getContextPath() + "/06-quan-tri-admin.jsp");
-        } else {
-            response.sendRedirect(request.getContextPath() + "/08-ho-so-ca-nhan.jsp");
+            return;
         }
+
+        // Kiểm tra xem có URL redirect không (dùng cho luồng đăng tin trước khi login)
+        String redirectUrl = request.getParameter("redirectUrl");
+        if (redirectUrl != null && !redirectUrl.trim().isEmpty()) {
+            // Chỉ cho phép redirect nội bộ (không bắt đầu bằng http) để tránh open redirect
+            String safeRedirect = redirectUrl.trim();
+            if (!safeRedirect.startsWith("http") && !safeRedirect.startsWith("//")) {
+                response.sendRedirect(request.getContextPath() + "/" + safeRedirect);
+                return;
+            }
+        }
+        response.sendRedirect(request.getContextPath() + "/my-posts");
     }
 }

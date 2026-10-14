@@ -77,7 +77,7 @@ public class ChangePasswordServlet extends HttpServlet {
         session.setAttribute("user", updatedUser);
 
         session.setAttribute("changePassSuccess", "Đổi mật khẩu thành công!");
-        response.sendRedirect(request.getContextPath() + PROFILE_PAGE);
+        response.sendRedirect(request.getContextPath() + "/my-posts");
     }
 
     private boolean matchesPassword(String storedPassword, String rawPassword) {
