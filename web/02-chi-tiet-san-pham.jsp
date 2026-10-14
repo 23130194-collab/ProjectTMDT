@@ -236,20 +236,30 @@
 
           <!-- CÁC NÚT HÀNH ĐỘNG CHÍNH (THAY ĐỔI THEO FLOW) -->
           <div id="actionButtonsContainer" class="space-y-2.5 pt-1">
-            <a id="btnDepositMain" href="04-chat-tra-gia-vietqr.jsp"
+            <a id="btnDepositMain" href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}"
               class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">
               Đặt Cọc Giữ Máy Ngay (VietQR Cọc 1.000.000 đ)
             </a>
 
             <div class="grid grid-cols-2 gap-2">
-              <a href="04-chat-tra-gia-vietqr.jsp"
+              <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}"
                 class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
                 Nhắn Tin Mua Máy
               </a>
-              <a href="04-chat-tra-gia-vietqr.jsp"
-                class="py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs rounded-lg flex items-center justify-center transition">
-                Đề Xuất Trả Giá
-              </a>
+              <c:choose>
+                <c:when test="${product.price == 0}">
+                  <button type="button" disabled title="Tin tặng miễn phí không hỗ trợ đề xuất trả giá"
+                    class="py-2.5 bg-slate-100 text-slate-400 border border-slate-200 font-semibold text-xs rounded-lg flex items-center justify-center cursor-not-allowed">
+                    Đề Xuất Trả Giá
+                  </button>
+                </c:when>
+                <c:otherwise>
+                  <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}&action=offer"
+                    class="py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs rounded-lg flex items-center justify-center transition">
+                    Đề Xuất Trả Giá
+                  </a>
+                </c:otherwise>
+              </c:choose>
             </div>
 
             <button id="favoriteBtn" onclick="toggleFavorite()"
@@ -390,16 +400,25 @@
         content.innerText = 'Mặt hàng Điện thoại cao cấp bắt buộc test máy trực tiếp hoặc chọn giao nhận có đồng kiểm. Người mua đặt cọc 1.000.000 đ qua VietQR để tạm khóa bài đăng chống người khác mua mất.';
 
         actionContainer.innerHTML = `
-          <a href="04-chat-tra-gia-vietqr.jsp" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">
+          <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">
             Đặt Cọc Giữ Máy Ngay (VietQR Cọc 1.000.000 đ)
           </a>
           <div class="grid grid-cols-2 gap-2">
-            <a href="04-chat-tra-gia-vietqr.jsp" class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
+            <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}" class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
               Nhắn Tin Mua Máy
             </a>
-            <a href="04-chat-tra-gia-vietqr.jsp" class="py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs rounded-lg flex items-center justify-center transition">
-              Đề Xuất Trả Giá
-            </a>
+            <c:choose>
+              <c:when test="${product.price == 0}">
+                <button type="button" disabled title="Tin tặng miễn phí không hỗ trợ đề xuất trả giá" class="py-2.5 bg-slate-100 text-slate-400 border border-slate-200 font-semibold text-xs rounded-lg flex items-center justify-center cursor-not-allowed">
+                  Đề Xuất Trả Giá
+                </button>
+              </c:when>
+              <c:otherwise>
+                <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}&action=offer" class="py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs rounded-lg flex items-center justify-center transition">
+                  Đề Xuất Trả Giá
+                </a>
+              </c:otherwise>
+            </c:choose>
           </div>
           <button id="favoriteBtn" onclick="toggleFavorite()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-lg transition">
             Lưu Tin Vào Danh Sách Yêu Thích
@@ -420,7 +439,7 @@
           <button disabled class="w-full py-3 bg-slate-300 text-slate-500 font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center cursor-not-allowed">
             Tin Đăng Đang Tạm Khóa (Đã Nhận Cọc 1 Triệu)
           </button>
-          <a href="04-chat-tra-gia-vietqr.jsp" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
+          <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
             Vào Khung Chat Xem Địa Điểm Hẹn & Xác Nhận Giao Nhận ->
           </a>
           <a href="05-quan-ly-don-hang.jsp" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg flex items-center justify-center transition border border-slate-200">
