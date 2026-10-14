@@ -15,3 +15,7 @@ target/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Google OAuth credentials - KHONG commit file nay len Git!
+web/WEB-INF/google-oauth.properties
+src/google-oauth.properties
