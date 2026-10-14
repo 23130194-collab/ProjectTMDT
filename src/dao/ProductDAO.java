@@ -1,6 +1,7 @@
 package dao;
 
 import model.Product;
+import model.Category;
 import util.DBContext;
 
 import java.sql.*;
@@ -9,10 +10,25 @@ import java.util.List;
 
 public class ProductDAO {
 
+    public List<Category> getAllCategories() {
+        List<Category> categories = new ArrayList<>();
+        String sql = "SELECT id, name, icon FROM categories ORDER BY id";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                categories.add(new Category(rs.getInt("id"), rs.getString("name"), rs.getString("icon")));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return categories;
+    }
+
     // Hàm thêm sản phẩm mới vào Database, trả về ID của sản phẩm vừa tạo
     public int insertProduct(Product product) {
-        String sql = "INSERT INTO products (user_id, category_id, title, description, price, condition_status, specifications, location, status, delivery_method) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO products (user_id, category_id, title, description, price, condition_status, specifications, province, ward, address_detail, status, delivery_method, deal_type) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         int generatedId = 0;
         
         try (Connection conn = DBContext.getConnection();
@@ -25,9 +41,12 @@ public class ProductDAO {
             ps.setDouble(5, product.getPrice());
             ps.setString(6, product.getConditionStatus());
             ps.setString(7, product.getSpecifications());
-            ps.setString(8, product.getLocation());
-            ps.setString(9, product.getStatus()); // 'PENDING'
-            ps.setInt(10, product.getDeliveryMethod());
+            ps.setString(8, product.getProvince());
+            ps.setString(9, product.getWard());
+            ps.setString(10, product.getAddressDetail());
+            ps.setString(11, product.getStatus()); // 'PENDING'
+            ps.setInt(12, product.getDeliveryMethod());
+            ps.setString(13, product.getDealType());
             
             ps.executeUpdate();
             
@@ -48,6 +67,7 @@ public class ProductDAO {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
+                     "WHERE p.status <> 'DELETE' " +
                      "ORDER BY p.created_at DESC, p.id DESC"; // Lấy tin mới nhất
         
         try (Connection conn = DBContext.getConnection();
@@ -59,11 +79,15 @@ public class ProductDAO {
                 p.setId(rs.getInt("id"));
                 p.setUserId(rs.getInt("user_id"));
                 p.setCategoryId(rs.getInt("category_id"));
+                p.setDealType(rs.getString("deal_type"));
                 p.setTitle(rs.getString("title"));
                 p.setDescription(rs.getString("description"));
                 p.setPrice(rs.getDouble("price"));
                 p.setConditionStatus(rs.getString("condition_status"));
                 p.setLocation(rs.getString("location"));
+                p.setProvince(rs.getString("province"));
+                p.setWard(rs.getString("ward"));
+                p.setAddressDetail(rs.getString("address_detail"));
                 p.setStatus(rs.getString("status"));
                 p.setCreatedAt(rs.getTimestamp("created_at"));
                 p.setNewProduct(isNewProduct(p.getCreatedAt()));
@@ -84,7 +108,7 @@ public class ProductDAO {
         int safeLimit = limit > 0 ? Math.min(limit, 10) : 10;
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
-                     "WHERE p.created_at >= NOW() - INTERVAL 2 DAY " +
+                     "WHERE p.status <> 'DELETE' AND p.created_at >= NOW() - INTERVAL 2 DAY " +
                      "ORDER BY p.created_at DESC, p.id DESC LIMIT ?";
 
         try (Connection conn = DBContext.getConnection();
@@ -96,11 +120,15 @@ public class ProductDAO {
                     p.setId(rs.getInt("id"));
                     p.setUserId(rs.getInt("user_id"));
                     p.setCategoryId(rs.getInt("category_id"));
+                    p.setDealType(rs.getString("deal_type"));
                     p.setTitle(rs.getString("title"));
                     p.setDescription(rs.getString("description"));
                     p.setPrice(rs.getDouble("price"));
                     p.setConditionStatus(rs.getString("condition_status"));
                     p.setLocation(rs.getString("location"));
+                    p.setProvince(rs.getString("province"));
+                    p.setWard(rs.getString("ward"));
+                    p.setAddressDetail(rs.getString("address_detail"));
                     p.setStatus(rs.getString("status"));
                     p.setCreatedAt(rs.getTimestamp("created_at"));
                 p.setNewProduct(isNewProduct(p.getCreatedAt()));
@@ -119,7 +147,7 @@ public class ProductDAO {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
-                     "WHERE p.title LIKE ? OR p.description LIKE ? " +
+                     "WHERE p.status <> 'DELETE' AND (p.title LIKE ? OR p.description LIKE ?) " +
                      "ORDER BY p.id DESC";
 
         try (Connection conn = DBContext.getConnection();
@@ -133,11 +161,15 @@ public class ProductDAO {
                     p.setId(rs.getInt("id"));
                     p.setUserId(rs.getInt("user_id"));
                     p.setCategoryId(rs.getInt("category_id"));
+                    p.setDealType(rs.getString("deal_type"));
                     p.setTitle(rs.getString("title"));
                     p.setDescription(rs.getString("description"));
                     p.setPrice(rs.getDouble("price"));
                     p.setConditionStatus(rs.getString("condition_status"));
                     p.setLocation(rs.getString("location"));
+                    p.setProvince(rs.getString("province"));
+                    p.setWard(rs.getString("ward"));
+                    p.setAddressDetail(rs.getString("address_detail"));
                     p.setStatus(rs.getString("status"));
                     p.setCreatedAt(rs.getTimestamp("created_at"));
                 p.setNewProduct(isNewProduct(p.getCreatedAt()));
@@ -155,7 +187,7 @@ public class ProductDAO {
 
     public List<Product> getProductSuggestions(String keyword) {
         List<Product> suggestions = new ArrayList<>();
-        String sql = "SELECT title, price FROM products WHERE title LIKE ? ORDER BY id DESC LIMIT 5";
+        String sql = "SELECT title, price FROM products WHERE status <> 'DELETE' AND title LIKE ? ORDER BY id DESC LIMIT 5";
 
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -175,7 +207,7 @@ public class ProductDAO {
     }
 
     public Product getProductById(int id) {
-        String sql = "SELECT * FROM products WHERE id = ?";
+        String sql = "SELECT * FROM products WHERE id = ? AND status <> 'DELETE'";
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
@@ -185,11 +217,15 @@ public class ProductDAO {
                     p.setId(rs.getInt("id"));
                     p.setUserId(rs.getInt("user_id"));
                     p.setCategoryId(rs.getInt("category_id"));
+                    p.setDealType(rs.getString("deal_type"));
                     p.setTitle(rs.getString("title"));
                     p.setDescription(rs.getString("description"));
                     p.setPrice(rs.getDouble("price"));
                     p.setConditionStatus(rs.getString("condition_status"));
                     p.setLocation(rs.getString("location"));
+                    p.setProvince(rs.getString("province"));
+                    p.setWard(rs.getString("ward"));
+                    p.setAddressDetail(rs.getString("address_detail"));
                     p.setStatus(rs.getString("status"));
                     p.setCreatedAt(rs.getTimestamp("created_at"));
                 p.setNewProduct(isNewProduct(p.getCreatedAt()));
@@ -217,7 +253,7 @@ public class ProductDAO {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
-                     "WHERE p.user_id = ? ORDER BY p.created_at DESC";
+                     "WHERE p.user_id = ? AND p.status <> 'DELETE' ORDER BY p.created_at DESC";
 
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -228,11 +264,15 @@ public class ProductDAO {
                     p.setId(rs.getInt("id"));
                     p.setUserId(rs.getInt("user_id"));
                     p.setCategoryId(rs.getInt("category_id"));
+                    p.setDealType(rs.getString("deal_type"));
                     p.setTitle(rs.getString("title"));
                     p.setDescription(rs.getString("description"));
                     p.setPrice(rs.getDouble("price"));
                     p.setConditionStatus(rs.getString("condition_status"));
                     p.setLocation(rs.getString("location"));
+                    p.setProvince(rs.getString("province"));
+                    p.setWard(rs.getString("ward"));
+                    p.setAddressDetail(rs.getString("address_detail"));
                     p.setStatus(rs.getString("status"));
                     p.setCreatedAt(rs.getTimestamp("created_at"));
                     p.setNewProduct(isNewProduct(p.getCreatedAt()));
@@ -250,7 +290,7 @@ public class ProductDAO {
 
     // Cập nhật trạng thái bài đăng (ACTIVE, SOLD, HIDDEN...)
     public boolean updateProductStatus(int productId, int userId, String newStatus) {
-        String sql = "UPDATE products SET status = ? WHERE id = ? AND user_id = ?";
+        String sql = "UPDATE products SET status = ? WHERE id = ? AND user_id = ? AND status <> 'DELETE'";
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newStatus);
@@ -265,22 +305,12 @@ public class ProductDAO {
 
     // Xóa bài đăng (chỉ chủ sở hữu mới được xóa)
     public boolean deleteProduct(int productId, int userId) {
-        // Xóa ảnh trước (ON DELETE CASCADE sẽ lo, nhưng để chắc chắn)
-        String sqlImg = "DELETE FROM product_images WHERE product_id = ? AND product_id IN (SELECT id FROM products WHERE user_id = ?)";
-        String sqlProd = "DELETE FROM products WHERE id = ? AND user_id = ?";
-        try (Connection conn = DBContext.getConnection()) {
-            // Xóa ảnh
-            try (PreparedStatement ps = conn.prepareStatement(sqlImg)) {
-                ps.setInt(1, productId);
-                ps.setInt(2, userId);
-                ps.executeUpdate();
-            }
-            // Xóa sản phẩm
-            try (PreparedStatement ps = conn.prepareStatement(sqlProd)) {
-                ps.setInt(1, productId);
-                ps.setInt(2, userId);
-                return ps.executeUpdate() > 0;
-            }
+        String sql = "UPDATE products SET status = 'DELETE' WHERE id = ? AND user_id = ? AND status <> 'DELETE'";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, productId);
+            ps.setInt(2, userId);
+            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -290,7 +320,7 @@ public class ProductDAO {
     // Cập nhật thông tin bài đăng (sửa bài)
     public boolean updateProduct(Product product) {
         String sql = "UPDATE products SET title = ?, description = ?, price = ?, category_id = ?, " +
-                     "condition_status = ?, specifications = ?, location = ?, delivery_method = ? " +
+                     "condition_status = ?, specifications = ?, province = ?, ward = ?, address_detail = ?, delivery_method = ?, deal_type = ? " +
                      "WHERE id = ? AND user_id = ?";
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -300,10 +330,13 @@ public class ProductDAO {
             ps.setInt(4, product.getCategoryId());
             ps.setString(5, product.getConditionStatus());
             ps.setString(6, product.getSpecifications());
-            ps.setString(7, product.getLocation());
-            ps.setInt(8, product.getDeliveryMethod());
-            ps.setInt(9, product.getId());
-            ps.setInt(10, product.getUserId());
+            ps.setString(7, product.getProvince());
+            ps.setString(8, product.getWard());
+            ps.setString(9, product.getAddressDetail());
+            ps.setInt(10, product.getDeliveryMethod());
+            ps.setString(11, product.getDealType());
+            ps.setInt(12, product.getId());
+            ps.setInt(13, product.getUserId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();

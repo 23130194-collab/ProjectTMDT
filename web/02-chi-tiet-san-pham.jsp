@@ -134,7 +134,7 @@
                 </div>
                 <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                   <span class="text-slate-400 block text-[10px]">Khu vực</span>
-                  <span class="font-bold text-slate-800 text-xs">${product.location}</span>
+                  <span class="font-bold text-slate-800 text-xs"><c:out value="${product.displayLocation}"/></span>
                 </div>
               </div>
             </c:otherwise>
@@ -147,7 +147,7 @@
             <span class="font-bold text-blue-900 uppercase tracking-wide block text-[11px]">Tạm Điểm Hẹn Gặp Xem &amp; Test Máy Trực Tiếp</span>
             <p class="text-blue-800 font-medium mt-1">
               <c:choose>
-                <c:when test="${not empty product.location}">${product.location}. </c:when>
+                <c:when test="${not empty product.displayLocation}"><c:out value="${product.displayLocation}"/>. </c:when>
                 <c:otherwise>Liên hệ người bán để biết địa điểm hẹn gặp. </c:otherwise>
               </c:choose>
               Vui lòng liên hệ đặt cọc hoặc hẹn trước không giờ trước khi qua.
@@ -220,7 +220,7 @@
               <span class="text-2xl sm:text-3xl font-bold text-red-600"><fmt:formatNumber value="${product.price}" type="currency" currencySymbol="đ" maxFractionDigits="0"/></span>
               <span class="text-xs text-slate-500">Giá tốt bắt trend</span>
             </div>
-            <p class="text-[11px] text-slate-500 mt-1">Đăng lúc ${product.createdAt} tại ${product.location}</p>
+            <p class="text-[11px] text-slate-500 mt-1">Đăng lúc ${product.createdAt} tại <c:out value="${product.displayLocation}"/></p>
           </div>
 
           <!-- BANNER TRẠNG THÁI THEO KỊCH BẢN FLOW -->
@@ -285,7 +285,7 @@
               </div>
               <div class="text-[11px] text-slate-500">
                 <c:choose>
-                  <c:when test="${not empty product.location}">${product.location}</c:when>
+                  <c:when test="${not empty product.displayLocation}"><c:out value="${product.displayLocation}"/></c:when>
                   <c:otherwise>Việt Nam</c:otherwise>
                 </c:choose>
               </div>
