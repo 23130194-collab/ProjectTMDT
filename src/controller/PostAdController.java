@@ -165,11 +165,10 @@ public class PostAdController extends HttpServlet {
 
         String specsJson = JsonUtil.mapToJson(specsMap);
 
-        // 2. Lấy location từ form (3 trường: tỉnh, quận, địa chỉ)
+        // 2. Lưu địa chỉ tin đăng thành các trường riêng để có thể lọc chính xác.
         String province = request.getParameter("province");
-        String district = request.getParameter("district");
+        String ward = request.getParameter("ward");
         String addressDetail = request.getParameter("address_detail");
-        String location = buildLocation(province, district, addressDetail);
 
         // 3. Tạo đối tượng Product
         Product product = new Product();
@@ -180,7 +179,9 @@ public class PostAdController extends HttpServlet {
         product.setPrice(price);
         product.setConditionStatus(conditionStatus);
         product.setSpecifications(specsJson);
-        product.setLocation(location);
+        product.setProvince(province);
+        product.setWard(ward);
+        product.setAddressDetail(addressDetail);
         product.setStatus("PENDING");
 
         String deliveryMethodStr = request.getParameter("delivery_method");
@@ -253,20 +254,4 @@ public class PostAdController extends HttpServlet {
         return "";
     }
 
-    // Hàm phụ ghép chuỗi địa điểm từ tỉnh, quận, địa chỉ chi tiết
-    private String buildLocation(String province, String district, String addressDetail) {
-        StringBuilder sb = new StringBuilder();
-        if (addressDetail != null && !addressDetail.trim().isEmpty()) {
-            sb.append(addressDetail.trim());
-        }
-        if (district != null && !district.trim().isEmpty()) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(district.trim());
-        }
-        if (province != null && !province.trim().isEmpty()) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(province.trim());
-        }
-        return sb.length() > 0 ? sb.toString() : "TP. Hồ Chí Minh";
-    }
 }
