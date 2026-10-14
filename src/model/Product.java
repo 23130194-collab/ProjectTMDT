@@ -12,11 +12,22 @@ public class Product {
     private double price;
     private String conditionStatus;
     private String location;
+    private String province;
+    private String ward;
+    private String addressDetail;
     private String status;
     private Timestamp createdAt;
     private Timestamp updatedAt;
     private String primaryImage;
     private boolean newProduct;
+    private String specifications;
+    private String dealType; // "SELL" hoặc "GIVE"
+
+    public String getSpecifications() { return specifications; }
+    public void setSpecifications(String specifications) { this.specifications = specifications; }
+
+    public String getDealType() { return dealType; }
+    public void setDealType(String dealType) { this.dealType = dealType; }
 
     public String getPrimaryImage() { return primaryImage; }
     public void setPrimaryImage(String primaryImage) { this.primaryImage = primaryImage; }
@@ -105,6 +116,28 @@ public class Product {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public String getProvince() { return province; }
+    public void setProvince(String province) { this.province = province; }
+    public String getWard() { return ward; }
+    public void setWard(String ward) { this.ward = ward; }
+    public String getAddressDetail() { return addressDetail; }
+    public void setAddressDetail(String addressDetail) { this.addressDetail = addressDetail; }
+
+    public String getDisplayLocation() {
+        StringBuilder display = new StringBuilder();
+        appendLocationPart(display, addressDetail);
+        appendLocationPart(display, ward);
+        appendLocationPart(display, province);
+        return display.length() > 0 ? display.toString() : (location == null ? "" : location);
+    }
+
+    private void appendLocationPart(StringBuilder display, String value) {
+        if (value != null && !value.trim().isEmpty()) {
+            if (display.length() > 0) display.append(", ");
+            display.append(value.trim());
+        }
     }
 
     public String getStatus() {

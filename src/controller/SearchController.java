@@ -43,6 +43,7 @@ public class SearchController extends HttpServlet {
         List<Product> products = keyword.isEmpty()
                 ? productDAO.getRecentProducts() : productDAO.searchProducts(keyword);
         request.setAttribute("products", products);
+        request.setAttribute("categories", productDAO.getAllCategories());
         request.setAttribute("searchKeyword", keyword);
         request.getRequestDispatcher("01-trang-chu.jsp").forward(request, response);
     }

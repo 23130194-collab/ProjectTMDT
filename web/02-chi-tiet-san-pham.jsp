@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="jakarta.tags.fmt" prefix="fmt" %>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
 <!DOCTYPE html>
 <html lang="vi">
 
@@ -95,7 +96,7 @@
             </span>
             <span id="activeImageIndex"
               class="absolute bottom-3 right-3 bg-slate-900/80 text-white text-xs px-2.5 py-1 rounded backdrop-blur">
-              1 / ${images.size()} Góc chụp
+              1 / <c:choose><c:when test="${not empty images}">${fn:length(images)}</c:when><c:otherwise>0</c:otherwise></c:choose> Góc chụp
             </span>
           </div>
           <div class="grid grid-cols-4 gap-2.5 mt-3">
@@ -114,34 +115,42 @@
             Đặc Điểm Kỹ Thuật & Tình Trạng Thực Tế
           </h2>
 
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-              <span class="text-slate-400 block text-[10px]">Hãng sản xuất</span>
-              <span class="font-bold text-slate-800 text-xs">Apple</span>
-            </div>
-            <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-              <span class="text-slate-400 block text-[10px]">Dòng máy</span>
-              <span class="font-bold text-slate-800 text-xs">iPhone 18 Pro Max</span>
-            </div>
-            <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-              <span class="text-slate-400 block text-[10px]">Dung lượng / Màu</span>
-              <span class="font-bold text-slate-800 text-xs">256GB • Đỏ Burgundy</span>
-            </div>
-            <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-              <span class="text-slate-400 block text-[10px]">Tình trạng máy</span>
-              <span class="font-bold text-green-700 text-xs">${product.conditionStatus}</span>
-            </div>
-          </div>
+          <c:choose>
+            <c:when test="${not empty productSpecs}">
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
+                <c:forEach var="spec" items="${productSpecs}">
+                  <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex flex-col justify-between shadow-2xs">
+                    <span class="text-slate-400 block text-[10px] font-medium mb-0.5">${spec[0]}</span>
+                    <span class="font-bold text-slate-800 text-xs">${spec[1]}</span>
+                  </div>
+                </c:forEach>
+              </div>
+            </c:when>
+            <c:otherwise>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                  <span class="text-slate-400 block text-[10px]">Tình trạng</span>
+                  <span class="font-bold text-green-700 text-xs">${product.conditionStatus}</span>
+                </div>
+                <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                  <span class="text-slate-400 block text-[10px]">Khu vực</span>
+                  <span class="font-bold text-slate-800 text-xs"><c:out value="${product.displayLocation}"/></span>
+                </div>
+              </div>
+            </c:otherwise>
+          </c:choose>
 
           <div class="text-xs text-slate-700 leading-relaxed space-y-2 pt-2"><p>${product.description}</p></div>
 
           <!-- ĐỊA CHỈ XEM HÀNG TRỰC TIẾP -->
           <div class="mt-3 p-3.5 rounded-lg bg-blue-50 border border-blue-200 text-xs">
-            <span class="font-bold text-blue-900 uppercase tracking-wide block text-[11px]">Địa Điểm Hẹn Gặp Xem & Test
-              Máy Trực Tiếp</span>
+            <span class="font-bold text-blue-900 uppercase tracking-wide block text-[11px]">Tạm Điểm Hẹn Gặp Xem &amp; Test Máy Trực Tiếp</span>
             <p class="text-blue-800 font-medium mt-1">
-              Đường Tô Hiến Thành, Phường 13, Quận 10, TP. Hồ Chí Minh. Vui lòng liên hệ đặt cọc hoặc hẹn trước khung
-              giờ trước khi qua.
+              <c:choose>
+                <c:when test="${not empty product.displayLocation}"><c:out value="${product.displayLocation}"/>. </c:when>
+                <c:otherwise>Liên hệ người bán để biết địa điểm hẹn gặp. </c:otherwise>
+              </c:choose>
+              Vui lòng liên hệ đặt cọc hoặc hẹn trước không giờ trước khi qua.
             </p>
           </div>
         </div>
@@ -206,12 +215,12 @@
                   <c:choose><c:when test="${product.deliveryMethod == 2}">Giao Hàng Qua Bưu Điện</c:when><c:otherwise>Hẹn Gặp Trực Tiếp</c:otherwise></c:choose>
                 </span>
             </div>
-            <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-snug">${product.title}</h1>
+            <h1 id="productTitle" class="text-base sm:text-lg font-bold text-slate-900 leading-snug">${product.title}</h1>
             <div class="mt-2.5 flex items-baseline gap-2">
               <span class="text-2xl sm:text-3xl font-bold text-red-600"><fmt:formatNumber value="${product.price}" type="currency" currencySymbol="đ" maxFractionDigits="0"/></span>
               <span class="text-xs text-slate-500">Giá tốt bắt trend</span>
             </div>
-            <p class="text-[11px] text-slate-500 mt-1">Đăng lúc ${product.createdAt} tại ${product.location}</p>
+            <p class="text-[11px] text-slate-500 mt-1">Đăng lúc ${product.createdAt} tại <c:out value="${product.displayLocation}"/></p>
           </div>
 
           <!-- BANNER TRẠNG THÁI THEO KỊCH BẢN FLOW -->
@@ -261,30 +270,47 @@
           <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Hồ Sơ Người Bán Đã Xác Thực</h3>
 
           <div class="flex items-center gap-3.5">
-            <div
-              class="w-12 h-12 rounded-full bg-blue-600 text-white font-bold text-base flex items-center justify-center shrink-0">
-              NV
+            <div class="w-12 h-12 rounded-full bg-blue-600 text-white font-bold text-base flex items-center justify-center shrink-0">
+              <c:choose>
+                <c:when test="${not empty seller and not empty seller.fullName}">${fn:substring(seller.fullName, 0, 1)}</c:when>
+                <c:otherwise>?</c:otherwise>
+              </c:choose>
             </div>
             <div>
-              <div class="font-bold text-slate-900 text-sm">Nguyễn Văn Tuấn</div>
-              <div class="text-[11px] text-slate-500">Quận 10, TP. Hồ Chí Minh</div>
+              <div class="font-bold text-slate-900 text-sm">
+                <c:choose>
+                  <c:when test="${not empty seller and not empty seller.fullName}">${seller.fullName}</c:when>
+                  <c:otherwise>Người dùng</c:otherwise>
+                </c:choose>
+              </div>
+              <div class="text-[11px] text-slate-500">
+                <c:choose>
+                  <c:when test="${not empty product.displayLocation}"><c:out value="${product.displayLocation}"/></c:when>
+                  <c:otherwise>Việt Nam</c:otherwise>
+                </c:choose>
+              </div>
               <div class="text-[11px] text-green-700 font-semibold mt-0.5">Tài khoản chính chủ đã xác thực SĐT</div>
             </div>
           </div>
 
           <div class="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-100 text-center text-xs">
             <div class="bg-slate-50 p-2 rounded-lg">
-              <span class="block font-bold text-slate-900 text-xs">5.0 / 5.0 Điểm</span>
-              <span class="text-[10px] text-slate-500">8 lượt đánh giá uy tín</span>
+              <span class="block font-bold text-slate-900 text-xs">
+                <c:choose>
+                  <c:when test="${not empty seller}">${seller.reputationScore} Điểm uy tín</c:when>
+                  <c:otherwise>-- Điểm</c:otherwise>
+                </c:choose>
+              </span>
+              <span class="text-[10px] text-slate-500">Chỉ số uy tín trên sàn</span>
             </div>
             <div class="bg-slate-50 p-2 rounded-lg">
-              <span class="block font-bold text-slate-900 text-xs">6 Món đồ</span>
-              <span class="text-[10px] text-slate-500">Đã bán thành công</span>
+              <span class="block font-bold text-slate-900 text-xs">@<c:choose><c:when test="${not empty seller and not empty seller.username}">${seller.username}</c:when><c:otherwise>--</c:otherwise></c:choose></span>
+              <span class="text-[10px] text-slate-500">Tên tài khoản</span>
             </div>
           </div>
 
           <div class="text-[11px] text-slate-500 space-y-1">
-            <p>Thời gian tham gia: 1 năm trước</p>
+            <p>Tham gia: <c:choose><c:when test="${not empty seller}">${seller.createdAt}</c:when><c:otherwise>--</c:otherwise></c:choose></p>
             <p>Tỷ lệ phản hồi tin nhắn: 100% (trong 15 phút)</p>
           </div>
         </div>
@@ -337,7 +363,9 @@
     }
 
     function reportListing() {
-      alert('Đã tiếp nhận báo cáo của bạn về tin đăng "iPhone 18 Pro Max Đỏ Burgundy 256GB". Bộ phận Kiểm duyệt Admin MuaNgay sẽ xác minh trong vòng 15 phút.');
+      const titleEl = document.getElementById('productTitle');
+      const title = titleEl ? titleEl.innerText : 'Sản phẩm này';
+      alert('Đã tiếp nhận báo cáo của bạn về tin đăng "' + title + '". Bộ phận Kiểm duyệt Admin MuaNgay sẽ xác minh trong vòng 15 phút.');
     }
 
     // CHUYỂN ĐỔI KỊCH BẢN FLOW (SCENARIO SWITCHER)
