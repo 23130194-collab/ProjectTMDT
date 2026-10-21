@@ -56,11 +56,25 @@ public class ProductDetailController extends HttpServlet {
                 int id = Integer.parseInt(idParam);
                 Product product = productDAO.getProductById(id);
                 if (product != null) {
+                    // Chỉ cho xem bài ACTIVE, trừ khi là chủ bài hoặc admin
+                    String status = product.getStatus();
+                    boolean isActive = "ACTIVE".equals(status);
+                    jakarta.servlet.http.HttpSession sess = req.getSession(false);
+                    User currentUser = (sess != null) ? (User) sess.getAttribute("user") : null;
+                    boolean isOwner = currentUser != null && currentUser.getId() == product.getUserId();
+                    boolean isAdmin = currentUser != null && "ADMIN".equalsIgnoreCase(currentUser.getRole());
+
+                    if (!isActive && !isOwner && !isAdmin) {
+                        resp.sendRedirect(req.getContextPath() + "/home?message=not_found");
+                        return;
+                    }
+
                     List<ProductImage> images = productImageDAO.getImagesByProductId(id);
                     Map<String, String> specsMap = JsonUtil.jsonToMap(product.getSpecifications());
 
                     // Lấy thông tin người bán từ DB
                     User seller = userDao.getUserById(product.getUserId());
+
 
                     // Sắp xếp specs theo thứ tự chuẩn của danh mục
                     List<String[]> specsList = new ArrayList<>();
