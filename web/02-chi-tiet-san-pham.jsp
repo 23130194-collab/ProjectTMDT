@@ -24,7 +24,7 @@
   <jsp:include page="includes/header.jsp" />
 
   <!-- THANH ĐIỀU KHIỂN KỊCH BẢN FLOW (SCENARIO SWITCHER FOR DEMO) -->
-  <section class="bg-slate-900 text-white py-2 px-4 text-xs">
+  <section id="scenarioDemoControls" class="bg-slate-900 text-white py-2 px-4 text-xs">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
       <div class="flex items-center gap-2">
         <span class="px-2 py-0.5 rounded bg-blue-600 font-bold uppercase text-[10px]">Trình diễn Kịch bản Flow</span>
@@ -75,11 +75,11 @@
             class="hidden absolute inset-3 bg-slate-900/60 backdrop-blur-xs rounded-lg z-10 flex flex-col items-center justify-center text-white text-center p-4">
             <span id="overlayBadge"
               class="px-3 py-1 bg-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-md mb-2">
-              Đã Nhận Cọc 1.000.000 đ
+              Đã Nhận Cọc 10% Giá Sản Phẩm
             </span>
             <h3 id="overlayTitle" class="text-lg font-bold">Bài Đăng Đang Tạm Khóa Giao Dịch</h3>
             <p id="overlayDesc" class="text-xs text-slate-200 mt-1 max-w-md">
-              Người mua đã đặt cọc VietQR giữ máy. Hai bên đang hẹn gặp test máy trực tiếp tại Quận 10.
+              Người mua đã đặt cọc qua VNPay để giữ sản phẩm. Hai bên đang hẹn gặp kiểm tra hàng trực tiếp.
             </p>
           </div>
 
@@ -170,9 +170,8 @@
             <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
               <span
                 class="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">1</span>
-              <div class="font-bold text-slate-800">Đặt cọc giữ máy</div>
-              <p class="text-[11px] text-slate-500">Cọc 1.000.000 đ qua VietQR để tạm khóa tin, tránh bị người khác mua
-                mất.</p>
+              <div class="font-bold text-slate-800">Đặt cọc giữ sản phẩm</div>
+              <p class="text-[11px] text-slate-500">Mức cọc theo giá: trên 100.000đ cọc 10%; trên 50.000đ đến 100.000đ cọc 50%; từ 10.000đ đến 50.000đ cọc đủ 100%.</p>
             </div>
             <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
               <span
@@ -229,8 +228,7 @@
             <span id="scenarioNoticeTitle" class="font-bold block text-[11px] uppercase tracking-wide">Hướng dẫn giao
               dịch an toàn:</span>
             <span id="scenarioNoticeContent">
-              Mặt hàng Thiết bị số cao cấp nên hẹn gặp trực tiếp tại quán cafe hoặc tại nhà để test máy kỹ càng. Bạn có
-              thể đặt cọc 1.000.000 đ qua VietQR để người bán giữ máy không bán cho người khác.
+              Mức cọc: trên 100.000đ cọc 10%; trên 50.000đ đến 100.000đ cọc 50%; từ 10.000đ đến 50.000đ cọc đủ 100%.
             </span>
           </div>
 
@@ -238,7 +236,7 @@
           <div id="actionButtonsContainer" class="space-y-2.5 pt-1">
             <a id="btnDepositMain" href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}"
               class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">
-              Đặt Cọc Giữ Máy Ngay (VietQR Cọc 1.000.000 đ)
+              Đặt cọc giữ sản phẩm
             </a>
 
             <div class="grid grid-cols-2 gap-2">
@@ -347,6 +345,11 @@
 
   <!-- SCRIPT XỬ LÝ ĐỔI ẢNH VÀ CHUYỂN ĐỔI KỊCH BẢN FLOW -->
   <script>
+    const ACTUAL_PRODUCT_SOLD = '${product.status}' === 'SOLD';
+    const listedProductPrice = Number('${product.price}') || 0;
+    const listedDepositAmount = listedProductPrice > 100000 ? Math.round(listedProductPrice * 0.10) : (listedProductPrice >= 10000 && listedProductPrice <= 50000 ? Math.round(listedProductPrice) : Math.round(listedProductPrice * 0.50));
+    const listedDepositRate = listedProductPrice > 100000 ? "10%" : (listedProductPrice >= 10000 && listedProductPrice <= 50000 ? "100%" : "50%");
+    const listedDepositText = new Intl.NumberFormat('vi-VN').format(listedDepositAmount) + ' đ';
     function changeImage(src, index, btn) {
       document.getElementById('mainDetailImage').src = src;
       document.getElementById('activeImageIndex').innerText = `\${index} /  Góc chụp`;
@@ -380,12 +383,14 @@
 
     // CHUYỂN ĐỔI KỊCH BẢN FLOW (SCENARIO SWITCHER)
     function setScenario(scen) {
+      if (ACTUAL_PRODUCT_SOLD && scen !== 'reserved') return;
       // Reset nút điều khiển
       ['open', 'locked', 'sold'].forEach(s => {
         const b = document.getElementById('scen-' + s);
         b.className = 'px-2.5 py-1 rounded font-medium text-xs bg-slate-800 text-slate-300 hover:text-white transition';
       });
-      document.getElementById('scen-' + scen).className = 'px-2.5 py-1 rounded font-bold text-xs bg-blue-600 text-white transition';
+      const selectedScenarioButton = document.getElementById('scen-' + scen);
+      if (selectedScenarioButton) selectedScenarioButton.className = 'px-2.5 py-1 rounded font-bold text-xs bg-blue-600 text-white transition';
 
       const overlay = document.getElementById('imageLockOverlay');
       const box = document.getElementById('scenarioNoticeBox');
@@ -397,15 +402,15 @@
         overlay.classList.add('hidden');
         box.className = 'p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed';
         title.innerText = 'Điều hướng giao nhận an toàn:';
-        content.innerText = 'Mặt hàng Điện thoại cao cấp bắt buộc test máy trực tiếp hoặc chọn giao nhận có đồng kiểm. Người mua đặt cọc 1.000.000 đ qua VietQR để tạm khóa bài đăng chống người khác mua mất.';
+        content.innerText = 'Đặt cọc ' + listedDepositRate + ' giá sản phẩm (' + listedDepositText + ') qua VNPay để người bán giữ sản phẩm trong lúc hai bên hoàn tất giao dịch.';
 
         actionContainer.innerHTML = `
           <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">
-            Đặt Cọc Giữ Máy Ngay (VietQR Cọc 1.000.000 đ)
+              Đặt cọc giữ sản phẩm
           </a>
           <div class="grid grid-cols-2 gap-2">
             <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}" class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
-              Nhắn Tin Mua Máy
+                Nhắn tin người bán
             </a>
             <c:choose>
               <c:when test="${product.price == 0}">
@@ -426,18 +431,18 @@
         `;
       } else if (scen === 'locked') {
         overlay.classList.remove('hidden');
-        document.getElementById('overlayBadge').innerText = 'ĐÃ NHẬN CỌC 1.000.000 Đ';
+        document.getElementById('overlayBadge').innerText = 'ĐÃ NHẬN CỌC ' + listedDepositText.toUpperCase();
         document.getElementById('overlayBadge').className = 'px-3 py-1 bg-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-md mb-2';
         document.getElementById('overlayTitle').innerText = 'Bài Đăng Đang Tạm Khóa Giao Dịch';
-        document.getElementById('overlayDesc').innerText = 'Người mua đã đặt cọc VietQR 1.000.000 đ thành công. Hai bên đang hẹn gặp test máy trực tiếp tại Quận 10 lúc 16:00 chiều nay.';
+        document.getElementById('overlayDesc').innerText = 'Người mua đã đặt cọc ' + listedDepositRate + ' giá sản phẩm (' + listedDepositText + ') thành công. Hai bên đang hẹn gặp để kiểm tra sản phẩm.';
 
         box.className = 'p-3.5 bg-amber-100 border-2 border-amber-400 rounded-lg text-xs text-amber-950 leading-relaxed';
-        title.innerText = 'TRẠNG THÁI: ĐÃ TẠM KHÓA BÀI ĐĂNG (ĐẶT CỌC 1.000.000 Đ)';
+        title.innerText = 'TRẠNG THÁI: ĐÃ TẠM KHÓA BÀI ĐĂNG (ĐẶT CỌC ' + listedDepositText.toUpperCase() + ')';
         content.innerText = 'Tin đăng này đã được tạm khóa để bảo vệ người mua đã đặt cọc. Không ai khác có thể cọc đè. Vui lòng theo dõi hoặc mở khung chat nếu bạn là người mua/người bán của đơn hàng.';
 
         actionContainer.innerHTML = `
           <button disabled class="w-full py-3 bg-slate-300 text-slate-500 font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center cursor-not-allowed">
-            Tin Đăng Đang Tạm Khóa (Đã Nhận Cọc 1 Triệu)
+            Tin đăng đang tạm khóa (đã nhận cọc \${listedDepositText})
           </button>
           <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
             Vào Khung Chat Xem Địa Điểm Hẹn & Xác Nhận Giao Nhận ->
@@ -445,6 +450,19 @@
           <a href="05-quan-ly-don-hang.jsp" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg flex items-center justify-center transition border border-slate-200">
             Xem Tiến Độ Đơn Hàng Tại Quản Lý Đơn
           </a>
+        `;
+      } else if (scen === 'reserved') {
+        overlay.classList.remove('hidden');
+        document.getElementById('overlayBadge').innerText = 'SẢN PHẨM ĐÃ HẾT';
+        document.getElementById('overlayBadge').className = 'px-3 py-1 bg-red-600 text-white font-bold text-xs uppercase tracking-wider rounded-md mb-2';
+        document.getElementById('overlayTitle').innerText = 'Sản Phẩm Đã Được Đặt Cọc';
+        document.getElementById('overlayDesc').innerText = 'Đơn hàng đã được xác nhận. Sản phẩm hiện không nhận thêm trả giá hoặc đặt cọc.';
+        box.className = 'p-3.5 bg-red-50 border-2 border-red-300 rounded-lg text-xs text-red-900 leading-relaxed';
+        title.innerText = 'TRẠNG THÁI: SẢN PHẨM ĐÃ HẾT';
+        content.innerText = 'Sản phẩm đã có đơn đặt cọc và đang được giữ cho giao dịch. Không thể tiếp tục trả giá hoặc đặt cọc sản phẩm này.';
+        actionContainer.innerHTML = `
+          <button disabled class="w-full py-3 bg-slate-200 text-slate-500 font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center cursor-not-allowed">Sản phẩm đã hết</button>
+          <a href="home" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center justify-center shadow-sm transition">Xem sản phẩm khác</a>
         `;
       } else if (scen === 'sold') {
         overlay.classList.remove('hidden');
@@ -455,7 +473,7 @@
 
         box.className = 'p-3.5 bg-green-100 border-2 border-green-400 rounded-lg text-xs text-green-950 leading-relaxed';
         title.innerText = 'TRẠNG THÁI: ĐÃ BÁN THÀNH CÔNG';
-        content.innerText = 'Giao dịch đã kết thúc tốt đẹp. Tiền cọc 1.000.000 đ đã chuyển vào tài khoản người bán, người mua đã nhận máy và thanh toán đủ.';
+        content.innerText = 'Giao dịch đã kết thúc tốt đẹp. Khoản cọc theo mức giá của đơn hàng đã được chuyển cho người bán sau khi hai bên xác nhận hoàn tất.';
 
         actionContainer.innerHTML = `
           <button disabled class="w-full py-3 bg-slate-200 text-slate-500 font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center cursor-not-allowed">
@@ -466,6 +484,11 @@
           </a>
         `;
       }
+    }
+
+    if (ACTUAL_PRODUCT_SOLD) {
+      document.getElementById('scenarioDemoControls').classList.add('hidden');
+      setScenario('reserved');
     }
   </script>
 

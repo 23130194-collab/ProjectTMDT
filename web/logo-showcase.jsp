@@ -30,7 +30,7 @@
         </div>
         <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
           <div class="font-bold text-slate-800 text-sm mb-1.5 text-blue-700">Bảo Chứng Sàn: B2C Market Creator</div>
-          <p>Sàn đóng vai trò trung gian bảo lãnh ký quỹ (Escrow Agent), giữ tiền an toàn qua VietQR và kiểm tra 48 giờ đối với hàng bưu điện, xóa tan nỗi lo lừa đảo trên thị trường C2C.</p>
+          <p>Sàn đóng vai trò trung gian bảo lãnh ký quỹ (Escrow Agent), ghi nhận tiền cọc qua VNPay và kiểm tra 48 giờ đối với hàng bưu điện, xóa tan nỗi lo lừa đảo trên thị trường C2C.</p>
         </div>
         <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
           <div class="font-bold text-slate-800 text-sm mb-1.5 text-blue-700">Tốc Độ và Sự Dứt Khoát: Mua Ngay</div>
@@ -174,7 +174,7 @@
             <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Phương Án 2</div>
             <h3 class="text-base font-bold text-slate-900 mt-1">Bảo Chứng Escrow & Tốc Độ "Ngay"</h3>
             <p class="text-xs text-slate-500 mt-1 mb-4 leading-normal">
-              Hình tượng khiên bảo vệ giao dịch (Escrow Protection) lồng ghép tia chớp năng động biểu thị tốc độ chốt đơn tức thì và cọc nhanh qua VietQR.
+              Hình tượng khiên bảo vệ giao dịch (Escrow Protection) lồng ghép tia chớp năng động biểu thị tốc độ chốt đơn tức thì và đặt cọc qua VNPay.
             </p>
 
             <!-- Khung Logo Xem Trước -->

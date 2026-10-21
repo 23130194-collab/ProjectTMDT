@@ -44,7 +44,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tin Nhắn & Đàm Phán Trả Giá VietQR - MuaNgay</title>
+  <title>Tin Nhắn & Đàm Phán Trả Giá VNPay - MuaNgay</title>
   <link rel="icon" type="image/svg+xml" href="assets/logos/muangay-logo-icon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,7 +58,7 @@
   <!-- THANH ĐIỀU HƯỚNG CHÍNH -->
   <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-4 sm:px-6 shrink-0">
     <div class="flex items-center gap-3">
-      <a href="01-trang-chu.jsp" class="flex items-center gap-2">
+      <a href="home" class="flex items-center gap-2" aria-label="Về trang chủ MuaNgay">
         <img src="assets/logos/muangay-logo-icon.svg" alt="MuaNgay Logo" class="w-8 h-8 rounded-lg shadow-xs">
         <span class="text-base font-extrabold text-slate-900">Mua<span class="text-blue-600">Ngay</span></span>
       </a>
@@ -172,7 +172,7 @@
           </div>
         </div>
 
-        <a href="02-chi-tiet-san-pham.jsp" class="flex items-center gap-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition">
+        <a id="productHeaderLink" href="02-chi-tiet-san-pham.jsp" class="flex items-center gap-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition" title="Xem chi tiết sản phẩm">
           <img id="productThumb" src="assets/images/iphone-18-pro-mau-do-anh-dao-dam-1-iphone-18-pro-mau-do-burgundy-co-gi-dac-biet-1.jpg" class="w-8 h-8 rounded object-cover">
           <div>
             <div id="productTitle" class="text-xs font-bold text-slate-800 line-clamp-1 max-w-[150px] sm:max-w-[200px]">iPhone 18 Pro Max Đỏ Burgundy 256GB</div>
@@ -184,7 +184,7 @@
       <!-- BANNER CẢNH BÁO AN TOÀN -->
       <div class="bg-amber-50 border-b border-amber-200 px-4 py-1.5 text-[11px] text-amber-900 flex items-center justify-between shrink-0">
         <span>
-          <strong>Lưu ý an toàn:</strong> MuaNgay tự động che số điện thoại và STK để bảo vệ bạn khỏi lừa đảo. Đặt cọc qua VietQR để được sàn giữ tiền an toàn.
+          <strong>Lưu ý an toàn:</strong> MuaNgay tự động che số điện thoại và STK để bảo vệ bạn khỏi lừa đảo. Thanh toán đặt cọc qua cổng VNPay để sàn ghi nhận giao dịch.
         </span>
         <span class="text-amber-700 font-bold ml-2 shrink-0">Giao Dịch Đảm Bảo</span>
       </div>
@@ -230,14 +230,14 @@
               Lời nhắn: "Em qua xem và test máy trực tiếp trong chiều nay, anh bớt em 1 triệu lấy lộc nhé!"
             </p>
             <div class="pt-1 text-[11px] text-slate-600 bg-white/70 p-2 rounded border border-amber-200">
-              Tiền cọc giữ máy: <strong class="text-slate-900">1.000.000 đ</strong>. 
-              Số tiền còn lại <strong class="text-slate-900">36.000.000 đ</strong> thanh toán trực tiếp khi test máy xong.
+              Tiền cọc giữ sản phẩm (10% giá đã chốt): <strong class="text-slate-900">3.700.000 đ</strong>.
+              Số tiền còn lại <strong class="text-slate-900">33.300.000 đ</strong> thanh toán trực tiếp khi nhận sản phẩm.
             </div>
           </div>
         </div>
 
         <!-- KHỐI XÁC NHẬN NHẬN ĐỒ TẠI ĐIỂM HẸN -->
-        <div class="flex justify-center my-2" id="dualHandshakeBlock">
+        <div class="hidden flex justify-center my-2" id="dualHandshakeBlock">
           <div class="bg-blue-50 border-2 border-blue-400 rounded-xl p-4 w-full max-w-md shadow-sm space-y-3">
             <div class="flex items-center justify-between border-b border-blue-200 pb-2">
               <span class="text-xs font-bold text-blue-900 uppercase tracking-wider">
@@ -247,7 +247,7 @@
             </div>
 
             <p class="text-[11px] text-slate-600 leading-relaxed">
-              Hai bên gặp mặt tại điểm hẹn và test máy cẩn thận. Cả hai cùng bấm xác nhận để Sàn mở khóa tiền cọc 1.000.000 đ cho người bán:
+              Hai bên gặp mặt tại điểm hẹn và kiểm tra sản phẩm. Cả hai cùng xác nhận để sàn giải ngân khoản cọc 10% giá đã chốt cho người bán:
             </p>
 
             <div class="space-y-2">
@@ -271,20 +271,20 @@
             </button>
 
             <div id="handshakeFooterNote" class="text-[10px] text-slate-500 italic">
-              Khi hai bên quét mã QR hoặc nhập mã PIN 8912, Sàn sẽ chuyển 1.000.000 đ tiền cọc vào tài khoản của Người Bán và tích lũy điểm uy tín cho cả hai bên.
+              Khi hai bên xác nhận bàn giao, Sàn sẽ chuyển khoản cọc 10% giá đã chốt vào tài khoản của Người Bán và tích lũy điểm uy tín cho cả hai bên.
             </div>
           </div>
         </div>
 
       </div>
 
-      <!-- THANH ĐẶT CỌC VIETQR NHANH -->
-      <div id="quickDepositBar" class="px-4 py-2 bg-amber-50 border-t border-amber-200 flex items-center justify-between text-xs shrink-0">
+      <!-- THANH ĐẶT CỌC VNPAY NHANH -->
+      <div id="quickDepositBar" class="hidden px-4 py-2 bg-amber-50 border-t border-amber-200 flex items-center justify-between text-xs shrink-0">
         <span class="text-amber-900 font-medium text-[11px]">
-          Giá đã chốt: 37.000.000 đ. Đặt cọc 1.000.000 đ qua VietQR để tạm khóa bài đăng chống người khác mua mất!
+          Giá đã chốt: 37.000.000 đ. Đặt cọc 10% (3.700.000 đ) qua VNPay để giữ sản phẩm!
         </span>
         <button onclick="openQrModal()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-md shadow-sm transition shrink-0">
-          Xem Mã VietQR Cọc
+          Thanh toán cọc VNPay
         </button>
       </div>
 
@@ -315,35 +315,34 @@
         </form>
       </div>
 
-      <!-- CỬA SỔ BẬT LÊN (MODAL): THANH TOÁN CỌC VIETQR 10% TỰ ĐỘNG -->
+      <!-- CỬA SỔ BẬT LÊN (MODAL): THANH TOÁN CỌC VNPAY 10% -->
       <div id="qrModal" class="hidden absolute inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-sm w-full p-5 space-y-3.5 text-center transform transition-all scale-100">
           
           <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-            <span class="text-xs font-bold text-slate-900 uppercase">Đặt Cọc Bảo Đảm VietQR (Kênh 1)</span>
+            <span class="text-xs font-bold text-slate-900 uppercase">Đặt cọc giữ sản phẩm qua VNPay</span>
             <button onclick="closeQrModal()" class="text-sm text-slate-400 font-bold hover:text-slate-700 p-1">✕</button>
           </div>
 
-          <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl inline-block mx-auto">
-            <div class="w-48 h-48 bg-white border-2 border-slate-800 rounded-lg flex flex-col items-center justify-center p-2 shadow-inner">
-              <div class="w-40 h-40 bg-slate-900 flex flex-col items-center justify-center text-white text-[10px] font-mono p-2 text-center leading-relaxed rounded">
-                <span class="text-amber-400 font-bold mb-1">VIETQR NAPAS 247</span>
-                <span>CỔNG THANH TOÁN VIETQR</span>
-                <span class="text-emerald-400 font-bold text-xs mt-1">1.000.000 VNĐ</span>
-                <span class="text-[9px] text-slate-400 mt-1">COC IP18PMAX</span>
-              </div>
-            </div>
+          <div class="p-5 bg-blue-50 border border-blue-200 rounded-xl text-center">
+            <div class="text-2xl font-extrabold tracking-wide text-blue-700">VNPAY</div>
+            <p class="mt-2 text-xs text-slate-600">Bạn sẽ được chuyển đến cổng VNPay Sandbox để thanh toán đặt cọc.</p>
           </div>
 
           <div class="space-y-0.5">
-            <div class="text-[11px] text-slate-500">Số tiền đặt cọc giữ máy:</div>
-            <div class="text-xl font-bold text-green-600">1.000.000 đ</div>
-            <div class="text-[10px] text-slate-500">Nội dung CK: <strong class="text-slate-900 font-mono bg-slate-100 px-1 py-0.5 rounded">COC IP18PMAX UID108</strong></div>
+            <div id="qrDepositRule" class="text-[11px] text-slate-500">Số tiền đặt cọc theo mức giá đã chốt:</div>
+            <div id="qrDepositAmount" class="text-xl font-bold text-green-600">0 đ</div>
+            <div class="text-[10px] text-slate-500">Mã giao dịch: <strong id="qrTransferReference" class="text-slate-900 font-mono bg-slate-100 px-1 py-0.5 rounded">Tạo khi thanh toán</strong></div>
+            <p id="depositExpiryNotice" class="hidden mt-2 text-[11px] font-bold text-red-600">Trong vòng 15 phút nếu không tiến hành đặt cọc sẽ hủy giao dịch.</p>
+            <p id="depositCountdown" class="hidden text-[11px] font-semibold text-red-600"></p>
           </div>
 
-          <button onclick="confirmPaymentDone()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-sm">
-            Tôi Đã Quét Mã Chuyển Khoản Xong
-          </button>
+          <form id="vnpayPaymentForm" action="vnpay-create" method="post">
+            <input id="vnpayConversationId" type="hidden" name="conversationId" value="">
+            <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-sm">
+              Thanh toán đặt cọc qua VNPay Sandbox
+            </button>
+          </form>
 
         </div>
       </div>
@@ -405,7 +404,7 @@
                 </div>
                 <div class="flex justify-between text-[11px] text-amber-700">
                   <span>Tiền cọc sàn đang giữ:</span>
-                  <span class="font-medium text-slate-900">1.000.000 đ (Giải ngân khi hoàn tất)</span>
+                  <span class="font-medium text-slate-900">3.700.000 đ (10% giá chốt, giải ngân khi hoàn tất)</span>
                 </div>
               </div>
 
@@ -517,7 +516,7 @@
               </span>
               <h4 class="text-xs font-bold text-green-900 pt-1">Đã Bàn Giao Máy & Mở Khóa Tiền Cọc!</h4>
               <p class="text-[11px] text-green-800">
-                Sàn đã giải ngân 1.000.000 đ tiền cọc cho Người Bán.
+                Sàn đã giải ngân khoản cọc 10% giá chốt cho Người Bán.
               </p>
             </div>
 
@@ -538,7 +537,7 @@
                 </div>
                 <div class="flex justify-between text-green-700">
                   <span>Tiền cọc giải ngân:</span>
-                  <span>1.000.000 đ (Chuyển ví người bán)</span>
+                  <span>10% giá chốt (Chuyển ví người bán)</span>
                 </div>
                 <div class="flex justify-between text-slate-700">
                   <span>Tiền mặt trả tại chỗ:</span>
@@ -593,7 +592,7 @@
   <!-- CHÂN TRANG ĐẦY ĐỦ 8 MÀN HÌNH -->
   <footer class="bg-white border-t border-slate-200 py-4 text-xs text-slate-500 shrink-0">
     <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-      <p>MuaNgay - Bảo chứng giao dịch an toàn qua cọc VietQR & Ship 3PL.</p>
+      <p>MuaNgay - Bảo chứng giao dịch an toàn qua VNPay & Ship 3PL.</p>
       <div class="flex flex-wrap justify-center gap-3 text-xs font-medium">
         <a href="01-trang-chu.jsp" class="hover:text-blue-600">01. Trang chủ</a>
         <a href="02-chi-tiet-san-pham.jsp" class="hover:text-blue-600">02. Chi tiết tin</a>
@@ -624,6 +623,9 @@
       messages: []
     };
     let refreshTimer = null;
+    let depositDeadlineTimer = null;
+    let renderedExpiredProposalId = null;
+    const offerDeadlineCache = Object.create(null);
 
     function switchRole(role) {
       currentRole = role;
@@ -710,6 +712,7 @@
       renderComposerActions();
       renderQuickDepositBar();
       maybeOpenInitialOffer();
+      updateDepositExpiryDisplay();
     }
 
     <%--function renderComposerActions() {--%>
@@ -747,7 +750,9 @@
       if (!actions || !input) return;
 
       const c = chatState.selectedConversation;
-      const canOffer = !!c && Number(c.productPrice) > 0;
+      const productSold = !!c && String(c.productStatus || '').toUpperCase() === 'SOLD';
+      const productAvailable = !!c && String(c.productStatus || '').toUpperCase() === 'ACTIVE';
+      const canOffer = productAvailable && Number(c.productPrice) > 0 && !hasPaidDeposit();
 
       // Dùng hàm tạo nút, tránh template literal để JSP không nuốt ký tự dollar-brace
       function makeBtn(label, onclick, classes) {
@@ -778,16 +783,21 @@
       if (canOffer) {
         offerBtn = '<button id="offerActionBtn" type="button" onclick="openOfferModal()" class="' +
                 base + 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300">Trả Giá</button>';
+      } else if (hasPaidDeposit()) {
+        offerBtn = '';
+      } else if (productSold) {
+        offerBtn = '<button id="offerActionBtn" type="button" disabled title="Sản phẩm đã hết" class="' +
+                base + 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed">Sản phẩm đã hết</button>';
       } else {
         const reason = !c
                 ? 'Hãy chọn một cuộc trò chuyện trước'
-                : 'Tin tặng miễn phí không hỗ trợ đề xuất trả giá';
+                : productAvailable ? 'Tin tặng miễn phí không hỗ trợ đề xuất trả giá' : 'Sản phẩm hiện không nhận trả giá';
         offerBtn = '<button id="offerActionBtn" type="button" disabled title="' + reason + '" class="' +
                 base + 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed">Trả Giá</button>';
       }
 
       if (currentRole === 'seller') {
-        actions.innerHTML = imageBtn + offerBtn + locationBtn + availableBtn;
+        actions.innerHTML = imageBtn + offerBtn + locationBtn + (productSold ? '' : availableBtn);
         input.placeholder = 'Nhập tin nhắn trả lời khách mua (Enter để gửi)...';
       } else {
         actions.innerHTML = imageBtn + offerBtn + locationBtn;
@@ -852,6 +862,7 @@
       document.getElementById('productTitle').innerText = c.productTitle;
       document.getElementById('productPrice').innerText = 'Giá gốc: ' + c.productPriceText;
       document.getElementById('productThumb').src = c.productImage;
+      document.getElementById('productHeaderLink').href = 'product-detail?id=' + encodeURIComponent(c.productId);
     }
 
     function renderMessages(keepScroll) {
@@ -872,23 +883,20 @@
       let html = '<div class="text-center"><span class="text-[10px] font-semibold text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full uppercase tracking-wider">Hôm nay</span></div>';
       let latestProposal = null;
       let latestProposalIndex = -1;
-      let escrowStarted = false;
+      const depositPaid = hasPaidDeposit();
 
       chatState.messages.forEach((message, index) => {
         if (message.messageType === 'PROPOSAL') {
           latestProposal = message;
           latestProposalIndex = index;
         }
-        if (message.messageType === 'SYSTEM' && /cọc|TẠM KHÓA|bàn giao|hoàn tất|giải ngân/i.test(message.content || '')) {
-          escrowStarted = true;
-        }
         html += renderMessageBubble(message);
       });
 
       if (latestProposal) {
-        html += renderOfferCard(latestProposal, c, getOfferState(latestProposalIndex, c));
+        html += renderOfferCard(latestProposal, c, getOfferState(latestProposalIndex, c), depositPaid);
       }
-      if (escrowStarted) {
+      if (depositPaid) {
         html += renderHandshakeCard(c);
       }
       container.innerHTML = html;
@@ -940,35 +948,48 @@
       '</div></div>';
     }
 
-    function renderOfferCard(proposal, conversation, offerState) {
+    function renderOfferCard(proposal, conversation, offerState, depositPaid) {
       const proposedPrice = Number(proposal.proposedPrice) || 0;
+      const productSold = !depositPaid && String(conversation.productStatus || '').toUpperCase() === 'SOLD';
+      const isExpired = !depositPaid && offerState.status === 'expired';
       const depositAmount = calculateDepositAmount(proposedPrice);
       const remain = formatMoney(Math.max(0, proposedPrice - depositAmount));
-      const badge = offerState.badge;
-      const badgeClass = offerState.badgeClass;
-      const sellerActions = currentRole === 'seller' && offerState.status === 'pending'
+      const badge = depositPaid ? 'Đã thanh toán cọc' : productSold ? 'Sản phẩm đã hết' : offerState.badge;
+      const cardTitle = depositPaid ? 'TÓM TẮT GIAO DỊCH' : productSold ? 'SẢN PHẨM ĐÃ HẾT' : 'ĐỀ XUẤT TRẢ GIÁ';
+      const badgeClass = depositPaid
+        ? 'text-[10px] text-green-700 font-bold bg-green-100 px-1.5 py-0.5 rounded'
+        : productSold ? 'text-[10px] text-red-700 font-bold bg-red-100 px-1.5 py-0.5 rounded' : offerState.badgeClass;
+      const sellerActions = !depositPaid && !productSold && currentRole === 'seller' && offerState.status === 'pending'
         ? '<div class="grid grid-cols-2 gap-2 pt-1">' +
             '<button type="button" onclick="respondToOffer(true)" class="py-1.5 bg-green-600 hover:bg-green-700 text-white font-bold text-[11px] rounded-lg transition">Đồng Ý Giá Này</button>' +
             '<button type="button" onclick="respondToOffer(false)" class="py-1.5 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[11px] rounded-lg border border-slate-200 transition">Thương Lượng Thêm</button>' +
           '</div>'
         : '';
-      const buyerRetryAction = currentRole === 'buyer' && offerState.status === 'rejected'
+      const buyerRetryAction = !depositPaid && !productSold && currentRole === 'buyer' && (offerState.status === 'rejected' || isExpired)
         ? '<div class="pt-1"><button type="button" onclick="openOfferModal()" class="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[11px] rounded-lg transition">Gửi Giá Mới</button></div>'
         : '';
+      const displayedPrice = isExpired ? conversation.productPriceText : proposal.proposedPriceText;
+      const priceLabel = isExpired ? 'Giá sản phẩm sau khi hủy giá chốt:' : 'Giá chốt giao dịch:';
+      const depositSummary = productSold
+        ? 'Sản phẩm đã được người mua khác đặt cọc và không còn nhận trả giá.'
+        : depositPaid
+        ? 'Đã thanh toán cọc ' + escapeHtml(formatMoney(depositAmount)) + ' qua VNPay. Số tiền còn lại ' + escapeHtml(remain) + ' thanh toán khi nhận sản phẩm.'
+        : isExpired
+        ? 'Mức trả giá đã hết hạn sau 15 phút chưa đặt cọc. Giá đã quay về giá ban đầu; người mua cần gửi đề xuất mới.'
+        : 'Tiền cọc giữ sản phẩm (' + getDepositRateLabel(proposedPrice) + '): <strong class="text-slate-900">' + escapeHtml(formatMoney(depositAmount)) + '</strong>. Số tiền còn lại <strong class="text-slate-900">' + escapeHtml(formatMoney(remain)) + '</strong> thanh toán khi nhận sản phẩm.';
       return '<div class="flex justify-center my-1" id="offerCardBlock">' +
         '<div class="bg-amber-50 border-2 border-amber-400 rounded-xl p-4 w-full max-w-md shadow-sm space-y-2.5">' +
           '<div class="flex items-center justify-between border-b border-amber-200 pb-1.5">' +
-            '<span class="text-[11px] font-bold text-amber-900 uppercase tracking-wider">Đề Xuất Trả Giá Mới</span>' +
+          '<span class="text-[11px] font-bold text-amber-900 uppercase tracking-wider">' + cardTitle + '</span>' +
             '<span id="offerStatusBadge" class="' + badgeClass + '">' + badge + '</span>' +
           '</div>' +
           '<div class="flex items-baseline justify-between"><div>' +
-            '<span class="text-[11px] text-slate-600 block">Giá chốt giao dịch:</span>' +
-            '<span id="offerPriceDisplay" class="text-xl font-bold text-red-600">' + escapeHtml(proposal.proposedPriceText) + '</span>' +
+            '<span class="text-[11px] text-slate-600 block">' + priceLabel + '</span>' +
+            '<span id="offerPriceDisplay" class="text-xl font-bold text-red-600">' + escapeHtml(displayedPrice) + '</span>' +
           '</div><span class="text-xs text-slate-400 line-through">Giá gốc: ' + escapeHtml(conversation.productPriceText) + '</span></div>' +
           '<p id="offerNoteDisplay" class="text-[11px] text-amber-900 italic">Lời nhắn: "' + escapeHtml(proposal.content) + '"</p>' +
           '<div class="pt-1 text-[11px] text-slate-600 bg-white/70 p-2 rounded border border-amber-200">' +
-            'Tiền cọc giữ máy: <strong class="text-slate-900">' + escapeHtml(formatMoney(depositAmount)) + '</strong>. ' +
-            'Số tiền còn lại <strong class="text-slate-900">' + escapeHtml(remain) + '</strong> thanh toán trực tiếp khi test máy xong.' +
+            depositSummary +
           '</div>' +
           sellerActions +
           buyerRetryAction +
@@ -996,37 +1017,89 @@
       }
 
       const responseText = sellerResponse.content || '';
-      if (/đồng ý|chốt|ok|okay/i.test(responseText)) {
-        return {
-          status: 'accepted',
-          badge: 'Người bán đã đồng ý',
-          badgeClass: 'text-[10px] text-green-700 font-bold bg-green-100 px-1.5 py-0.5 rounded'
-        };
-      }
-      if (/chưa phù hợp|thương lượng thêm|từ chối|đề xuất lại/i.test(responseText)) {
+      if (/chưa phù hợp|không đồng ý|không phù hợp|thương lượng thêm|từ chối|đề xuất lại/i.test(responseText)) {
         return {
           status: 'rejected',
           badge: 'Đã từ chối - chờ giá mới',
           badgeClass: 'text-[10px] text-red-700 font-bold bg-red-100 px-1.5 py-0.5 rounded'
         };
       }
+      if (/đồng ý|chốt|ok|okay/i.test(responseText)) {
+        const acceptedAt = Number(sellerResponse.createdAtMs) || 0;
+        const expiresAt = getOfferExpiryAt(chatState.messages[proposalIndex], sellerResponse, conversation, acceptedAt);
+        if (acceptedAt > 0 && Date.now() >= expiresAt) {
+          return {
+            status: 'expired',
+            badge: 'Hết hạn - cần trả giá lại',
+            badgeClass: 'text-[10px] text-red-700 font-bold bg-red-100 px-1.5 py-0.5 rounded',
+            expiresAt: expiresAt
+          };
+        }
+        return {
+          status: 'accepted',
+          badge: 'Người bán đã đồng ý',
+          badgeClass: 'text-[10px] text-green-700 font-bold bg-green-100 px-1.5 py-0.5 rounded',
+          acceptedAt: acceptedAt,
+          expiresAt: expiresAt
+        };
+      }
       return fallback;
+    }
+
+    function getOfferExpiryAt(proposal, sellerResponse, conversation, acceptedAt) {
+      const proposalKey = proposal && proposal.id ? proposal.id : 'index-' + findLatestProposalIndex();
+      const responseKey = sellerResponse && sellerResponse.id ? sellerResponse.id : 'response';
+      const storageKey = 'muangay-offer-expiry-' + conversation.id + '-' + proposalKey + '-' + responseKey;
+      if (offerDeadlineCache[storageKey]) return offerDeadlineCache[storageKey];
+      try {
+        const savedDeadline = Number(localStorage.getItem(storageKey)) || 0;
+        if (savedDeadline > 0) {
+          offerDeadlineCache[storageKey] = savedDeadline;
+          return savedDeadline;
+        }
+      } catch (error) {
+        // Continue with the server message timestamp when browser storage is unavailable.
+      }
+
+      const now = Date.now();
+      // Some local database/JDBC timezone combinations can return a message time in the future.
+      // Anchor that offer to this first observed acceptance and persist its deadline per offer.
+      const effectiveAcceptedAt = acceptedAt > now + 60 * 1000 ? now : (acceptedAt > 0 ? acceptedAt : now);
+      const deadline = effectiveAcceptedAt + 15 * 60 * 1000;
+      offerDeadlineCache[storageKey] = deadline;
+      try {
+        localStorage.setItem(storageKey, String(deadline));
+      } catch (error) {
+        // The timer still works for the current page if browser storage is unavailable.
+      }
+      return deadline;
     }
 
     function calculateDepositAmount(price) {
       const value = Number(price) || 0;
       if (value <= 0) return 0;
-      const roundedTenPercent = Math.round(value * 0.1 / 100000) * 100000;
-      const preferredDeposit = Math.min(1000000, Math.max(200000, roundedTenPercent));
-      return Math.min(value, preferredDeposit);
+      if (value > 100000) return Math.round(value * 0.10);
+      if (value >= 10000 && value <= 50000) return Math.round(value);
+      return Math.round(value * 0.50);
+    }
+
+    function getDepositRateLabel(price) {
+      const value = Number(price) || 0;
+      if (value > 100000) return '10% giá chốt';
+      if (value >= 10000 && value <= 50000) return '100% giá chốt';
+      return '50% giá chốt';
     }
 
     function maybeOpenInitialOffer() {
-      if (initialOfferHandled || INITIAL_ACTION !== 'offer') {
+      if (initialOfferHandled || INITIAL_ACTION !== 'offer' || hasPaidDeposit()) {
         return;
       }
       const c = chatState.selectedConversation;
       if (!c) {
+        return;
+      }
+      if (String(c.productStatus || '').toUpperCase() !== 'ACTIVE') {
+        initialOfferHandled = true;
         return;
       }
       initialOfferHandled = true;
@@ -1038,42 +1111,93 @@
     }
 
     function renderHandshakeCard(conversation) {
+      const productTitle = escapeHtml(conversation.productTitle || 'sản phẩm');
+      const agreedPrice = Number(conversation.dealPrice) || Number(conversation.productPrice) || 0;
+      const depositAmount = Number(conversation.depositAmount) || calculateDepositAmount(agreedPrice);
+      const remainingAmount = Math.max(0, agreedPrice - depositAmount);
+      const postalDelivery = Number(conversation.deliveryMethod) === 2;
+      const handoffTitle = postalDelivery ? 'ĐƠN HÀNG CHỜ GIAO ĐƠN VỊ VẬN CHUYỂN' : 'BÀN GIAO SẢN PHẨM';
+      const handoffStatus = postalDelivery ? 'Chờ người bán gửi hàng' : 'Đã cọc qua VNPay';
+      const handoffMessage = postalDelivery
+        ? 'Đơn hàng đã được xác nhận. Người bán chuẩn bị sản phẩm và sẽ sớm bàn giao cho đơn vị vận chuyển. Hai bên hãy xác nhận địa chỉ nhận hàng và trao đổi mã vận đơn trong khung chat.'
+        : 'VNPay đã xác nhận khoản cọc <strong>' + escapeHtml(formatMoney(depositAmount)) + '</strong> cho <strong>' + productTitle + '</strong>. Hai bên hãy nhắn tin để thống nhất cách gặp, giao nhận và kiểm tra sản phẩm.';
+      const remainderLabel = postalDelivery ? 'Số tiền còn lại theo thỏa thuận' : 'Còn thanh toán khi nhận hàng';
       return '<div class="flex justify-center my-2" id="dualHandshakeBlock">' +
         '<div class="bg-blue-50 border-2 border-blue-400 rounded-xl p-4 w-full max-w-md shadow-sm space-y-3">' +
           '<div class="flex items-center justify-between border-b border-blue-200 pb-2">' +
-            '<span class="text-xs font-bold text-blue-900 uppercase tracking-wider">Xác Nhận Đã Nhận Máy & Trả Tiền</span>' +
-            '<span class="text-[10px] text-blue-700 font-semibold">Gặp Mặt Trực Tiếp</span>' +
+            '<span class="text-xs font-bold text-blue-900 uppercase tracking-wider">' + handoffTitle + '</span>' +
+            '<span class="text-[10px] text-green-700 font-bold">' + handoffStatus + '</span>' +
           '</div>' +
-          '<p class="text-[11px] text-slate-600 leading-relaxed">Hai bên gặp mặt tại điểm hẹn và test món đồ cẩn thận. Cả hai cùng bấm xác nhận để Sàn mở khóa tiền cọc ' + escapeHtml(conversation.depositText) + ' cho người bán:</p>' +
-          '<div class="space-y-2">' +
-            '<div class="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 text-xs">' +
-              '<span class="text-slate-700">Người Mua:</span>' +
-              '<span id="buyerHandshakeStatus" class="text-green-700 font-bold bg-green-50 px-2 py-0.5 rounded border border-green-200">Đã xác nhận nhận hàng & trả tiền</span>' +
-            '</div>' +
-            '<div class="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 text-xs">' +
-              '<span class="text-slate-700">Người Bán (' + escapeHtml(conversation.partnerName) + '):</span>' +
-              '<button id="sellerConfirmBtn" onclick="openHandshakeModal()" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white font-bold rounded text-[11px] shadow-sm transition">Mở Bàn Giao (QR / PIN)</button>' +
-            '</div>' +
+          '<p class="text-[11px] text-slate-600 leading-relaxed">' + handoffMessage + '</p>' +
+          '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">' +
+            '<div class="p-2 bg-white rounded-lg border border-slate-200"><div class="text-slate-500">Giá đã thống nhất</div><strong class="text-slate-900">' + escapeHtml(formatMoney(agreedPrice)) + '</strong></div>' +
+            '<div class="p-2 bg-white rounded-lg border border-slate-200"><div class="text-slate-500">' + remainderLabel + '</div><strong class="text-slate-900">' + escapeHtml(formatMoney(remainingAmount)) + '</strong></div>' +
           '</div>' +
-          '<button onclick="openHandshakeModal()" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shadow-sm transition text-center">Mở Giao Diện Bàn Giao Tại Chỗ (Mã QR & Mã PIN 4 Số)</button>' +
-          '<div id="handshakeFooterNote" class="text-[10px] text-slate-500 italic">Khi hai bên quét mã QR hoặc nhập mã PIN 8912, Sàn sẽ chuyển tiền cọc vào tài khoản của Người Bán và tích lũy điểm uy tín cho cả hai bên.</div>' +
+          '<div class="text-[10px] text-slate-500 italic">' + (postalDelivery ? 'Khoản cọc đã được ghi nhận. Theo dõi cập nhật gửi hàng và thanh toán phần còn lại theo thỏa thuận khi nhận sản phẩm.' : 'Khoản cọc đã được ghi nhận. Phần tiền còn lại thanh toán khi nhận sản phẩm theo thỏa thuận giữa hai bên.') + '</div>' +
         '</div></div>';
+    }
+
+    function hasPaidDeposit() {
+      return (chatState.messages || []).some(message => message.messageType === 'SYSTEM' &&
+        /VNPay đã xác nhận thanh toán đặt cọc/i.test(message.content || ''));
     }
 
     function renderQuickDepositBar() {
       const bar = document.getElementById('quickDepositBar');
       const c = chatState.selectedConversation;
-      const latestProposalIndex = findLatestProposalIndex();
-      const offerState = latestProposalIndex >= 0 && c ? getOfferState(latestProposalIndex, c) : null;
-      const dealPrice = c ? Number(c.dealPrice) || 0 : 0;
+      const dealPrice = getDepositPrice(c);
       const depositAmount = calculateDepositAmount(dealPrice);
-      if (currentRole === 'seller' || !c || !offerState || offerState.status !== 'accepted' || depositAmount <= 0) {
+      if (currentRole === 'seller' || !c || String(c.productStatus || '').toUpperCase() !== 'ACTIVE' || depositAmount <= 0 || hasPaidDeposit()) {
         bar.classList.add('hidden');
         return;
       }
       bar.className = 'px-4 py-2 bg-amber-50 border-t border-amber-200 flex items-center justify-between text-xs shrink-0';
-      bar.innerHTML = '<span class="text-amber-900 font-medium text-[11px]">Giá đã chốt: ' + escapeHtml(c.dealPriceText) + '. Đặt cọc ' + escapeHtml(formatMoney(depositAmount)) + ' qua VietQR để tạm khóa bài đăng chống người khác mua mất!</span>' +
-        '<button onclick="openQrModal()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-md shadow-sm transition shrink-0">Xem Mã VietQR Cọc</button>';
+      bar.innerHTML = '<div class="min-w-0"><span class="block text-amber-900 font-medium text-[11px]">Giá đã chốt: ' + escapeHtml(formatMoney(dealPrice)) + '. Đặt cọc ' + getDepositRateLabel(dealPrice) + ' (' + escapeHtml(formatMoney(depositAmount)) + ') qua VNPay để giữ sản phẩm.</span>' +
+        '<span class="block mt-1 text-[10px] text-amber-800">Đối với đơn hàng trên 100.000đ thì cọc mặc định là 10%, đơn từ 100.000đ trở xuống buộc cọc 50% và đối với đơn từ 10.000đ đến 50.000đ bắt buộc phải cọc 100%.</span></div>' +
+        '<button onclick="openQrModal()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-md shadow-sm transition shrink-0">Thanh toán cọc VNPay</button>';
+    }
+
+    function getDepositPrice(conversation) {
+      if (!conversation) return 0;
+      const proposalIndex = findLatestProposalIndex();
+      if (proposalIndex < 0) return Number(conversation.productPrice) || 0;
+      const offerState = getOfferState(proposalIndex, conversation);
+      return offerState && offerState.status === 'accepted' ? (Number(conversation.dealPrice) || 0) : 0;
+    }
+
+    function updateDepositExpiryDisplay() {
+      const c = chatState.selectedConversation;
+      const notice = document.getElementById('depositExpiryNotice');
+      const countdown = document.getElementById('depositCountdown');
+      if (!c || !notice || !countdown) return;
+      if (hasPaidDeposit()) {
+        notice.classList.add('hidden');
+        countdown.classList.add('hidden');
+        closeQrModal();
+        return;
+      }
+      const proposalIndex = findLatestProposalIndex();
+      const offerState = proposalIndex >= 0 ? getOfferState(proposalIndex, c) : null;
+      if (offerState && offerState.status === 'accepted' && offerState.expiresAt > 0) {
+        const remainingMs = Math.max(0, offerState.expiresAt - Date.now());
+        const remainingSeconds = Math.ceil(remainingMs / 1000);
+        notice.classList.remove('hidden');
+        countdown.classList.remove('hidden');
+        countdown.textContent = 'Thời gian còn lại: ' + String(Math.floor(remainingSeconds / 60)).padStart(2, '0') + ':' + String(remainingSeconds % 60).padStart(2, '0');
+        renderedExpiredProposalId = null;
+      } else {
+        notice.classList.add('hidden');
+        countdown.classList.add('hidden');
+        if (offerState && offerState.status === 'expired') {
+          closeQrModal();
+          const proposalId = chatState.messages[proposalIndex] ? chatState.messages[proposalIndex].id : proposalIndex;
+          if (renderedExpiredProposalId !== proposalId) {
+            renderedExpiredProposalId = proposalId;
+            renderMessages(true);
+            renderQuickDepositBar();
+          }
+        }
+      }
     }
 
     function findLatestProposalIndex() {
@@ -1091,24 +1215,48 @@
     }
 
     // Modal QR
-    function openQrModal() { document.getElementById('qrModal').classList.remove('hidden'); }
-    function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
-    function confirmPaymentDone() {
-      closeQrModal();
+    function openQrModal() {
       const c = chatState.selectedConversation;
-      persistMessage("Hệ thống Webhook: Đã nhận thành công " + (c ? c.depositText : "tiền cọc") + " từ Quý khách! Tin đăng đã chuyển sang trạng thái [TẠM KHÓA GIAO DỊCH].", 'SYSTEM');
-      const quickBar = document.getElementById('quickDepositBar');
-      if (quickBar) {
-        quickBar.innerHTML = '<span class="text-green-700 font-bold text-[11px]">Đã nạp cọc ' + escapeHtml(c ? c.depositText : '') + ' thành công qua VietQR. Tin đăng đã được khóa bảo vệ!</span><span class="text-[10px] text-slate-500 font-medium">Mã GD: #VNQR-' + Date.now().toString().slice(-4) + '</span>';
-        quickBar.className = 'px-4 py-2 bg-green-50 border-t border-green-200 flex items-center justify-between text-xs shrink-0';
+      if (hasPaidDeposit()) {
+        alert('Khoản cọc đã được xác nhận. Hãy trao đổi với người bán để thống nhất bàn giao sản phẩm.');
+        return;
       }
+      if (!c) {
+        alert('Vui lòng chọn hội thoại có sản phẩm cần đặt cọc.');
+        return;
+      }
+      if (String(c.productStatus || '').toUpperCase() !== 'ACTIVE') {
+        alert('Sản phẩm đã hết, không thể tiếp tục đặt cọc.');
+        return;
+      }
+      const depositPrice = getDepositPrice(c);
+      if (depositPrice <= 0) {
+        alert('Đặt cọc có thể thực hiện sau khi người bán chấp nhận mức giá đề xuất.');
+        return;
+      }
+      const amount = calculateDepositAmount(depositPrice);
+      const reference = 'Được tạo tự động khi chuyển sang VNPay';
+      document.getElementById('qrDepositAmount').textContent = formatMoney(amount);
+      document.getElementById('qrDepositRule').textContent = 'Số tiền đặt cọc (' + getDepositRateLabel(depositPrice) + '):';
+      document.getElementById('qrTransferReference').textContent = reference;
+      document.getElementById('vnpayConversationId').value = c.id;
+      updateDepositExpiryDisplay();
+      document.getElementById('qrModal').classList.remove('hidden');
     }
-
+    function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
     // Modal Trả Giá
     function openOfferModal() {
       const c = chatState.selectedConversation;
+      if (hasPaidDeposit()) {
+        alert('Khoản cọc đã được xác nhận. Không thể trả giá lại cho giao dịch này.');
+        return;
+      }
       if (!c) {
         alert('Bạn cần chọn một hội thoại trước khi trả giá.');
+        return;
+      }
+      if (String(c.productStatus || '').toUpperCase() === 'SOLD') {
+        alert('Sản phẩm đã hết nên không thể tiếp tục trả giá.');
         return;
       }
       if (Number(c.productPrice) <= 0) {
@@ -1125,6 +1273,10 @@
       const c = chatState.selectedConversation;
       if (!c || Number(c.productPrice) <= 0) {
         alert('Tin tặng miễn phí không hỗ trợ đề xuất trả giá.');
+        return;
+      }
+      if (String(c.productStatus || '').toUpperCase() !== 'ACTIVE') {
+        alert('Sản phẩm đã hết hoặc không còn nhận trả giá.');
         return;
       }
       if (price <= 0) {
@@ -1224,6 +1376,10 @@
     }
 
     function respondToOffer(accepted) {
+      if (!chatState.selectedConversation || String(chatState.selectedConversation.productStatus || '').toUpperCase() !== 'ACTIVE') {
+        alert('Sản phẩm đã hết hoặc không còn nhận trả giá.');
+        return;
+      }
       const latestProposal = [...chatState.messages].reverse().find(message => message.messageType === 'PROPOSAL');
       const priceText = latestProposal ? latestProposal.proposedPriceText : 'mức giá này';
       const message = accepted
@@ -1369,7 +1525,7 @@
               </span>
             </div>
             <p class="text-[11px] text-green-800 leading-relaxed">
-              Cả hai bên đã quét mã QR / nhập PIN xác nhận bàn giao tại điểm hẹn. Sàn đã giải ngân 1.000.000 đ tiền cọc cho Người Bán.
+              Cả hai bên đã xác nhận bàn giao tại điểm hẹn. Sàn đã giải ngân khoản cọc 10% giá chốt cho Người Bán.
             </p>
             <div class="text-[10px] text-slate-500 italic pt-1">
               Bài đăng iPhone 18 Pro Max Đỏ Burgundy đã chuyển sang trạng thái ĐÃ BÁN. Cả hai bên được cộng +5 điểm uy tín.
@@ -1417,6 +1573,7 @@
       }
     });
     document.addEventListener('DOMContentLoaded', () => {
+      depositDeadlineTimer = setInterval(updateDepositExpiryDisplay, 1000);
       if (CHAT_LOGGED_IN) {
         loadChat('buyer');
         refreshTimer = setInterval(() => loadChat(currentRole, currentConversationId, true), 5000);
