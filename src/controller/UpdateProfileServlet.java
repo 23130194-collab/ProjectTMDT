@@ -78,6 +78,7 @@ public class UpdateProfileServlet extends HttpServlet {
         User updated = authService.getUserById(current.getId());
         if (updated != null) updated.setPassword(null);
         session.setAttribute("user", updated);
+        session.setAttribute("currentUser", updated);
         session.removeAttribute("profileFieldErrors");
         session.removeAttribute("profileFormValues");
         session.setAttribute("profileMessage", "Đã cập nhật thông tin cá nhân.");

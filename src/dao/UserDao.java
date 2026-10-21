@@ -18,7 +18,7 @@ public class UserDao {
         String sql = "SELECT * FROM users WHERE id = ?";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -41,7 +41,7 @@ public class UserDao {
         String sql = "SELECT * FROM users WHERE email = ?";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, email.trim());
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -65,7 +65,7 @@ public class UserDao {
         String normalizedAccount = account.trim();
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, normalizedAccount);
             ps.setString(2, normalizedAccount);
             ps.setString(3, normalizedAccount);
@@ -86,7 +86,7 @@ public class UserDao {
         String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -104,7 +104,7 @@ public class UserDao {
         String sql = "INSERT INTO users(username, password, full_name, email, role, status) VALUES (?, ?, ?, ?, 'USER', 'ACTIVE')";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);
             ps.setString(2, password);
             ps.setString(3, fullName.trim());
@@ -118,10 +118,11 @@ public class UserDao {
     public User findOrCreateGoogleUser(String email, String fullName, String avatarUrl) {
         User user = getUserByEmail(email);
         if (user != null) {
-            if ((user.getAvatar() == null || user.getAvatar().trim().isEmpty()) && avatarUrl != null && !avatarUrl.trim().isEmpty()) {
+            if ((user.getAvatar() == null || user.getAvatar().trim().isEmpty()) && avatarUrl != null
+                    && !avatarUrl.trim().isEmpty()) {
                 String sql = "UPDATE users SET avatar = ? WHERE id = ?";
                 try (Connection conn = DBContext.getConnection();
-                     PreparedStatement ps = conn.prepareStatement(sql)) {
+                        PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setString(1, avatarUrl.trim());
                     ps.setInt(2, user.getId());
                     ps.executeUpdate();
@@ -138,7 +139,7 @@ public class UserDao {
         String sql = "INSERT INTO users(username, password, full_name, email, avatar, role, status) VALUES (?, ?, ?, ?, ?, 'USER', 'ACTIVE')";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);
             ps.setString(2, randomPass);
             ps.setString(3, fullName != null && !fullName.trim().isEmpty() ? fullName.trim() : username);
@@ -156,7 +157,7 @@ public class UserDao {
         String sql = "UPDATE users SET password = ? WHERE email = ?";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, password);
             ps.setString(2, email);
             ps.executeUpdate();
@@ -169,7 +170,7 @@ public class UserDao {
         String sql = "UPDATE users SET full_name = ?, email = ?, phone = ?, avatar = ?, status = ? WHERE id = ?";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, user.getFullName());
             ps.setString(2, user.getEmail());
             ps.setString(3, user.getPhone());
@@ -182,11 +183,59 @@ public class UserDao {
         }
     }
 
+    public boolean isProfileEmailTaken(String email, int userId) {
+        String sql = "SELECT COUNT(*) FROM users WHERE email = ? AND id != ?";
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.setInt(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean isProfilePhoneTaken(String phone, int userId) {
+        if (phone == null || phone.trim().isEmpty()) return false;
+        String sql = "SELECT COUNT(*) FROM users WHERE phone = ? AND id != ?";
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, phone);
+            ps.setInt(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public void updateProfile(User user) {
+        String sql = "UPDATE users SET full_name = ?, email = ?, phone = ?, province = ?, ward = ?, address_detail = ? WHERE id = ?";
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, user.getFullName());
+            ps.setString(2, user.getEmail());
+            ps.setString(3, user.getPhone());
+            ps.setString(4, user.getProvince());
+            ps.setString(5, user.getWard());
+            ps.setString(6, user.getAddressDetail());
+            ps.setInt(7, user.getId());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Không thể cập nhật thông tin cá nhân.", e);
+        }
+    }
+
     public void updateUserStatus(int userId, String newStatus) {
         String sql = "UPDATE users SET status = ? WHERE id = ?";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, normalizeStatus(newStatus));
             ps.setInt(2, userId);
             ps.executeUpdate();
@@ -199,7 +248,7 @@ public class UserDao {
         String sql = "SELECT status FROM users WHERE id = ?";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -240,7 +289,7 @@ public class UserDao {
         }
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+                PreparedStatement ps = conn.prepareStatement(sql.toString())) {
             bindParams(ps, params);
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -287,7 +336,7 @@ public class UserDao {
         List<User> users = new ArrayList<>();
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+                PreparedStatement ps = conn.prepareStatement(sql.toString())) {
             bindParams(ps, params);
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -307,7 +356,8 @@ public class UserDao {
     }
 
     public int getNewCustomersThisMonth() {
-        return countUsersBySql("SELECT COUNT(*) FROM users WHERE role = 'USER' AND status = 'ACTIVE' AND MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())");
+        return countUsersBySql(
+                "SELECT COUNT(*) FROM users WHERE role = 'USER' AND status = 'ACTIVE' AND MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())");
     }
 
     public void createUser(User user) {
@@ -321,7 +371,7 @@ public class UserDao {
         String sql = "INSERT INTO users(username, password, full_name, email, role, status, avatar) VALUES (?, '', ?, ?, 'USER', 'ACTIVE', ?)";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);
             ps.setString(2, fullName);
             ps.setString(3, email);
@@ -341,7 +391,7 @@ public class UserDao {
         String sql = "SELECT role FROM users WHERE id = ?";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -360,7 +410,7 @@ public class UserDao {
         String sql = "UPDATE users SET role = ? WHERE id = ?";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newRole == 1 ? "ADMIN" : "USER");
             ps.setInt(2, userId);
             return ps.executeUpdate() > 0;
@@ -379,6 +429,9 @@ public class UserDao {
         user.setFullName(rs.getString("full_name"));
         user.setEmail(rs.getString("email"));
         user.setPhone(rs.getString("phone"));
+        user.setProvince(rs.getString("province"));
+        user.setWard(rs.getString("ward"));
+        user.setAddressDetail(rs.getString("address_detail"));
         user.setAvatar(rs.getString("avatar"));
         user.setRole(rs.getString("role"));
         user.setReputationScore(rs.getInt("reputation_score"));
@@ -423,8 +476,8 @@ public class UserDao {
 
     private int countUsersBySql(String sql) {
         try (Connection conn = DBContext.getConnection();
-             Statement statement = conn.createStatement();
-             ResultSet rs = statement.executeQuery(sql)) {
+                Statement statement = conn.createStatement();
+                ResultSet rs = statement.executeQuery(sql)) {
             if (rs.next()) {
                 return rs.getInt(1);
             }

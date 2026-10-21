@@ -83,8 +83,9 @@ public class LoginGoogle extends HttpServlet {
             }
 
             // Đăng nhập thành công -> lưu session
+            session.setAttribute("user", user);
             session.setAttribute("currentUser", user);
-            session.setAttribute("successMessage", "Đăng nhập bằng Google thành công! Xin chào " + user.getFullName());
+            session.setAttribute("authMessage", "Đăng nhập bằng Google thành công! Xin chào " + user.getFullName());
 
             response.sendRedirect(request.getContextPath() + "/home");
 

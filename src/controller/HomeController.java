@@ -31,6 +31,6 @@ public class HomeController extends HttpServlet {
 
 
         // Chuyển hướng sang trang 01-trang-chu.jsp
-        request.getRequestDispatcher("01-trang-chu.jsp").forward(request, response);
+        request.getRequestDispatcher("/01-trang-chu.jsp").forward(request, response);
     }
 }

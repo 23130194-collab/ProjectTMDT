@@ -104,11 +104,11 @@ public class PostAdController extends HttpServlet {
             putIfPresent(specsMap, "Loại thiết bị", request.getParameter("spec_device_type"));
             putIfPresent(specsMap, "Hãng sản xuất", request.getParameter("spec_brand"));
             putIfPresent(specsMap, "Dòng máy", request.getParameter("spec_model"));
-            putIfPresent(specsMap, "Tình trạng", request.getParameter("spec_condition"));
+            putIfPresent(specsMap, "Tình trạng ngoại quan", request.getParameter("spec_condition"));
             putIfPresent(specsMap, "Dung lượng / RAM", request.getParameter("spec_capacity"));
             putIfPresent(specsMap, "Màu sắc", request.getParameter("spec_color"));
-            putIfPresent(specsMap, "Pin", request.getParameter("spec_battery"));
-            putIfPresent(specsMap, "Bảo hành & Phụ kiện", request.getParameter("spec_warranty"));
+            putIfPresent(specsMap, "Tình trạng Pin", request.getParameter("spec_battery"));
+            putIfPresent(specsMap, "Phụ kiện & Bảo hành", request.getParameter("spec_warranty"));
 
             String cond = request.getParameter("spec_condition");
             if (cond != null) {
@@ -123,7 +123,7 @@ public class PostAdController extends HttpServlet {
             putIfPresent(specsMap, "Dòng xe / Đời xe", request.getParameter("spec_vehicle_model"));
             putIfPresent(specsMap, "Năm đăng ký", request.getParameter("spec_reg_year"));
             putIfPresent(specsMap, "Tình trạng giấy tờ", request.getParameter("spec_legal_status"));
-            putIfPresent(specsMap, "Số km đã đi", request.getParameter("spec_odo"));
+            putIfPresent(specsMap, "Số km đã đi (Odo)", request.getParameter("spec_odo"));
             putIfPresent(specsMap, "Dung tích động cơ", request.getParameter("spec_engine_capacity"));
             putIfPresent(specsMap, "Tình trạng máy móc", request.getParameter("spec_engine_condition"));
 
@@ -138,7 +138,7 @@ public class PostAdController extends HttpServlet {
             putIfPresent(specsMap, "Thương hiệu", request.getParameter("spec_appliance_brand"));
             putIfPresent(specsMap, "Công suất / Dung tích", request.getParameter("spec_appliance_power"));
             putIfPresent(specsMap, "Tình trạng hoạt động", request.getParameter("spec_operation_status"));
-            putIfPresent(specsMap, "Ngoại quan", request.getParameter("spec_appliance_condition"));
+            putIfPresent(specsMap, "Tình trạng ngoại quan", request.getParameter("spec_appliance_condition"));
             putIfPresent(specsMap, "Chính sách hỗ trợ", request.getParameter("spec_appliance_support"));
 
             String cond = request.getParameter("spec_appliance_condition");
