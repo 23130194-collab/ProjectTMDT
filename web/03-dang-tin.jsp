@@ -15,15 +15,17 @@
   boolean isEditMode = (editProduct != null);
   // Kiểm tra trạng thái đăng nhập để truyền vào JS
   boolean isLoggedIn = (session != null && session.getAttribute("user") != null);
+  User sessionUser = session != null ? (User) session.getAttribute("user") : null;
+  if (sessionUser == null && session != null) sessionUser = (User) session.getAttribute("currentUser");
   // Chuẩn bị các giá trị mặc định hoặc lấy từ editProduct
   String formTitle    = isEditMode ? editProduct.getTitle() : "";
   String formPrice    = isEditMode ? (editProduct.getPrice() == 0 ? "" : String.valueOf((long)editProduct.getPrice())) : "";
   String formDesc     = isEditMode ? (editProduct.getDescription() != null ? editProduct.getDescription() : "") : "";
   int    formCatId    = isEditMode ? editProduct.getCategoryId() : 1;
   int    formDelivery = isEditMode ? editProduct.getDeliveryMethod() : 1;
-  String formProvince = isEditMode ? editProduct.getProvince() : "";
-  String formWard = isEditMode ? editProduct.getWard() : "";
-  String formAddressDetail = isEditMode ? editProduct.getAddressDetail() : "";
+  String formProvince = isEditMode ? editProduct.getProvince() : (sessionUser != null && sessionUser.getProvince() != null ? sessionUser.getProvince() : "");
+  String formWard = isEditMode ? editProduct.getWard() : (sessionUser != null && sessionUser.getWard() != null ? sessionUser.getWard() : "");
+  String formAddressDetail = isEditMode ? editProduct.getAddressDetail() : (sessionUser != null && sessionUser.getAddressDetail() != null ? sessionUser.getAddressDetail() : "");
   String formDealType = isEditMode && "GIVE".equals(editProduct.getDealType()) ? "give" : "sell";
   // Đọc specs JSON thành Map để truyền sang JS
   Map<String,String> editSpecs = isEditMode ? JsonUtil.jsonToMap(editProduct.getSpecifications()) : new java.util.HashMap<>();
@@ -172,7 +174,7 @@
             <input type="radio" name="delivery_method" value="1" <%= formDelivery == 1 ? "checked" : "" %> class="mt-0.5 w-4 h-4 text-blue-600 rounded">
             <div>
               <span class="text-xs font-bold text-slate-900 block">1. Hẹn gặp trực tiếp (Người mua cọc giữ chỗ 10%)</span>
-              <p class="text-[11px] text-slate-600 mt-0.5">Phù hợp với mặt hàng Xe cộ, Đồ cồng kềnh. Người mua đặt cọc trước qua VietQR để hẹn giờ xem đồ, chống bỏ hẹn.</p>
+              <p class="text-[11px] text-slate-600 mt-0.5">Phù hợp với mặt hàng Xe cộ, Đồ cồng kềnh. Người mua đặt cọc trước qua VNPay để hẹn giờ xem đồ, chống bỏ hẹn.</p>
             </div>
           </label>
 

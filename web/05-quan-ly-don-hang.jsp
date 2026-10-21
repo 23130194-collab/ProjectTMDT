@@ -383,7 +383,7 @@
             <span class="text-xs font-mono text-slate-400">Mã đơn: #MN-DIR-11029</span>
           </div>
           <div id="order3StatusBadge" class="text-xs text-amber-700 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200 self-start sm:self-auto">
-            Trạng thái: Đã cọc VietQR 1 triệu • Hẹn gặp test máy tại Quận 10
+            Trạng thái: Đã cọc qua VNPay • Hẹn gặp kiểm tra sản phẩm
           </div>
         </div>
 
@@ -394,7 +394,7 @@
               <h3 class="font-bold text-sm text-slate-900">iPhone 18 Pro Max Đỏ Burgundy 256GB chính hãng VN/A</h3>
               <p class="text-[11px] text-slate-500 mt-0.5">Người bán: <strong>Nguyễn Văn Tuấn</strong> (Quận 10, TP.HCM)</p>
               <div class="text-xs text-slate-700 mt-1.5">
-                Giá chốt: <strong>37.000.000 đ</strong> • Đã cọc VietQR: <strong class="text-green-600">1.000.000 đ</strong> (Tin đăng đã tạm khóa)
+                Giá chốt: <strong>37.000.000 đ</strong> • Đã cọc VNPay: <strong class="text-green-600">3.700.000 đ</strong> (Tin đăng đã tạm khóa)
               </div>
             </div>
           </div>
@@ -451,7 +451,7 @@
             <span class="text-xs font-mono text-slate-400">Mã đơn: #MN-DIR-08912</span>
           </div>
           <div id="order4StatusBadge" class="text-xs text-amber-700 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200 self-start sm:self-auto">
-            Khách đã cọc VietQR 200k • Hẹn qua chở bàn lúc 17:30
+            Khách đã cọc qua VNPay • Hẹn qua chở bàn lúc 17:30
           </div>
         </div>
 
@@ -462,7 +462,7 @@
               <h3 class="font-bold text-sm text-slate-900">Bàn làm việc gỗ sồi tự nhiên 1m4 x 70cm, có 3 hộc kéo</h3>
               <p class="text-[11px] text-slate-500 mt-0.5">Người mua: <strong>Trần Đình Trọng</strong> (Tài khoản chính chủ đã xác thực)</p>
               <div class="text-xs font-bold text-green-600 mt-1.5">
-                Tiền cọc giữ đồ: 200.000 đ (Đã nhận qua VietQR trên sàn)
+                Tiền cọc giữ đồ: 200.000 đ (Đã nhận qua VNPay trên sàn)
               </div>
             </div>
           </div>
