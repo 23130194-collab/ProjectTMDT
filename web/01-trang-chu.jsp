@@ -158,18 +158,11 @@
       <button onclick="selectCategory('all', this)" class="cat-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white whitespace-nowrap shadow-xs transition">
         Tất Cả Danh Mục
       </button>
-      <button onclick="selectCategory('dientu', this)" class="cat-btn px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap transition">
-        Điện Tử & Thiết Bị Số
-      </button>
-      <button onclick="selectCategory('xeco', this)" class="cat-btn px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap transition">
-        Xe Cộ & Phương Tiện
-      </button>
-      <button onclick="selectCategory('dienlanh', this)" class="cat-btn px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap transition">
-        Điện Lạnh & Gia Dụng
-      </button>
-      <button onclick="selectCategory('noithat', this)" class="cat-btn px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap transition">
-        Nội Thất & Đồ Gia Đình
-      </button>
+      <c:forEach var="category" items="${categories}">
+        <button onclick="selectCategory('${category.id}', this)" class="cat-btn px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap transition">
+          <c:out value="${category.name}"/>
+        </button>
+      </c:forEach>
       <button onclick="selectCategory('chotang', this)" class="cat-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-100 hover:bg-amber-200 text-amber-900 whitespace-nowrap transition">
         Tặng Miễn Phí (0đ)
       </button>
@@ -206,18 +199,11 @@
           </select>
         </div>
 
-        <!-- LỌC QUẬN/HUYỆN -->
+        <!-- LỌC PHƯỜNG/XÃ -->
         <div class="flex items-center gap-1.5">
           <span class="text-slate-500 font-medium">Khu vực:</span>
           <select id="districtFilter" onchange="applyFilters()" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
-            <option value="all">Tất cả Quận/Huyện</option>
-            <option value="q1">Quận 1</option>
-            <option value="q10">Quận 10</option>
-            <option value="binhthanh">Quận Bình Thạnh</option>
-            <option value="thuduc">TP. Thủ Đức</option>
-            <option value="tanbinh">Quận Tân Bình</option>
-            <option value="govap">Quận Gò Vấp</option>
-            <option value="q7">Quận 7</option>
+            <option value="all">Tất cả phường/xã</option>
           </select>
         </div>
 
@@ -234,7 +220,7 @@
     <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6 items-stretch">
       <c:choose>
         <c:when test="${empty products}">
-          <div class="col-span-full text-center py-12 text-slate-500">
+          <div id="initialEmptyMessage" class="col-span-full text-center py-12 text-slate-500">
             <c:choose>
               <c:when test="${not empty searchKeyword}">
                 <p>Không tìm thấy sản phẩm phù hợp với từ khóa “<c:out value="${searchKeyword}"/>”.</p>
@@ -247,7 +233,7 @@
         </c:when>
         <c:otherwise>
           <c:forEach var="p" items="${products}">
-            <div class="product-card bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col group h-full cursor-pointer" data-category="${p.categoryId == 3 ? 'xeco' : 'dientu'}" data-shipping="${p.deliveryMethod == 2 ? '3pl' : 'pickup'}" data-district="all" data-price="${p.price}" onclick="window.location.href='product-detail?id=${p.id}'">
+            <div class="product-card bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col group h-full cursor-pointer" data-category="${p.categoryId}" data-deal-type="<c:out value='${p.dealType}'/>" data-shipping="${p.deliveryMethod == 2 ? '3pl' : 'pickup'}" data-province="<c:out value='${p.province}'/>" data-ward="<c:out value='${p.ward}'/>" data-price="${p.price}" onclick="window.location.href='product-detail?id=${p.id}'">
               <div class="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0">
                 <c:choose>
                   <c:when test="${not empty p.primaryImage}">
@@ -267,7 +253,7 @@
                   </h3>
                 </div>
                 <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                  <span class="truncate pr-2">${p.location}</span>
+                  <span class="truncate pr-2"><c:out value="${p.displayLocation}"/></span>
                   <span class="whitespace-nowrap flex-shrink-0">Vừa xong</span>
                 </div>
               </div>
@@ -275,6 +261,9 @@
           </c:forEach>
         </c:otherwise>
       </c:choose>
+      <div id="filterEmptyMessage" class="col-span-full text-center py-12 text-slate-500" style="display:none">
+        <p>Không tìm thấy sản phẩm phù hợp. Hãy thử thay đổi từ khóa hoặc bộ lọc.</p>
+      </div>
     </div>
 
     <!-- NÚT XEM THÊM (CÓ LOGIC NẠP THÊM CARD MẪU) -->
@@ -312,7 +301,7 @@
                       <h3 class="font-semibold text-slate-900 text-xs mt-1.5 group-hover:text-blue-600 line-clamp-2 leading-relaxed h-9">${p.title}</h3>
                     </div>
                     <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                      <span class="truncate">${p.location}</span>
+                      <span class="truncate"><c:out value="${p.displayLocation}"/></span>
                       <span class="whitespace-nowrap text-red-600 font-semibold">Mới</span>
                     </div>
                   </div>
@@ -352,10 +341,91 @@
       applyFilters();
     }
 
+    function normalizeLocationName(value) {
+      return (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D')
+        .trim().toLowerCase().replace(/^(tinh|thanh pho|tp\.?|t\.?p\.?)\s+/, '');
+    }
+
+    const FALLBACK_PROVINCES = [
+      ['Thành phố Hà Nội', 1], ['Tỉnh Cao Bằng', 4], ['Tỉnh Tuyên Quang', 8], ['Tỉnh Điện Biên', 11],
+      ['Tỉnh Lai Châu', 12], ['Tỉnh Sơn La', 14], ['Tỉnh Lào Cai', 15], ['Tỉnh Thái Nguyên', 19],
+      ['Tỉnh Lạng Sơn', 20], ['Thành phố Quảng Ninh', 22], ['Thành phố Bắc Ninh', 24], ['Tỉnh Phú Thọ', 25],
+      ['Thành phố Hải Phòng', 31], ['Tỉnh Hưng Yên', 33], ['Tỉnh Ninh Bình', 37], ['Tỉnh Thanh Hóa', 38],
+      ['Tỉnh Nghệ An', 40], ['Tỉnh Hà Tĩnh', 42], ['Tỉnh Quảng Trị', 44], ['Thành phố Huế', 46],
+      ['Thành phố Đà Nẵng', 48], ['Tỉnh Quảng Ngãi', 51], ['Tỉnh Gia Lai', 52], ['Tỉnh Khánh Hòa', 56],
+      ['Tỉnh Đắk Lắk', 66], ['Tỉnh Lâm Đồng', 68], ['Thành phố Đồng Nai', 75], ['Thành phố Hồ Chí Minh', 79],
+      ['Tỉnh Tây Ninh', 80], ['Tỉnh Đồng Tháp', 82], ['Tỉnh Vĩnh Long', 86], ['Tỉnh An Giang', 91],
+      ['Thành phố Cần Thơ', 92], ['Tỉnh Cà Mau', 96]
+    ];
+
+    async function populateWardFilter() {
+      const provinceSelect = document.getElementById('provinceSelect');
+      const wardSelect = document.getElementById('districtFilter');
+      const selectedProvince = provinceSelect.selectedOptions[0];
+      const provinceName = selectedProvince ? selectedProvince.value : 'all';
+      const provinceCode = selectedProvince ? selectedProvince.dataset.code : '';
+      wardSelect.innerHTML = '<option value="all">Đang tải quận/huyện...</option>';
+      let wards = [];
+      if (provinceName !== 'all') {
+        if (provinceCode) {
+          try {
+            const response = await fetch('https://provinces.open-api.vn/api/v2/w/?province=' + encodeURIComponent(provinceCode));
+            if (!response.ok) throw new Error('Không tải được địa bàn');
+            wards = (await response.json() || []).map((item) => item.name);
+          } catch (error) {
+            // Keep saved listings filterable even if the location service is unavailable.
+          }
+        }
+        const listingWards = Array.from(document.querySelectorAll('#productGrid .product-card'))
+          .filter((card) => normalizeLocationName(card.dataset.province) === normalizeLocationName(provinceName))
+          .map((card) => card.dataset.ward).filter(Boolean);
+        wards = [...new Set([...wards, ...listingWards])];
+      }
+      wards.sort((a, b) => a.localeCompare(b, 'vi'));
+      wardSelect.innerHTML = '<option value="all">Tất cả phường/xã</option>';
+      wards.forEach((ward) => wardSelect.add(new Option(ward, ward)));
+    }
+
+    async function initializeLocationFilters() {
+      const provinceSelect = document.getElementById('provinceSelect');
+      if (!provinceSelect) return;
+      provinceSelect.innerHTML = '<option value="all">Toàn Quốc</option>';
+      try {
+        const response = await fetch('https://provinces.open-api.vn/api/v2/p/');
+        if (!response.ok) throw new Error('Không tải được tỉnh/thành');
+        const provinces = await response.json();
+        provinces.forEach((item) => {
+          const option = new Option(item.name, item.name);
+          option.dataset.code = item.code;
+          provinceSelect.add(option);
+        });
+      } catch (error) {
+        FALLBACK_PROVINCES.forEach(([province, code]) => {
+          const option = new Option(province, province);
+          option.dataset.code = code;
+          provinceSelect.add(option);
+        });
+      }
+      const listingProvinces = [...new Set(Array.from(document.querySelectorAll('#productGrid .product-card'))
+        .map((card) => card.dataset.province).filter(Boolean))];
+      listingProvinces.forEach((province) => {
+        if (![...provinceSelect.options].some((option) => normalizeLocationName(option.value) === normalizeLocationName(province))) {
+          provinceSelect.add(new Option(province, province));
+        }
+      });
+      provinceSelect.addEventListener('change', async () => {
+        document.getElementById('districtFilter').value = 'all';
+        await populateWardFilter();
+        applyFilters();
+      });
+      await populateWardFilter();
+    }
+
     function applyFilters() {
       const keyword = (document.getElementById('searchInput').value || '').toLowerCase().trim();
       const shipping = document.getElementById('shippingFilter').value;
       const district = document.getElementById('districtFilter').value;
+      const province = document.getElementById('provinceSelect').value;
       const sortOrder = document.getElementById('sortOrder').value;
 
       const grid = document.getElementById('productGrid');
@@ -364,16 +434,20 @@
 
       cards.forEach(card => {
         const cat = card.getAttribute('data-category');
+        const dealType = (card.dataset.dealType || 'SELL').toUpperCase();
         const ship = card.getAttribute('data-shipping');
-        const dist = card.getAttribute('data-district');
+        const ward = card.dataset.ward;
+        const cardProvince = card.dataset.province;
         const title = card.querySelector('h3').innerText.toLowerCase();
 
-        let matchCategory = (activeCategory === 'all') || (cat === activeCategory);
+        let matchCategory = activeCategory === 'all'
+          || (activeCategory === 'chotang' ? dealType === 'GIVE' : cat === activeCategory);
         let matchShipping = (shipping === 'all') || (ship === shipping);
-        let matchDistrict = (district === 'all') || (dist === district);
+        let matchProvince = (province === 'all') || (normalizeLocationName(cardProvince) === normalizeLocationName(province));
+        let matchDistrict = (district === 'all') || (normalizeLocationName(ward) === normalizeLocationName(district));
         let matchSearch = !keyword || title.includes(keyword);
 
-        if (matchCategory && matchShipping && matchDistrict && matchSearch) {
+        if (matchCategory && matchShipping && matchProvince && matchDistrict && matchSearch) {
           card.style.display = 'flex';
           visibleCount++;
         } else {
@@ -384,8 +458,8 @@
       // Sorting visible cards
       if (sortOrder === 'price_asc' || sortOrder === 'price_desc') {
         const sorted = cards.sort((a, b) => {
-          const priceA = parseInt(a.getAttribute('data-price')) || 0;
-          const priceB = parseInt(b.getAttribute('data-price')) || 0;
+          const priceA = parseFloat(a.getAttribute('data-price')) || 0;
+          const priceB = parseFloat(b.getAttribute('data-price')) || 0;
           return sortOrder === 'price_asc' ? priceA - priceB : priceB - priceA;
         });
         sorted.forEach(c => grid.appendChild(c));
@@ -393,7 +467,20 @@
 
       // Update count text
       document.getElementById('resultCountText').innerText = `Đang hiển thị \${visibleCount} tin đăng phù hợp với tiêu chí lọc`;
+
+      const hasActiveCriteria = keyword || activeCategory !== 'all' || shipping !== 'all'
+        || province !== 'all' || district !== 'all';
+      const initialEmptyMessage = document.getElementById('initialEmptyMessage');
+      const filterEmptyMessage = document.getElementById('filterEmptyMessage');
+      if (initialEmptyMessage) initialEmptyMessage.style.display = hasActiveCriteria ? 'none' : 'block';
+      filterEmptyMessage.style.display = visibleCount === 0 && (hasActiveCriteria || cards.length > 0) ? 'block' : 'none';
+      document.getElementById('loadMoreBtn').style.display = visibleCount === 0 ? 'none' : '';
     }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initializeLocationFilters();
+      applyFilters();
+    });
 
 
     function scrollNewProducts(direction) {
@@ -420,9 +507,11 @@
       const grid = document.getElementById('productGrid');
       const extraCards = [
         {
-          cat: 'dientu',
+          cat: '1',
           ship: '3pl',
           dist: 'q10',
+          province: 'Thành phố Hồ Chí Minh',
+          ward: 'Quận 10',
           price: '8500000',
           priceStr: '8.500.000 đ',
           img: 'assets/images/products/macbook-pro.jpg',
@@ -431,9 +520,11 @@
           tag: 'Ship 3PL • Giam tiền 48h'
         },
         {
-          cat: 'noithat',
+          cat: '4',
           ship: 'pickup',
           dist: 'binhthanh',
+          province: 'Thành phố Hồ Chí Minh',
+          ward: 'Quận Bình Thạnh',
           price: '650000',
           priceStr: '650.000 đ',
           img: 'assets/images/products/ghe-ergonomic.jpg',
@@ -446,8 +537,11 @@
       extraCards.forEach(item => {
         const card = document.createElement('div');
         card.setAttribute('data-category', item.cat);
+        card.setAttribute('data-deal-type', item.dealType || 'SELL');
         card.setAttribute('data-shipping', item.ship);
         card.setAttribute('data-district', item.dist);
+        card.setAttribute('data-province', item.province);
+        card.setAttribute('data-ward', item.ward);
         card.setAttribute('data-price', item.price);
         card.className = 'product-card bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col group h-full cursor-pointer';
         card.onclick = () => window.location.href = '02-chi-tiet-san-pham.jsp';

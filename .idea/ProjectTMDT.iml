@@ -20,5 +20,18 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" scope="PROVIDED" name="Tomcat 10.1.50" level="application_server_libraries" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="jackson" level="project" />
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/web/WEB-INF/lib/jackson-annotations-2.17.2.jar!/" />
+          <root url="jar://$MODULE_DIR$/web/WEB-INF/lib/jackson-core-2.17.2.jar!/" />
+          <root url="jar://$MODULE_DIR$/web/WEB-INF/lib/jackson-databind-2.17.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="library" name="jakarta.servlet-api-6.0.0" level="project" />
   </component>
 </module>

@@ -29,6 +29,14 @@ public class AuthService {
         return userDao.getUserByEmail(email);
     }
 
+    /**
+     * Tìm user theo email Google. Nếu chưa có thì tạo mới tự động.
+     * Dùng cho luồng đăng nhập / đăng ký bằng Google OAuth.
+     */
+    public User findOrCreateGoogleUser(String email, String fullName, String avatarUrl) {
+        return userDao.findOrCreateGoogleUser(email, fullName, avatarUrl);
+    }
+
     public User getUserByAccount(String account) {
         return userDao.getUserByAccount(account);
     }

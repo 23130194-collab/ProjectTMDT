@@ -22,6 +22,7 @@ public class HomeController extends HttpServlet {
         // Lấy danh sách sản phẩm từ DB
         List<Product> products = productDAO.getRecentProducts();
         List<Product> newProducts = productDAO.getNewestProducts(10);
+        request.setAttribute("categories", productDAO.getAllCategories());
 
         
         // Gắn vào request để truyền sang file giao diện
@@ -30,6 +31,6 @@ public class HomeController extends HttpServlet {
 
 
         // Chuyển hướng sang trang 01-trang-chu.jsp
-        request.getRequestDispatcher("01-trang-chu.jsp").forward(request, response);
+        request.getRequestDispatcher("/01-trang-chu.jsp").forward(request, response);
     }
 }

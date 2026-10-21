@@ -3,18 +3,29 @@
 <%@ page import="util.JsonUtil" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="model.User" %>
+<%!
+  private String h(String value) {
+    if (value == null) return "";
+    return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace("\"", "&quot;").replace("'", "&#39;");
+  }
+%>
 <%
   Product editProduct = (Product) request.getAttribute("editProduct");
   boolean isEditMode = (editProduct != null);
   // Kiểm tra trạng thái đăng nhập để truyền vào JS
   boolean isLoggedIn = (session != null && session.getAttribute("user") != null);
+  User sessionUser = session != null ? (User) session.getAttribute("user") : null;
+  if (sessionUser == null && session != null) sessionUser = (User) session.getAttribute("currentUser");
   // Chuẩn bị các giá trị mặc định hoặc lấy từ editProduct
   String formTitle    = isEditMode ? editProduct.getTitle() : "";
   String formPrice    = isEditMode ? (editProduct.getPrice() == 0 ? "" : String.valueOf((long)editProduct.getPrice())) : "";
   String formDesc     = isEditMode ? (editProduct.getDescription() != null ? editProduct.getDescription() : "") : "";
   int    formCatId    = isEditMode ? editProduct.getCategoryId() : 1;
   int    formDelivery = isEditMode ? editProduct.getDeliveryMethod() : 1;
-  String formLocation = isEditMode && editProduct.getLocation() != null ? editProduct.getLocation() : "";
+  String formProvince = isEditMode ? editProduct.getProvince() : (sessionUser != null && sessionUser.getProvince() != null ? sessionUser.getProvince() : "");
+  String formWard = isEditMode ? editProduct.getWard() : (sessionUser != null && sessionUser.getWard() != null ? sessionUser.getWard() : "");
+  String formAddressDetail = isEditMode ? editProduct.getAddressDetail() : (sessionUser != null && sessionUser.getAddressDetail() != null ? sessionUser.getAddressDetail() : "");
   String formDealType = isEditMode && "GIVE".equals(editProduct.getDealType()) ? "give" : "sell";
   // Đọc specs JSON thành Map để truyền sang JS
   Map<String,String> editSpecs = isEditMode ? JsonUtil.jsonToMap(editProduct.getSpecifications()) : new java.util.HashMap<>();
@@ -186,33 +197,29 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-[11px] font-medium text-slate-700 mb-1">Tỉnh / Thành phố</label>
-            <select name="province" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option selected>TP. Hồ Chí Minh</option>
-              <option>Hà Nội</option>
-              <option>Đà Nẵng</option>
-              <option>Bình Dương</option>
-              <option>Cần Thơ</option>
+            <select id="postProvince" name="province" data-saved-province="<%= h(formProvince) %>" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Đang tải tỉnh/thành...</option>
+              <% if (formProvince != null && !formProvince.isEmpty()) { %><option value="<%= h(formProvince) %>" selected><%= h(formProvince) %></option><% } %>
             </select>
           </div>
 
           <div>
-            <label class="block text-[11px] font-medium text-slate-700 mb-1">Quận / Huyện</label>
-            <select name="district" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option selected>Quận 10</option>
-              <option>Quận 1</option>
-              <option>Quận Bình Thạnh</option>
-              <option>TP. Thủ Đức</option>
-              <option>Quận Tân Bình</option>
+            <label class="block text-[11px] font-medium text-slate-700 mb-1">Phường / Xã</label>
+            <select id="postWard" name="ward" data-saved-ward="<%= h(formWard) %>" required disabled class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value=""><%= formWard == null || formWard.isEmpty() ? "Chọn tỉnh/thành trước" : h(formWard) %></option>
+              <% if (formWard != null && !formWard.isEmpty()) { %><option value="<%= h(formWard) %>" selected><%= h(formWard) %></option><% } %>
             </select>
           </div>
         </div>
 
         <div>
-          <label class="block text-[11px] font-medium text-slate-700 mb-1">Địa chỉ cụ thể (Đường, Phường/Xã)</label>
+          <label class="block text-[11px] font-medium text-slate-700 mb-1">Địa chỉ chi tiết (số nhà, tên đường)</label>
           <input 
             type="text"
             name="address_detail"
-            value="Đường Tô Hiến Thành, Phường 13"
+            value="<%= h(formAddressDetail) %>"
+            maxlength="255"
+            required
             class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
         </div>
@@ -309,6 +316,77 @@
     const IS_EDIT_MODE = <%= isEditMode %>;
     const CONTEXT_PATH = '${pageContext.request.contextPath}';
 
+    function normalizePostLocation(value) {
+      return (value || '').trim().replace(/^(tỉnh|thành phố|tp\.?|t\.?p\.?)\s+/i, '').toLocaleLowerCase('vi');
+    }
+
+    async function loadPostLocationOptions(savedProvince, savedWard) {
+      const provinceSelect = document.getElementById('postProvince');
+      const wardSelect = document.getElementById('postWard');
+      if (!provinceSelect || !wardSelect) return;
+      try {
+        const response = await fetch('https://provinces.open-api.vn/api/v2/p/');
+        if (!response.ok) throw new Error('Không tải được tỉnh/thành');
+        const provinces = await response.json();
+        provinceSelect.innerHTML = '<option value="">Chọn tỉnh/thành phố</option>';
+        provinces.forEach((item) => {
+          const option = new Option(item.name, item.name);
+          option.dataset.code = item.code;
+          provinceSelect.add(option);
+        });
+        let saved = savedProvince ? [...provinceSelect.options].find((option) =>
+          normalizePostLocation(option.value) === normalizePostLocation(savedProvince)) : null;
+        if (!saved && savedProvince) {
+          saved = new Option(savedProvince + ' (địa chỉ đã lưu)', savedProvince, true, true);
+          provinceSelect.add(saved);
+        }
+        if (saved) {
+          saved.selected = true;
+          if (saved.dataset.code) await loadPostWards(saved.dataset.code, savedWard);
+          else if (savedWard) {
+            wardSelect.innerHTML = '';
+            wardSelect.add(new Option(savedWard, savedWard, true, true));
+            wardSelect.disabled = false;
+          }
+        }
+      } catch (error) {
+        if (savedProvince && ![...provinceSelect.options].some((option) => option.value === savedProvince)) {
+          provinceSelect.add(new Option(savedProvince, savedProvince, true, true));
+        }
+        if (savedWard) {
+          wardSelect.innerHTML = '';
+          wardSelect.add(new Option(savedWard, savedWard, true, true));
+          wardSelect.disabled = false;
+        } else {
+          provinceSelect.options[0].textContent = 'Không tải được tỉnh/thành';
+        }
+      }
+    }
+
+    async function loadPostWards(provinceCode, savedWard) {
+      const wardSelect = document.getElementById('postWard');
+      wardSelect.disabled = true;
+      wardSelect.innerHTML = '<option value="">Đang tải phường/xã...</option>';
+      try {
+        const response = await fetch('https://provinces.open-api.vn/api/v2/w/?province=' + encodeURIComponent(provinceCode));
+        if (!response.ok) throw new Error('Không tải được phường/xã');
+        const wards = await response.json();
+        wardSelect.innerHTML = '<option value="">Chọn phường/xã</option>';
+        (wards || []).forEach((item) => wardSelect.add(new Option(item.name, item.name)));
+        if (savedWard && ![...wardSelect.options].some((option) => option.value === savedWard)) {
+          wardSelect.add(new Option(savedWard + ' (địa chỉ đã lưu)', savedWard));
+        }
+        wardSelect.disabled = false;
+        if (savedWard) wardSelect.value = savedWard;
+      } catch (error) {
+        wardSelect.innerHTML = '<option value="">Không tải được phường/xã</option>';
+        if (savedWard) {
+          wardSelect.add(new Option(savedWard, savedWard, true, true));
+          wardSelect.disabled = false;
+        }
+      }
+    }
+
     // --- HÀM LƯU TOÀN BỘ FORM VÀO localStorage ---
     function saveFormDraft() {
       const form = document.querySelector('form[action="post-ad"]');
@@ -400,8 +478,10 @@
       setField('title',          draft.title);
       setField('description',    draft.description);
       setField('address_detail', draft.address_detail);
-      setField('province',       draft.province);
-      setField('district',       draft.district);
+      window._pendingPostAddress = {
+        province: draft.province || '',
+        ward: draft.ward || draft.district || ''
+      };
 
       // Giá: chỉ set nếu không phải chế độ Tặng (chế độ Tặng thì event đã set = '0')
       if (draft.deal_type !== 'give') {
@@ -638,6 +718,22 @@
           showDraftRestoredBanner();
         }
         window._needRestoreDraft = false;
+      }
+      const provinceSelect = document.getElementById('postProvince');
+      if (provinceSelect) {
+        const savedProvince = window._pendingPostAddress ? window._pendingPostAddress.province : provinceSelect.dataset.savedProvince;
+        const savedWard = window._pendingPostAddress ? window._pendingPostAddress.ward : document.getElementById('postWard').dataset.savedWard;
+        provinceSelect.addEventListener('change', () => {
+          const selected = provinceSelect.selectedOptions[0];
+          const wardSelect = document.getElementById('postWard');
+          if (selected && selected.dataset.code) {
+            loadPostWards(selected.dataset.code, '');
+          } else {
+            wardSelect.disabled = true;
+            wardSelect.innerHTML = '<option value="">Chọn tỉnh/thành trước</option>';
+          }
+        });
+        loadPostLocationOptions(savedProvince, savedWard);
       }
     });
 

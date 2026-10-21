@@ -40,6 +40,7 @@
 %>
 <%
   User currentUser = (User) session.getAttribute("user");
+  if (currentUser == null) currentUser = (User) session.getAttribute("currentUser");
   if (currentUser == null) {
     response.sendRedirect(request.getContextPath() + "/07-dang-nhap-xac-thuc.jsp");
     return;
@@ -362,6 +363,7 @@
           <label for="inputWard" class="block font-bold text-slate-700 mb-1">Phường/xã:</label>
           <select id="inputWard" name="ward" data-saved-ward="<%= h(editWard) %>" required disabled class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 <%= profileFieldErrors.containsKey("ward") ? "border-red-500 ring-1 ring-red-500" : "" %>" <%= profileFieldErrors.containsKey("ward") ? "aria-invalid=\"true\"" : "" %>>
             <option value=""><%= editWard.isEmpty() ? "Chọn tỉnh/thành trước" : h(editWard) %></option>
+            <% if (!editWard.isEmpty()) { %><option value="<%= h(editWard) %>" selected><%= h(editWard) %></option><% } %>
           </select>
           <p data-error-for="inputWard" role="alert" class="mt-1 text-[11px] text-red-600 <%= profileFieldErrors.containsKey("ward") ? "" : "hidden" %>"><%= h(profileFieldErrors.get("ward")) %></p>
         </div>
@@ -526,6 +528,10 @@
     const savedProvince = provinceSelect.dataset.savedProvince;
     const savedWard = wardSelect.dataset.savedWard;
 
+    function normalizeLocationName(value) {
+      return (value || '').trim().replace(/^(tỉnh|thành phố|tp\.?|t\.?p\.?)\s+/i, '').toLocaleLowerCase('vi');
+    }
+
     function setFieldError(inputId, message) {
       const input = document.getElementById(inputId);
       const error = document.querySelector('[data-error-for="' + inputId + '"]');
@@ -581,15 +587,25 @@
           option.dataset.code = item.code;
           provinceSelect.add(option);
         });
-        const saved = [...provinceSelect.options].find((option) => option.dataset.name === savedProvince || option.value === savedProvince);
+        const saved = savedProvince ? [...provinceSelect.options].find((option) =>
+          option.dataset.name === savedProvince || option.value === savedProvince ||
+          normalizeLocationName(option.dataset.name || option.value) === normalizeLocationName(savedProvince)) : null;
         if (saved) {
           saved.selected = true;
           await loadWards(saved.dataset.code, savedWard);
+        } else if (savedProvince) {
+          // Keep addresses saved under an older province name after boundary changes.
+          provinceSelect.add(new Option(savedProvince + ' (địa chỉ đã lưu)', savedProvince, true, true));
+          if (savedWard) wardSelect.disabled = false;
         }
       } catch (error) {
-        provinceSelect.innerHTML = '<option value="">Không tải được danh sách tỉnh/thành</option>';
+        // Keep the saved address selectable when the third-party list is unavailable.
+        if (savedProvince && ![...provinceSelect.options].some((option) => option.value === savedProvince)) {
+          provinceSelect.add(new Option(savedProvince, savedProvince, true, true));
+        }
         setFieldError('inputProvince', 'Không tải được danh sách tỉnh/thành. Hãy tải lại trang.');
         showToast('Không tải được địa chỉ từ API. Hãy thử tải lại trang.');
+        if (savedWard) wardSelect.disabled = false;
       }
     }
 
@@ -597,19 +613,24 @@
       wardSelect.disabled = true;
       wardSelect.innerHTML = '<option value="">Đang tải phường/xã...</option>';
       try {
-        const response = await fetch('https://provinces.open-api.vn/api/v2/p/' + encodeURIComponent(provinceCode) + '?depth=2');
+        const response = await fetch('https://provinces.open-api.vn/api/v2/w/?province=' + encodeURIComponent(provinceCode));
         if (!response.ok) throw new Error('API phường/xã không phản hồi');
-        const provinceData = await response.json();
+        const wards = await response.json();
         wardSelect.innerHTML = '<option value="">Chọn phường/xã</option>';
-        (provinceData.wards || []).forEach((item) => {
+        (wards || []).forEach((item) => {
           const option = new Option(item.name, item.name);
           wardSelect.add(option);
         });
+        if (selectedWard && ![...wardSelect.options].some((option) => option.value === selectedWard)) {
+          wardSelect.add(new Option(selectedWard + ' (địa chỉ đã lưu)', selectedWard));
+        }
         wardSelect.disabled = false;
         if (selectedWard) wardSelect.value = selectedWard;
       } catch (error) {
-        wardSelect.innerHTML = '<option value="">Không tải được phường/xã</option>';
-        wardSelect.disabled = true;
+        if (selectedWard && ![...wardSelect.options].some((option) => option.value === selectedWard)) {
+          wardSelect.add(new Option(selectedWard, selectedWard, true, true));
+        }
+        wardSelect.disabled = !selectedWard;
         setFieldError('inputWard', 'Không tải được phường/xã. Hãy kiểm tra kết nối mạng.');
         showToast('Không tải được phường/xã. Hãy kiểm tra kết nối mạng.');
       }

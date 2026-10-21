@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="model.User" %>
+<%@ page import="dao.OrderDAO" %>
 <%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%!
   private String h(String value) {
@@ -18,6 +19,7 @@
   User currentUser = (User) session.getAttribute("user");
   String avatarText = "";
   String avatarImage = "";
+  int orderCount = currentUser != null ? new OrderDAO().countOrdersForUser(currentUser.getId()) : 0;
   if (currentUser != null) {
     avatarImage = currentUser.getAvatar() != null ? currentUser.getAvatar().trim() : "";
     String displayName = currentUser.getFullName() != null && !currentUser.getFullName().trim().isEmpty()
@@ -69,13 +71,8 @@
 
     <!-- BỘ CHỌN KHU VỰC ĐỊA LÝ (TỈNH / THÀNH PHỐ) -->
     <div class="hidden lg:flex items-center">
-      <select id="provinceSelect" onchange="applyFilters()" class="bg-slate-100 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+      <select id="provinceSelect" class="bg-slate-100 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
         <option value="all">Toàn Quốc</option>
-        <option value="hcm" selected>TP. Hồ Chí Minh</option>
-        <option value="hn">Hà Nội</option>
-        <option value="dn">Đà Nẵng</option>
-        <option value="bd">Bình Dương</option>
-        <option value="ct">Cần Thơ</option>
       </select>
     </div>
 
@@ -85,7 +82,7 @@
         <%= currentUser == null ? "Đăng nhập" : "Đăng xuất" %>
       </a>
       <a href="05-quan-ly-don-hang.jsp" class="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition border border-slate-200">
-        Đơn hàng (2)
+        Đơn hàng<%= currentUser != null ? " (" + orderCount + ")" : "" %>
       </a>
       <a href="04-chat-tra-gia-vietqr.jsp" class="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition relative">
         Tin nhắn

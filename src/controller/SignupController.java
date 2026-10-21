@@ -109,7 +109,7 @@ public class SignupController extends HttpServlet {
         session.removeAttribute(PENDING_REGISTER_PASSWORD);
         session.setAttribute("user", user);
         session.setAttribute("authMessage", "Tạo tài khoản thành công!");
-        response.sendRedirect(request.getContextPath() + "/my-posts");
+        response.sendRedirect(request.getContextPath() + "/08-ho-so-ca-nhan.jsp");
     }
 
     private String resolveRegisterPassword(HttpSession session, String submittedPassword) {
