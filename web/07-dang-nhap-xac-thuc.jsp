@@ -331,20 +331,56 @@
     function sendOtpCode() {
       const email = document.getElementById('regEmail').value.trim();
       const fullName = document.getElementById('regFullName').value.trim();
-      const password = document.getElementById('regPassword').value.trim();
+      const password = document.getElementById('regPassword').value;
       const otpInputGroup = document.getElementById('otpInputGroup');
       const isOtpStep = !otpInputGroup.classList.contains('hidden');
-      const registerAction = document.getElementById('registerAction');
+      const btnSendOtp = document.getElementById('btnSendOtp');
+
       if (!email) {
         showToast('Vui lòng nhập địa chỉ email trước khi nhận mã OTP.');
         return;
       }
-      if (!fullName || (!password && !isOtpStep)) {
-        showToast('Vui lòng nhập đầy đủ họ tên và mật khẩu trước khi gửi OTP.');
+      if (!fullName) {
+        showToast('Vui lòng nhập họ và tên trước khi gửi OTP.');
         return;
       }
-      registerAction.value = 'sendOtp';
-      document.getElementById('registerForm').submit();
+      if (!password && !isOtpStep) {
+        showToast('Vui lòng nhập mật khẩu trước khi gửi OTP.');
+        return;
+      }
+
+      // Gửi OTP qua AJAX để không reload trang (mật khẩu giữ nguyên)
+      btnSendOtp.disabled = true;
+      btnSendOtp.textContent = 'Đang gửi...';
+
+      const params = new URLSearchParams();
+      params.append('email', email);
+      params.append('fullName', fullName);
+      params.append('password', password); // Nếu rỗng, server sẽ lấy từ session
+
+      fetch('${pageContext.request.contextPath}/send-register-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          otpInputGroup.classList.remove('hidden');
+          btnSendOtp.textContent = 'Gửi Lại OTP';
+          showToast(data.message);
+        } else {
+          showToast(data.message || 'Gửi OTP thất bại, vui lòng thử lại.');
+          btnSendOtp.textContent = isOtpStep ? 'Gửi Lại OTP' : 'Gửi Mã OTP';
+        }
+      })
+      .catch(() => {
+        showToast('Lỗi kết nối, vui lòng thử lại.');
+        btnSendOtp.textContent = isOtpStep ? 'Gửi Lại OTP' : 'Gửi Mã OTP';
+      })
+      .finally(() => {
+        btnSendOtp.disabled = false;
+      });
     }
 
     function openForgotPasswordModal() {
