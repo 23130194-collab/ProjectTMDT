@@ -9,7 +9,16 @@ public class Order {
     private int sellerId;
     private double agreedPrice;
     private double depositAmount;
-    private String status;
+    private int deliveryMethod; // 1: Hẹn gặp trực tiếp, 2: Giao tận nhà qua GHN
+    private String status; // NEGOTIATING, DEPOSITED, SHIPPING, COMPLETED, CANCELLED, DISPUTED
+    private boolean sellerConfirmed; // Người bán xác nhận đã giao hàng
+    private boolean buyerConfirmed;  // Người mua xác nhận đã nhận hàng
+    private Timestamp sellerConfirmedAt;
+    private Timestamp buyerConfirmedAt;
+    private String trackingCode;     // Mã vận đơn GHN (VD: GHN88291023VN)
+    private String shippingProvider; // GHN
+    private String shippingStatus;   // CHO_LAY_HANG, DANG_GIAO, DA_GIAO
+    private String shippingNote;
     private Timestamp createdAt;
 
     public Order() {
@@ -74,12 +83,84 @@ public class Order {
         this.depositAmount = depositAmount;
     }
 
+    public int getDeliveryMethod() {
+        return deliveryMethod;
+    }
+
+    public void setDeliveryMethod(int deliveryMethod) {
+        this.deliveryMethod = deliveryMethod;
+    }
+
     public String getStatus() {
         return status;
     }
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public boolean isSellerConfirmed() {
+        return sellerConfirmed;
+    }
+
+    public void setSellerConfirmed(boolean sellerConfirmed) {
+        this.sellerConfirmed = sellerConfirmed;
+    }
+
+    public boolean isBuyerConfirmed() {
+        return buyerConfirmed;
+    }
+
+    public void setBuyerConfirmed(boolean buyerConfirmed) {
+        this.buyerConfirmed = buyerConfirmed;
+    }
+
+    public Timestamp getSellerConfirmedAt() {
+        return sellerConfirmedAt;
+    }
+
+    public void setSellerConfirmedAt(Timestamp sellerConfirmedAt) {
+        this.sellerConfirmedAt = sellerConfirmedAt;
+    }
+
+    public Timestamp getBuyerConfirmedAt() {
+        return buyerConfirmedAt;
+    }
+
+    public void setBuyerConfirmedAt(Timestamp buyerConfirmedAt) {
+        this.buyerConfirmedAt = buyerConfirmedAt;
+    }
+
+    public String getTrackingCode() {
+        return trackingCode;
+    }
+
+    public void setTrackingCode(String trackingCode) {
+        this.trackingCode = trackingCode;
+    }
+
+    public String getShippingProvider() {
+        return shippingProvider;
+    }
+
+    public void setShippingProvider(String shippingProvider) {
+        this.shippingProvider = shippingProvider;
+    }
+
+    public String getShippingStatus() {
+        return shippingStatus;
+    }
+
+    public void setShippingStatus(String shippingStatus) {
+        this.shippingStatus = shippingStatus;
+    }
+
+    public String getShippingNote() {
+        return shippingNote;
+    }
+
+    public void setShippingNote(String shippingNote) {
+        this.shippingNote = shippingNote;
     }
 
     public Timestamp getCreatedAt() {

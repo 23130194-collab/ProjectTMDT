@@ -1134,6 +1134,11 @@
             '<div class="p-2 bg-white rounded-lg border border-slate-200"><div class="text-slate-500">' + remainderLabel + '</div><strong class="text-slate-900">' + escapeHtml(formatMoney(remainingAmount)) + '</strong></div>' +
           '</div>' +
           '<div class="text-[10px] text-slate-500 italic">' + (postalDelivery ? 'Khoản cọc đã được ghi nhận. Theo dõi cập nhật gửi hàng và thanh toán phần còn lại theo thỏa thuận khi nhận sản phẩm.' : 'Khoản cọc đã được ghi nhận. Phần tiền còn lại thanh toán khi nhận sản phẩm theo thỏa thuận giữa hai bên.') + '</div>' +
+          '<div class="pt-1 flex justify-end">' +
+            '<a href="05-quan-ly-don-hang.jsp" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-xs inline-flex items-center gap-1">' +
+              '<span>' + (postalDelivery ? 'Quản lý vận đơn GHN Express' : 'Xác nhận giao nhận đơn hàng') + '</span> &rarr;' +
+            '</a>' +
+          '</div>' +
         '</div></div>';
     }
 
