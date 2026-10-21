@@ -40,6 +40,7 @@
 %>
 <%
   User currentUser = (User) session.getAttribute("user");
+  if (currentUser == null) currentUser = (User) session.getAttribute("currentUser");
   if (currentUser == null) {
     response.sendRedirect(request.getContextPath() + "/07-dang-nhap-xac-thuc.jsp");
     return;
