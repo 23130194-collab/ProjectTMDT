@@ -20,12 +20,13 @@
   }
 
   private String orderStatusText(String status) {
-    if ("DEPOSITED".equalsIgnoreCase(status)) return "Đã đặt cọc";
+    if ("DEPOSITED".equalsIgnoreCase(status) || "DEPOSIT_CONFIRMED".equalsIgnoreCase(status)) return "Đang giữ cọc";
+    if ("DEPOSIT_PENDING".equalsIgnoreCase(status)) return "Chờ xác nhận cọc";
     if ("SHIPPING".equalsIgnoreCase(status)) return "Đang giao hàng / kiểm tra";
     if ("COMPLETED".equalsIgnoreCase(status)) return "Đã hoàn tất";
-    if ("CANCELLED".equalsIgnoreCase(status)) return "Đã hủy";
+    if ("CANCELLED".equalsIgnoreCase(status) || "CANCELED".equalsIgnoreCase(status)) return "Đã hủy";
     if ("DISPUTED".equalsIgnoreCase(status)) return "Đang khiếu nại";
-    return "Đang đàm phán";
+    return "Đang thương lượng";
   }
 
   private String orderBadgeClass(String status) {

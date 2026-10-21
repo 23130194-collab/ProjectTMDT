@@ -46,12 +46,13 @@
 
   private String orderStatusText(String status) {
     if ("COMPLETED".equalsIgnoreCase(status)) return "Đã hoàn tất";
-    if ("DEPOSIT_CONFIRMED".equalsIgnoreCase(status) || "DEPOSITED".equalsIgnoreCase(status)) return "Đã giữ cọc an toàn";
+    if ("DEPOSIT_CONFIRMED".equalsIgnoreCase(status) || "DEPOSITED".equalsIgnoreCase(status)) return "Đang giữ cọc";
     if ("DEPOSIT_PENDING".equalsIgnoreCase(status)) return "Chờ xác nhận cọc";
     if ("SHIPPING".equalsIgnoreCase(status)) return "Đang giao hàng";
     if ("CANCELED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) return "Đã hủy đơn";
     if ("DISPUTED".equalsIgnoreCase(status)) return "Đang khiếu nại";
-    return "Đang xử lý";
+    if ("NEGOTIATING".equalsIgnoreCase(status)) return "Đang thương lượng";
+    return "Đang giữ cọc";
   }
 
   private String orderBadgeClass(String status) {
@@ -489,7 +490,7 @@
           totalRevenue += o.agreedPrice > 0 ? o.agreedPrice : o.productPrice;
           totalDeposit += o.depositAmount;
           completedOrders++;
-        } else if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status)) {
+        } else if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status) || "DEPOSITED".equals(o.status)) {
           holdingDeposit += o.depositAmount;
         }
       }
@@ -590,12 +591,28 @@
                   for (OrderSummary ord : sellerOrders) {
                     if (shown >= 10) break; shown++;
                     String bCls, bTxt;
-                    if ("COMPLETED".equals(ord.status))            { bCls="bg-teal-50 text-teal-700";   bTxt="Hoàn tất"; }
-                    else if ("DEPOSIT_CONFIRMED".equals(ord.status)){ bCls="bg-amber-50 text-amber-600"; bTxt="Có cọc"; }
-                    else if ("DEPOSIT_PENDING".equals(ord.status))  { bCls="bg-blue-50 text-blue-600";   bTxt="Chờ cọc"; }
-                    else if ("CANCELED".equals(ord.status))         { bCls="bg-slate-100 text-slate-500"; bTxt="Hủy"; }
-                    else if ("DISPUTED".equals(ord.status))         { bCls="bg-red-50 text-red-600";     bTxt="Khiếu nại"; }
-                    else                                             { bCls="bg-slate-100 text-slate-500"; bTxt=ord.status; }
+                    if ("COMPLETED".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-teal-50 text-teal-700";
+                      bTxt = "Hoàn tất";
+                    } else if ("DEPOSIT_CONFIRMED".equalsIgnoreCase(ord.status) || "DEPOSITED".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-amber-50 text-amber-600";
+                      bTxt = "Đang giữ cọc";
+                    } else if ("DEPOSIT_PENDING".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-blue-50 text-blue-600";
+                      bTxt = "Chờ cọc";
+                    } else if ("SHIPPING".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-blue-50 text-blue-600";
+                      bTxt = "Đang giao hàng";
+                    } else if ("CANCELED".equalsIgnoreCase(ord.status) || "CANCELLED".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-slate-100 text-slate-500";
+                      bTxt = "Đã hủy";
+                    } else if ("DISPUTED".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-red-50 text-red-600";
+                      bTxt = "Khiếu nại";
+                    } else {
+                      bCls = "bg-amber-50 text-amber-600";
+                      bTxt = orderStatusText(ord.status);
+                    }
                     double pr = ord.agreedPrice > 0 ? ord.agreedPrice : ord.productPrice;
                 %>
                 <tr class="hover:bg-slate-50 transition">
@@ -1288,7 +1305,7 @@
       const depositOrders = <%
         int dOrd = 0;
         for (OrderSummary o : sellerOrders) {
-          if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status)) dOrd++;
+          if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status) || "DEPOSITED".equals(o.status)) dOrd++;
         }
         out.print(dOrd);
       %>;
@@ -1300,42 +1317,71 @@
         out.print(cOrd);
       %>;
 
-      // Biểu đồ doanh thu theo ngày
-      const revenueLabels = [<%
+      // Biểu đồ doanh thu + cọc theo ngày — gom tất cả ngày có đơn (cả COMPLETED và DEPOSIT)
+      <%
         java.util.LinkedHashMap<String,Double> revByDay = new java.util.LinkedHashMap<>();
+        java.util.LinkedHashMap<String,Double> depByDay = new java.util.LinkedHashMap<>();
+        java.util.LinkedHashSet<String> allDays = new java.util.LinkedHashSet<>();
         java.text.SimpleDateFormat sdfDay = new java.text.SimpleDateFormat("dd/MM");
         for (OrderSummary o : sellerOrders) {
-          if ("COMPLETED".equals(o.status) && o.createdAt != null) {
-            String day = sdfDay.format(o.createdAt);
+          if (o.createdAt == null) continue;
+          String day = sdfDay.format(o.createdAt);
+          allDays.add(day);
+          if ("COMPLETED".equals(o.status)) {
             revByDay.merge(day, o.agreedPrice > 0 ? o.agreedPrice : o.productPrice, Double::sum);
           }
+          if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status) || "DEPOSITED".equals(o.status)) {
+            depByDay.merge(day, o.depositAmount, Double::sum);
+          }
         }
-        if (revByDay.isEmpty()) { out.print("''"); }
-        else { out.print(revByDay.keySet().stream().map(k -> "'" + k + "'").collect(java.util.stream.Collectors.joining(","))); }
-      %>];
-      const revenueData = [<%
-        if (revByDay.isEmpty()) { out.print("0"); }
-        else { out.print(revByDay.values().stream().map(Object::toString).collect(java.util.stream.Collectors.joining(","))); }
-      %>];
+      %>
+      const chartLabels = [<% if (allDays.isEmpty()) { out.print("''"); } else { out.print(allDays.stream().map(k -> "'" + k + "'").collect(java.util.stream.Collectors.joining(","))); } %>];
+      const revenueData  = [<% if (allDays.isEmpty()) { out.print("0"); } else { out.print(allDays.stream().map(k -> String.valueOf(revByDay.getOrDefault(k,0.0))).collect(java.util.stream.Collectors.joining(","))); } %>];
+      const depositData  = [<% if (allDays.isEmpty()) { out.print("0"); } else { out.print(allDays.stream().map(k -> String.valueOf(depByDay.getOrDefault(k,0.0))).collect(java.util.stream.Collectors.joining(","))); } %>];
 
-      // Biểu đồ bar doanh thu
+      // Biểu đồ bar nhóm: doanh thu hoàn tất + tiền cọc đang giữ
       const rCtx = document.getElementById('revenueChart').getContext('2d');
       new Chart(rCtx, {
         type: 'bar',
         data: {
-          labels: revenueLabels,
-          datasets: [{
-            label: 'Doanh thu (đ)',
-            data: revenueData,
-            backgroundColor: 'rgba(20,184,166,0.7)',
-            borderColor: '#14b8a6',
-            borderWidth: 1,
-            borderRadius: 4
-          }]
+          labels: chartLabels,
+          datasets: [
+            {
+              label: 'Doanh thu hoàn tất (đ)',
+              data: revenueData,
+              backgroundColor: 'rgba(20,184,166,0.75)',
+              borderColor: '#14b8a6',
+              borderWidth: 1,
+              borderRadius: 4
+            },
+            {
+              label: 'Tiền cọc đang giữ (đ)',
+              data: depositData,
+              backgroundColor: 'rgba(245,158,11,0.65)',
+              borderColor: '#f59e0b',
+              borderWidth: 1,
+              borderRadius: 4
+            }
+          ]
         },
         options: {
           responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: { font: { size: 10 }, boxWidth: 12, padding: 10 }
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const v = ctx.parsed.y;
+                  const fmt = v >= 1e6 ? (v/1e6).toFixed(1)+'M đ' : v >= 1e3 ? (v/1e3).toFixed(0)+'K đ' : v + ' đ';
+                  return ' ' + ctx.dataset.label.split(' (')[0] + ': ' + fmt;
+                }
+              }
+            }
+          },
           scales: {
             x: { grid: { display: false }, ticks: { font: { size: 10 } } },
             y: {
@@ -1350,16 +1396,16 @@
         }
       });
 
-      // Biểu đồ donut cơ cấu
+      // Biểu đồ donut cơ cấu — khi chưa có đơn hiển thị vòng xám trung tính
       const sCtx = document.getElementById('structureChart').getContext('2d');
       const total = completed + depositOrders + canceledOrders;
       new Chart(sCtx, {
         type: 'doughnut',
         data: {
-          labels: ['Đã hoàn tất', 'Đang giữ cọc', 'Đã hủy/khiếu nại'],
+          labels: total > 0 ? ['Đã hoàn tất', 'Đang giữ cọc', 'Đã hủy/khiếu nại'] : ['Chưa có đơn hàng'],
           datasets: [{
-            data: total > 0 ? [completed, depositOrders, canceledOrders] : [1, 0, 0],
-            backgroundColor: ['#14b8a6', '#f59e0b', '#f87171'],
+            data: total > 0 ? [completed, depositOrders, canceledOrders] : [1],
+            backgroundColor: total > 0 ? ['#14b8a6', '#f59e0b', '#f87171'] : ['#e2e8f0'],
             borderWidth: total > 0 ? 2 : 0,
             borderColor: '#fff'
           }]
@@ -1367,7 +1413,16 @@
         options: {
           responsive: true, maintainAspectRatio: false,
           cutout: '60%',
-          plugins: { legend: { display: false } }
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => total > 0
+                  ? ' ' + ctx.label + ': ' + ctx.parsed + ' đơn'
+                  : ' Chưa có đơn hàng nào'
+              }
+            }
+          }
         }
       });
     }
