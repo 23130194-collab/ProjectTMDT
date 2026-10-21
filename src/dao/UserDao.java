@@ -429,6 +429,9 @@ public class UserDao {
         user.setFullName(rs.getString("full_name"));
         user.setEmail(rs.getString("email"));
         user.setPhone(rs.getString("phone"));
+        user.setProvince(rs.getString("province"));
+        user.setWard(rs.getString("ward"));
+        user.setAddressDetail(rs.getString("address_detail"));
         user.setAvatar(rs.getString("avatar"));
         user.setRole(rs.getString("role"));
         user.setReputationScore(rs.getInt("reputation_score"));
