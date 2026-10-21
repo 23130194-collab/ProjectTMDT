@@ -3,6 +3,7 @@ package controller;
 import model.Product;
 import model.ProductImage;
 import model.User;
+import service.ModerationService;
 import service.ProductService;
 import util.JsonUtil;
 
@@ -35,6 +36,7 @@ import java.util.UUID;
 public class PostAdController extends HttpServlet {
 
     private ProductService productService = new ProductService();
+    private ModerationService moderationService = new ModerationService();
     private static final String UPLOAD_DIR = "assets/uploads";
 
     @Override
@@ -177,12 +179,15 @@ public class PostAdController extends HttpServlet {
         product.setTitle(title);
         product.setDescription(description);
         product.setPrice(price);
+        // Kiểm duyệt tự động: quét từ khóa cấm
+        String moderatedStatus = moderationService.moderate(title, description);
+        System.err.println("[PostAd] Title='" + title + "' Desc='" + description + "' → Status=" + moderatedStatus);
+        product.setStatus(moderatedStatus);
         product.setConditionStatus(conditionStatus);
         product.setSpecifications(specsJson);
         product.setProvince(province);
         product.setWard(ward);
         product.setAddressDetail(addressDetail);
-        product.setStatus("PENDING");
 
         String deliveryMethodStr = request.getParameter("delivery_method");
         int deliveryMethod = 1;
@@ -236,7 +241,12 @@ public class PostAdController extends HttpServlet {
 
         // 5. Chuyển hướng
         if (success) {
-            response.sendRedirect("home?message=post_success");
+            if ("REJECTED".equals(moderatedStatus)) {
+                // Tin bị từ chối tự động
+                response.sendRedirect("home?message=post_rejected");
+            } else {
+                response.sendRedirect("home?message=post_success");
+            }
         } else {
             response.sendRedirect("03-dang-tin.jsp?message=error");
         }

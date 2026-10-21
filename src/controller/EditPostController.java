@@ -5,6 +5,7 @@ import dao.ProductImageDAO;
 import model.Product;
 import model.ProductImage;
 import model.User;
+import service.ModerationService;
 import util.JsonUtil;
 
 import jakarta.servlet.ServletException;
@@ -37,6 +38,7 @@ import jakarta.servlet.http.Part;
 public class EditPostController extends HttpServlet {
     private ProductDAO productDAO = new ProductDAO();
     private ProductImageDAO productImageDAO = new ProductImageDAO();
+    private ModerationService moderationService = new ModerationService();
     private static final String UPLOAD_DIR = "assets/uploads";
 
     // GET: hiển thị trang sửa bài đăng (load dữ liệu bài đăng vào form)
@@ -179,8 +181,12 @@ public class EditPostController extends HttpServlet {
                         existing.setConditionStatus(conditionStatus);
                     }
 
-                    // Sau khi sửa, đưa tin về trạng thái PENDING để admin duyệt lại
-                    existing.setStatus("PENDING");
+                    // Sau khi sửa, kiểm duyệt lại từ khóa cấm
+                    String editTitle = existing.getTitle();
+                    String editDescription = existing.getDescription();
+                    String newStatus = moderationService.moderate(editTitle, editDescription);
+                    existing.setStatus(newStatus);
+
 
                     boolean updated = productDAO.updateProduct(existing);
                     if (updated) {
