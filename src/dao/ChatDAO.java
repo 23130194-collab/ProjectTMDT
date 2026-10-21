@@ -59,7 +59,8 @@ public class ChatDAO {
     }
 
     public int findOrCreateConversationForProduct(int productId, int buyerId) {
-        String productSql = "SELECT user_id FROM products WHERE id = ? LIMIT 1";
+        String productSql = "SELECT p.user_id, p.status, NOT EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.id " +
+                "AND o.status IN ('DEPOSITED', 'SHIPPING', 'COMPLETED')) AS is_available FROM products p WHERE p.id = ? LIMIT 1";
         try (Connection conn = DBContext.getConnection();
              PreparedStatement productPs = conn.prepareStatement(productSql)) {
             productPs.setInt(1, productId);
@@ -70,6 +71,18 @@ public class ChatDAO {
                 int sellerId = rs.getInt("user_id");
                 if (sellerId == buyerId) {
                     return 0;
+                }
+                String productStatus = rs.getString("status");
+                if ("DELETE".equalsIgnoreCase(productStatus) || "SOLD".equalsIgnoreCase(productStatus) || !rs.getBoolean("is_available")) {
+                    String existingSql = "SELECT id FROM conversations WHERE product_id = ? AND buyer_id = ? AND seller_id = ? LIMIT 1";
+                    try (PreparedStatement existing = conn.prepareStatement(existingSql)) {
+                        existing.setInt(1, productId);
+                        existing.setInt(2, buyerId);
+                        existing.setInt(3, sellerId);
+                        try (ResultSet existingRs = existing.executeQuery()) {
+                            return existingRs.next() ? existingRs.getInt("id") : 0;
+                        }
+                    }
                 }
                 return findOrCreateConversation(conn, productId, buyerId, sellerId);
             }
@@ -89,8 +102,10 @@ public class ChatDAO {
         String sql = "SELECT c.id, c.product_id, c.buyer_id, c.seller_id, " +
                 "partner.id AS partner_id, partner.full_name AS partner_name, " +
                 "COALESCE(partner.ward, partner.province, p.location, 'Đang cập nhật') AS partner_location, " +
-                "p.title, p.price, p.status AS product_status, COALESCE(pi.image_url, 'assets/images/products/iphone-13-pro-max.jpg') AS product_image, " +
-                "lm.content AS last_message, lm.message_type AS last_message_type, lm.proposed_price AS last_proposed_price, " +
+                "p.title, p.price, p.delivery_method, CASE WHEN p.status NOT IN ('DELETE', 'SOLD') AND EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.id AND o.status IN ('DEPOSITED', 'SHIPPING', 'COMPLETED')) THEN 'SOLD' ELSE p.status END AS product_status, COALESCE(pi.image_url, 'assets/images/products/iphone-13-pro-max.jpg') AS product_image, " +
+                "lm.content AS last_message, lm.message_type AS last_message_type, " +
+                "(SELECT mp.proposed_price FROM messages mp WHERE mp.conversation_id = c.id AND mp.message_type = 'PROPOSAL' " +
+                "ORDER BY mp.created_at DESC, mp.id DESC LIMIT 1) AS last_proposed_price, " +
                 "COALESCE(lm.created_at, c.created_at) AS last_message_at " +
                 "FROM conversations c " +
                 "JOIN products p ON p.id = c.product_id " +
@@ -116,6 +131,7 @@ public class ChatDAO {
                     item.setPartnerLocation(rs.getString("partner_location"));
                     item.setProductTitle(rs.getString("title"));
                     item.setProductPrice(rs.getDouble("price"));
+                    item.setDeliveryMethod(rs.getInt("delivery_method"));
                     item.setProductStatus(rs.getString("product_status"));
                     item.setProductImage(rs.getString("product_image"));
                     item.setLastMessage(rs.getString("last_message"));
@@ -168,27 +184,43 @@ public class ChatDAO {
         }
 
         String safeType = normalizeMessageType(messageType);
-        if ("PROPOSAL".equals(safeType) && !canSendOffer(conversationId)) {
-            return null;
-        }
         String sql = "INSERT INTO messages (conversation_id, sender_id, content, message_type, proposed_price) VALUES (?, ?, ?, ?, ?)";
+        if ("PROPOSAL".equals(safeType)) {
+            try (Connection conn = DBContext.getConnection()) {
+                conn.setAutoCommit(false);
+                try {
+                    String lockSql = "SELECT p.status, p.price, NOT EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.id " +
+                            "AND o.status IN ('DEPOSITED', 'SHIPPING', 'COMPLETED')) AS is_available FROM conversations c JOIN products p ON p.id = c.product_id " +
+                            "WHERE c.id = ? FOR UPDATE";
+                    try (PreparedStatement lock = conn.prepareStatement(lockSql)) {
+                        lock.setInt(1, conversationId);
+                        try (ResultSet rs = lock.executeQuery()) {
+                            if (!rs.next() || "DELETE".equalsIgnoreCase(rs.getString("status")) || "SOLD".equalsIgnoreCase(rs.getString("status")) || !rs.getBoolean("is_available") || rs.getDouble("price") <= 0) {
+                                conn.rollback();
+                                return null;
+                            }
+                        }
+                    }
+                    int messageId = insertMessage(conn, sql, conversationId, senderId, content, safeType, proposedPrice);
+                    conn.commit();
+                    return messageId > 0 ? getMessageById(messageId) : null;
+                } catch (SQLException e) {
+                    conn.rollback();
+                    throw e;
+                } finally {
+                    conn.setAutoCommit(true);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setInt(1, conversationId);
-            ps.setInt(2, senderId);
-            ps.setString(3, content);
-            ps.setString(4, safeType);
-            if ("PROPOSAL".equals(safeType) && proposedPrice > 0) {
-                ps.setDouble(5, proposedPrice);
-            } else {
-                ps.setNull(5, java.sql.Types.DECIMAL);
-            }
+            bindMessage(ps, conversationId, senderId, content, safeType, proposedPrice);
             ps.executeUpdate();
-
             try (ResultSet keys = ps.getGeneratedKeys()) {
-                if (keys.next()) {
-                    return getMessageById(keys.getInt(1));
-                }
+                if (keys.next()) return getMessageById(keys.getInt(1));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -317,7 +349,8 @@ public class ChatDAO {
     }
 
     public boolean canSendOffer(int conversationId) {
-        String sql = "SELECT p.price FROM conversations c JOIN products p ON p.id = c.product_id WHERE c.id = ? LIMIT 1";
+        String sql = "SELECT p.price FROM conversations c JOIN products p ON p.id = c.product_id WHERE c.id = ? AND p.status NOT IN ('DELETE', 'SOLD') " +
+                "AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.id AND o.status IN ('DEPOSITED', 'SHIPPING', 'COMPLETED')) LIMIT 1";
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, conversationId);
@@ -328,6 +361,42 @@ public class ChatDAO {
             e.printStackTrace();
         }
         return false;
+    }
+
+    public boolean isProductActiveForConversation(int conversationId) {
+        String sql = "SELECT 1 FROM conversations c JOIN products p ON p.id = c.product_id WHERE c.id = ? AND p.status NOT IN ('DELETE', 'SOLD') " +
+                "AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.id AND o.status IN ('DEPOSITED', 'SHIPPING', 'COMPLETED')) LIMIT 1";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, conversationId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private int insertMessage(Connection conn, String sql, int conversationId, int senderId, String content,
+                              String messageType, double proposedPrice) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            bindMessage(ps, conversationId, senderId, content, messageType, proposedPrice);
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                return keys.next() ? keys.getInt(1) : 0;
+            }
+        }
+    }
+
+    private void bindMessage(PreparedStatement ps, int conversationId, int senderId, String content,
+                             String messageType, double proposedPrice) throws SQLException {
+        ps.setInt(1, conversationId);
+        ps.setInt(2, senderId);
+        ps.setString(3, content);
+        ps.setString(4, messageType);
+        if ("PROPOSAL".equals(messageType) && proposedPrice > 0) ps.setDouble(5, proposedPrice);
+        else ps.setNull(5, java.sql.Types.DECIMAL);
     }
 
     private boolean isBuyer(int conversationId, int userId) {
