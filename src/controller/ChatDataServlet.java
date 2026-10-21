@@ -118,9 +118,15 @@ public class ChatDataServlet extends HttpServlet {
             return;
         }
 
-        if ("PROPOSAL".equalsIgnoreCase(type) && !chatDAO.canSendOffer(conversationId)) {
-            response.getWriter().write("{\"success\":false,\"message\":\"Tin tặng miễn phí không hỗ trợ đề xuất trả giá.\"}");
-            return;
+        if ("PROPOSAL".equalsIgnoreCase(type)) {
+            if (!chatDAO.isProductActiveForConversation(conversationId)) {
+                response.getWriter().write("{\"success\":false,\"message\":\"Sản phẩm đã hết, không thể tiếp tục trả giá.\"}");
+                return;
+            }
+            if (!chatDAO.canSendOffer(conversationId)) {
+                response.getWriter().write("{\"success\":false,\"message\":\"Tin tặng miễn phí không hỗ trợ đề xuất trả giá.\"}");
+                return;
+            }
         }
 
         Message saved = chatDAO.addMessage(conversationId, currentUser.getId(), content.trim(), type, proposedPrice);
@@ -217,6 +223,7 @@ public class ChatDataServlet extends HttpServlet {
         appendField(json, "targetStatus", "Đang trực tuyến • " + safe(item.getPartnerLocation())).append(",");
         appendField(json, "productTitle", item.getProductTitle()).append(",");
         appendField(json, "productPrice", item.getProductPrice()).append(",");
+        appendField(json, "deliveryMethod", item.getDeliveryMethod()).append(",");
         appendField(json, "productPriceText", formatMoney(item.getProductPrice())).append(",");
         appendField(json, "dealPrice", dealPrice).append(",");
         appendField(json, "dealPriceText", formatMoney(dealPrice)).append(",");
@@ -257,6 +264,7 @@ public class ChatDataServlet extends HttpServlet {
         appendField(json, "messageType", message.getMessageType()).append(",");
         appendField(json, "proposedPrice", message.getProposedPrice()).append(",");
         appendField(json, "proposedPriceText", message.getProposedPrice() > 0 ? formatMoney(message.getProposedPrice()) : "").append(",");
+        appendField(json, "createdAtMs", message.getCreatedAt() == null ? 0L : message.getCreatedAt().getTime()).append(",");
         appendField(json, "timeText", formatShortTime(message.getCreatedAt()));
         json.append("}");
         return json.toString();
@@ -282,6 +290,11 @@ public class ChatDataServlet extends HttpServlet {
         return json;
     }
 
+    private StringBuilder appendField(StringBuilder json, String key, long value) {
+        json.append("\"").append(escapeJson(key)).append("\":").append(value);
+        return json;
+    }
+
     private StringBuilder appendField(StringBuilder json, String key, double value) {
         json.append("\"").append(escapeJson(key)).append("\":").append(Double.isNaN(value) ? "0" : String.valueOf(value));
         return json;
@@ -296,9 +309,13 @@ public class ChatDataServlet extends HttpServlet {
         if (price <= 0) {
             return 0;
         }
-        double roundedTenPercent = Math.round(price * 0.1 / 100000) * 100000;
-        double preferredDeposit = Math.min(1000000, Math.max(200000, roundedTenPercent));
-        return Math.min(price, preferredDeposit);
+        if (price > 100_000) {
+            return Math.round(price * 0.10);
+        }
+        if (price >= 10_000 && price <= 50_000) {
+            return Math.round(price);
+        }
+        return Math.round(price * 0.50);
     }
 
     private String formatMoney(double amount) {
