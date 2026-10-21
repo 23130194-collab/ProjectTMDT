@@ -13,6 +13,7 @@ public class ChatConversation {
     private String partnerLocation;
     private String productTitle;
     private double productPrice;
+    private int deliveryMethod;
     private String productImage;
     private String productStatus;
     private String lastMessage;
@@ -49,6 +50,9 @@ public class ChatConversation {
 
     public double getProductPrice() { return productPrice; }
     public void setProductPrice(double productPrice) { this.productPrice = productPrice; }
+
+    public int getDeliveryMethod() { return deliveryMethod; }
+    public void setDeliveryMethod(int deliveryMethod) { this.deliveryMethod = deliveryMethod; }
 
     public String getProductImage() { return productImage; }
     public void setProductImage(String productImage) { this.productImage = productImage; }
