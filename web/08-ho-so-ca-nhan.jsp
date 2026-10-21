@@ -37,6 +37,24 @@
     }
     return digits.substring(0, 4) + "***" + digits.substring(digits.length() - 3);
   }
+
+  private String orderStatusText(String status) {
+    if ("COMPLETED".equalsIgnoreCase(status)) return "Đã hoàn tất";
+    if ("DEPOSIT_CONFIRMED".equalsIgnoreCase(status) || "DEPOSITED".equalsIgnoreCase(status)) return "Đã giữ cọc an toàn";
+    if ("DEPOSIT_PENDING".equalsIgnoreCase(status)) return "Chờ xác nhận cọc";
+    if ("SHIPPING".equalsIgnoreCase(status)) return "Đang giao hàng";
+    if ("CANCELED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) return "Đã hủy đơn";
+    if ("DISPUTED".equalsIgnoreCase(status)) return "Đang khiếu nại";
+    return "Đang xử lý";
+  }
+
+  private String orderBadgeClass(String status) {
+    if ("COMPLETED".equalsIgnoreCase(status)) return "text-emerald-700 bg-emerald-50 border-emerald-200";
+    if ("DEPOSIT_CONFIRMED".equalsIgnoreCase(status) || "DEPOSITED".equalsIgnoreCase(status) || "SHIPPING".equalsIgnoreCase(status)) return "text-blue-700 bg-blue-50 border-blue-200";
+    if ("DEPOSIT_PENDING".equalsIgnoreCase(status)) return "text-amber-700 bg-amber-50 border-amber-200";
+    if ("CANCELED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status) || "DISPUTED".equalsIgnoreCase(status)) return "text-red-700 bg-red-50 border-red-200";
+    return "text-slate-700 bg-slate-50 border-slate-200";
+  }
 %>
 <%
   User currentUser = (User) session.getAttribute("user");
@@ -56,6 +74,9 @@
   String addressDetail = currentUser.getAddressDetail() != null ? currentUser.getAddressDetail() : "";
   String fullAddress = String.join(", ", java.util.Arrays.asList(addressDetail, ward, province).stream().filter(s -> s != null && !s.trim().isEmpty()).toArray(String[]::new));
   String avatarText = initials(displayName);
+  String avatarImage = currentUser.getAvatar() != null ? currentUser.getAvatar().trim() : "";
+  Integer reqSuccessCount = (Integer) request.getAttribute("successfulOrdersCount");
+  int successCount = reqSuccessCount != null ? reqSuccessCount : 0;
   String createdText = currentUser.getCreatedAt() != null
           ? new SimpleDateFormat("MM/yyyy").format(currentUser.getCreatedAt())
           : "hôm nay";
@@ -114,8 +135,12 @@
     <!-- THẺ TỔNG QUAN TÀI KHOẢN -->
     <div class="bg-white rounded-xl border border-slate-200 p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
       <div class="flex items-center gap-4">
-        <div id="profileAvatarBig" class="w-16 h-16 rounded-xl bg-teal-600 text-white font-bold text-2xl flex items-center justify-center shrink-0">
-          <%= h(avatarText) %>
+        <div id="profileAvatarBig" class="w-16 h-16 rounded-full bg-teal-600 text-white font-bold text-2xl flex items-center justify-center shrink-0 overflow-hidden shadow-xs ring-2 ring-slate-100 select-none">
+          <% if (!avatarImage.isEmpty()) { %>
+            <img src="<%= h(avatarImage) %>" alt="<%= h(displayName) %>" referrerpolicy="no-referrer" class="w-full h-full rounded-full object-cover">
+          <% } else { %>
+            <%= h(avatarText) %>
+          <% } %>
         </div>
         <div>
           <h1 id="profileDisplayName" class="text-lg font-bold text-slate-900"><%= h(displayName) %></h1>
@@ -123,16 +148,30 @@
             Thành viên MuaNgay<%= fullAddress.isEmpty() ? "" : " • " + h(fullAddress) %>
           </div>
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
-            <span class="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 text-xs font-semibold border border-teal-200">Thành viên mới</span>
-            <span class="text-xs text-slate-600">Đã giao dịch thành công: <strong class="text-slate-800">0 đơn</strong></span>
+            <% if (successCount >= 1) { %>
+              <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                Điểm Uy Tín: 100/100
+              </span>
+            <% } else { %>
+              <span class="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 text-xs font-semibold border border-teal-200">Thành viên mới</span>
+            <% } %>
+            <span class="text-xs text-slate-600">Đã giao dịch thành công: <strong class="text-slate-800"><%= successCount %> đơn</strong></span>
             <span class="text-xs text-slate-500">0 đánh giá</span>
           </div>
           <div class="flex items-center gap-1.5 mt-2 text-xs text-teal-600 font-medium">
             <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
             Email đã xác thực
           </div>
-          <div class="text-xs text-slate-400 mt-1">Chưa đủ lịch sử giao dịch. Cần hoàn tất tối thiểu 3 giao dịch để mở khoá Điểm Uy Tín.</div>
-          <div class="text-xs text-slate-400 mt-0.5">0/3 giao dịch</div>
+          <% if (successCount >= 1) { %>
+            <div class="text-xs text-emerald-600 font-medium mt-1 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              Đã mở khoá Điểm Uy Tín (<%= successCount %>/1 giao dịch hoàn tất)
+            </div>
+          <% } else { %>
+            <div class="text-xs text-slate-400 mt-1">Chưa đủ lịch sử giao dịch. Cần hoàn tất tối thiểu 1 giao dịch để mở khoá Điểm Uy Tín.</div>
+            <div class="text-xs text-slate-400 mt-0.5">0/1 giao dịch</div>
+          <% } %>
         </div>
       </div>
 
@@ -148,9 +187,13 @@
 
     <!-- TABS ĐIỀU HƯỚNG NỘI DUNG TRANG CÁ NHÂN -->
     <c:set var="isStatsTab" value="${param.tab == 'stats'}" />
+    <c:set var="isOrdersTab" value="${param.tab == 'orders'}" />
     <div class="flex border-b border-slate-200 gap-1 text-xs font-semibold overflow-x-auto">
-      <button id="profileTabPosts" onclick="switchProfileSection('posts')" class="${isStatsTab ? 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap' : 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap'}">
+      <button id="profileTabPosts" onclick="switchProfileSection('posts')" class="${!isStatsTab && !isOrdersTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
         Tin Tôi Đang Đăng Bán (<c:choose><c:when test="${not empty myPosts}">${myPosts.size()}</c:when><c:otherwise>0</c:otherwise></c:choose>)
+      </button>
+      <button id="profileTabOrders" onclick="switchProfileSection('orders')" class="${isOrdersTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
+        Lịch Sử Mua Hàng (<c:choose><c:when test="${not empty buyerOrders}">${buyerOrders.size()}</c:when><c:otherwise>0</c:otherwise></c:choose>)
       </button>
       <button id="profileTabStats" onclick="switchProfileSection('stats')" class="${isStatsTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
         Thống Kê Doanh Thu &amp; Đơn Bán
@@ -164,7 +207,7 @@
     </div>
 
     <!-- PHẦN 1: QUẢN LÝ BÀI ĐĂNG CỦA TÔI -->
-    <section id="sectionPosts" class="space-y-3 ${isStatsTab ? 'hidden' : ''}">
+    <section id="sectionPosts" class="space-y-3 ${isStatsTab || isOrdersTab ? 'hidden' : ''}">
       
       <!-- BỘ LỌC TRẠNG THÁI BÀI ĐĂNG -->
       <div class="flex items-center justify-between text-xs">
@@ -268,6 +311,149 @@
           </div>
         </c:otherwise>
       </c:choose>
+
+    </section>
+
+    <!-- PHẦN: LỊCH SỬ MUA HÀNG (CÁC ĐƠN HÀNG ĐÃ MUA) -->
+    <%
+      java.util.List<dao.OrderDAO.OrderSummary> buyerOrders =
+          (java.util.List<dao.OrderDAO.OrderSummary>) request.getAttribute("buyerOrders");
+      if (buyerOrders == null) buyerOrders = java.util.Collections.emptyList();
+      java.text.NumberFormat nfOrder = java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi","VN"));
+      java.text.SimpleDateFormat sdfOrder = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm");
+    %>
+    <section id="sectionOrders" class="space-y-4 ${isOrdersTab ? '' : 'hidden'}">
+      
+      <!-- BỘ LỌC ĐƠN HÀNG MUA -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="text-slate-500 font-medium">Trạng thái:</span>
+          <select id="buyerOrderStatusFilter" onchange="filterBuyerOrders(this.value)" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <option value="all" selected>Tất cả đơn mua (<%= buyerOrders.size() %>)</option>
+            <option value="deposit">Đang giữ cọc bảo chứng</option>
+            <option value="completed">Đã hoàn tất giao dịch</option>
+            <option value="canceled">Đã hủy / khiếu nại</option>
+          </select>
+        </div>
+        <a href="05-quan-ly-don-hang.jsp" class="text-blue-600 hover:underline font-semibold flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Mở Trung tâm Quản lý Đơn hàng &amp; Ký quỹ &rarr;
+        </a>
+      </div>
+
+      <% if (buyerOrders.isEmpty()) { %>
+        <!-- EMPTY STATE KHI CHƯA CÓ ĐƠN MUA -->
+        <div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <div class="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+          </div>
+          <h3 class="text-sm font-bold text-slate-800">Bạn chưa có đơn mua hàng nào</h3>
+          <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Khi bạn đặt cọc mua sản phẩm, thông tin giao dịch và số tiền bảo chứng sẽ được lưu và theo dõi tại đây.</p>
+          <a href="01-trang-chu.jsp" class="inline-flex items-center gap-1.5 mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition shadow-xs">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            Khám phá món đồ ngay
+          </a>
+        </div>
+      <% } else { %>
+        <!-- DANH SÁCH CÁC ĐƠN MUA -->
+        <div class="space-y-3.5" id="buyerOrdersList">
+          <% for (dao.OrderDAO.OrderSummary bo : buyerOrders) {
+            double finalPrice = bo.agreedPrice > 0 ? bo.agreedPrice : bo.productPrice;
+            double remainPrice = Math.max(0, finalPrice - bo.depositAmount);
+            String st = bo.status != null ? bo.status.toLowerCase() : "";
+            String filterCategory = "other";
+            if ("completed".equals(st)) filterCategory = "completed";
+            else if ("deposit_confirmed".equals(st) || "deposit_pending".equals(st) || "shipping".equals(st) || "deposited".equals(st)) filterCategory = "deposit";
+            else if ("canceled".equals(st) || "cancelled".equals(st) || "disputed".equals(st)) filterCategory = "canceled";
+          %>
+            <div class="buyer-order-card bg-white rounded-xl border border-slate-200 p-4 sm:p-5 hover:border-slate-300 transition shadow-xs" data-status-group="<%= filterCategory %>">
+              
+              <!-- ĐẦU CARD: MÃ ĐƠN, NGÀY ĐẶT, TRẠNG THÁI -->
+              <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wide">
+                    Đơn Tôi Mua
+                  </span>
+                  <span class="font-mono font-bold text-slate-800">#MN-<%= bo.id %></span>
+                  <span class="text-slate-400">&bull;</span>
+                  <span class="text-slate-500"><%= bo.createdAt != null ? sdfOrder.format(bo.createdAt) : "" %></span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold border <%= orderBadgeClass(bo.status) %>">
+                    <%= orderStatusText(bo.status) %>
+                  </span>
+                </div>
+              </div>
+
+              <!-- THÂN CARD: ẢNH, TÊN SẢN PHẨM, NGƯỜI BÁN, GIÁ CẢ -->
+              <div class="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-start gap-3.5 min-w-0">
+                  <div class="w-16 h-16 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                    <img src="<%= h(bo.productImage != null && !bo.productImage.trim().isEmpty() ? bo.productImage : "assets/images/products/iphone-13-pro-max.jpg") %>"
+                         alt="<%= h(bo.productTitle) %>"
+                         class="w-full h-full object-cover">
+                  </div>
+                  <div class="min-w-0">
+                    <a href="product-detail?id=<%= bo.productId %>" class="font-bold text-sm text-slate-900 hover:text-blue-600 line-clamp-1 transition">
+                      <%= h(bo.productTitle) %>
+                    </a>
+                    <div class="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                      <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                      Người bán: <strong class="text-slate-700 font-semibold"><%= h(bo.sellerName != null ? bo.sellerName : "Người bán") %></strong>
+                    </div>
+                    <div class="text-[11px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                      <svg class="w-3 h-3 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                      Đã đặt cọc qua SePay: <strong><%= nfOrder.format(bo.depositAmount) %> đ</strong> (Được sàn bảo chứng)
+                    </div>
+                  </div>
+                </div>
+
+                <!-- TỔNG TIỀN VÀ TIỀN CÒN LẠI -->
+                <div class="text-left sm:text-right shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                  <div class="text-[11px] text-slate-400">Tổng giá chốt mua</div>
+                  <div class="text-base font-bold text-blue-600"><%= nfOrder.format(finalPrice) %> đ</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">
+                    Còn lại trả khi nhận: <strong class="text-slate-800"><%= nfOrder.format(remainPrice) %> đ</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- CHÂN CARD: CÁC NÚT THAO TÁC -->
+              <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div class="text-[11px] text-slate-400">
+                  Mã giao dịch bảo vệ: <span class="font-mono text-slate-600">SEP-ORD-<%= bo.id %></span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <a href="04-chat-tra-gia-vietqr.jsp?productId=<%= bo.productId %>" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold transition flex items-center gap-1">
+                    <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                    Nhắn tin
+                  </a>
+                  <button type="button"
+                    onclick='openBuyerOrderDetail({
+                      id: <%= bo.id %>,
+                      productId: <%= bo.productId %>,
+                      productTitle: "<%= h(bo.productTitle).replace("\"", "\\\"") %>",
+                      productImage: "<%= h(bo.productImage != null && !bo.productImage.trim().isEmpty() ? bo.productImage : "assets/images/products/iphone-13-pro-max.jpg") %>",
+                      sellerName: "<%= h(bo.sellerName != null ? bo.sellerName : "Người bán").replace("\"", "\\\"") %>",
+                      finalPrice: "<%= nfOrder.format(finalPrice) %>",
+                      depositAmount: "<%= nfOrder.format(bo.depositAmount) %>",
+                      remainPrice: "<%= nfOrder.format(remainPrice) %>",
+                      status: "<%= bo.status %>",
+                      statusText: "<%= orderStatusText(bo.status) %>",
+                      badgeClass: "<%= orderBadgeClass(bo.status) %>",
+                      createdAt: "<%= bo.createdAt != null ? sdfOrder.format(bo.createdAt) : "" %>"
+                    })'
+                    class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition flex items-center gap-1 shadow-xs">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    Xem Chi Tiết Đơn Hàng
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          <% } %>
+        </div>
+      <% } %>
 
     </section>
 
@@ -577,6 +763,90 @@
     </form>
   </div>
 
+  <!-- MODAL XEM CHI TIẾT ĐƠN HÀNG ĐÃ MUA -->
+  <div id="buyerOrderDetailModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      
+      <!-- HEADER MODAL -->
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-blue-600">CHI TIẾT ĐƠN HÀNG MUA</div>
+          <h3 id="modalOrderCode" class="text-base font-bold text-slate-900">#MN-000</h3>
+        </div>
+        <button type="button" onclick="closeBuyerOrderDetail()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center font-bold text-sm transition">✕</button>
+      </div>
+
+      <!-- TRẠNG THÁI & NGÀY ĐẶT -->
+      <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
+        <div>
+          <span class="text-slate-400 block text-[10px] uppercase font-bold">Ngày đặt cọc</span>
+          <span id="modalOrderDate" class="font-semibold text-slate-700">--/--/----</span>
+        </div>
+        <div>
+          <span id="modalOrderStatusBadge" class="px-2.5 py-1 rounded-full font-bold border text-xs">--</span>
+        </div>
+      </div>
+
+      <!-- SẢN PHẨM & NGƯỜI BÁN -->
+      <div class="flex items-center gap-3.5 p-3 rounded-xl border border-slate-200">
+        <img id="modalProductImage" src="" alt="" class="w-16 h-16 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200">
+        <div class="min-w-0 flex-1">
+          <a id="modalProductLink" href="#" class="font-bold text-sm text-slate-900 hover:text-blue-600 line-clamp-1 transition block"></a>
+          <div class="text-xs text-slate-500 mt-1 flex items-center justify-between gap-1">
+            <span>Người bán: <strong id="modalSellerName" class="text-slate-800 font-semibold"></strong></span>
+            <a id="modalChatSellerLink" href="#" class="text-blue-600 hover:underline font-semibold text-[11px] flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+              Nhắn tin
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHI TIẾT THANH TOÁN & BẢO CHỨNG -->
+      <div class="bg-blue-50/50 rounded-xl border border-blue-100 p-4 space-y-2 text-xs">
+        <div class="font-bold text-slate-800 mb-2 flex items-center justify-between">
+          <span>Thông tin thanh toán &amp; Tiền cọc</span>
+          <span class="text-[10px] text-blue-600 font-semibold bg-white px-2 py-0.5 rounded border border-blue-200">Bảo chứng SePay</span>
+        </div>
+        <div class="flex items-center justify-between text-slate-600">
+          <span>Tổng giá mua đã chốt:</span>
+          <strong id="modalFinalPrice" class="text-slate-900 font-bold">0 đ</strong>
+        </div>
+        <div class="flex items-center justify-between text-emerald-700">
+          <span class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            Tiền cọc đã giữ bảo đảm:
+          </span>
+          <strong id="modalDepositAmount" class="font-bold">0 đ</strong>
+        </div>
+        <div class="flex items-center justify-between text-slate-700 pt-1.5 border-t border-blue-100">
+          <span>Số tiền còn lại trả khi nhận máy:</span>
+          <strong id="modalRemainPrice" class="text-blue-600 font-bold text-sm">0 đ</strong>
+        </div>
+      </div>
+
+      <!-- HƯỚNG DẪN AN TOÀN -->
+      <div class="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-[11px] text-amber-800 space-y-1">
+        <div class="font-bold flex items-center gap-1 text-amber-900">
+          <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+          Lưu ý khi nhận hàng và thanh toán:
+        </div>
+        <p class="leading-relaxed">Khi gặp người bán hoặc nhận hàng, bạn hãy kiểm tra ngoại hình và chức năng máy cẩn thận trước khi trả nốt số tiền mặt còn lại. Tiền cọc chỉ được chuyển cho người bán khi giao dịch thành công.</p>
+      </div>
+
+      <!-- NÚT THAO TÁC MODAL -->
+      <div class="pt-2 flex flex-col sm:flex-row gap-2">
+        <a id="modalManageLink" href="05-quan-ly-don-hang.jsp" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition text-center shadow-xs">
+          Mở tại Quản Lý Đơn Hàng &amp; Ký Quỹ &rarr;
+        </a>
+        <button type="button" onclick="closeBuyerOrderDetail()" class="px-5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
+          Đóng
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- TOAST THÔNG BÁO TỨC THÌ -->
   <div id="toastNotification" class="fixed bottom-6 right-6 bg-slate-900 text-white text-xs px-4 py-3 rounded-lg shadow-lg border border-slate-700 hidden z-50 flex items-center gap-3">
     <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
@@ -589,11 +859,11 @@
   <script>
     function switchProfileSection(sec, updateUrl) {
       if (typeof updateUrl === 'undefined') updateUrl = true;
-      ['sectionPosts','sectionStats','sectionSaved','sectionReviews'].forEach(id => {
+      ['sectionPosts','sectionOrders','sectionStats','sectionSaved','sectionReviews'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
       });
-      ['profileTabPosts','profileTabStats','profileTabSaved','profileTabReviews'].forEach(id => {
+      ['profileTabPosts','profileTabOrders','profileTabStats','profileTabSaved','profileTabReviews'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.className = 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap';
       });
@@ -603,6 +873,11 @@
         const secEl = document.getElementById('sectionPosts');
         if (secEl) secEl.classList.remove('hidden');
         const tabEl = document.getElementById('profileTabPosts');
+        if (tabEl) tabEl.className = activeClass;
+      } else if (sec === 'orders') {
+        const secEl = document.getElementById('sectionOrders');
+        if (secEl) secEl.classList.remove('hidden');
+        const tabEl = document.getElementById('profileTabOrders');
         if (tabEl) tabEl.className = activeClass;
       } else if (sec === 'stats') {
         const secEl = document.getElementById('sectionStats');
@@ -629,6 +904,44 @@
           window.history.replaceState(null, '', url);
         } catch (e) {}
       }
+    }
+
+    function filterBuyerOrders(cat) {
+      const cards = document.querySelectorAll('.buyer-order-card');
+      cards.forEach(card => {
+        const group = card.dataset.statusGroup || '';
+        if (cat === 'all' || group === cat) {
+          card.style.display = '';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function openBuyerOrderDetail(order) {
+      document.getElementById('modalOrderCode').textContent = '#MN-' + order.id;
+      document.getElementById('modalOrderDate').textContent = order.createdAt || 'Mới đặt gần đây';
+
+      const badge = document.getElementById('modalOrderStatusBadge');
+      badge.textContent = order.statusText || 'Đang xử lý';
+      badge.className = 'px-2.5 py-1 rounded-full font-bold border text-xs ' + (order.badgeClass || 'text-slate-700 bg-slate-50 border-slate-200');
+
+      document.getElementById('modalProductImage').src = order.productImage;
+      document.getElementById('modalProductLink').textContent = order.productTitle;
+      document.getElementById('modalProductLink').href = 'product-detail?id=' + order.productId;
+      document.getElementById('modalSellerName').textContent = order.sellerName;
+      document.getElementById('modalChatSellerLink').href = '04-chat-tra-gia-vietqr.jsp?productId=' + order.productId;
+
+      document.getElementById('modalFinalPrice').textContent = order.finalPrice + ' đ';
+      document.getElementById('modalDepositAmount').textContent = order.depositAmount + ' đ';
+      document.getElementById('modalRemainPrice').textContent = order.remainPrice + ' đ';
+
+      document.getElementById('modalManageLink').href = '05-quan-ly-don-hang.jsp#order-card-db-' + order.id;
+      document.getElementById('buyerOrderDetailModal').classList.remove('hidden');
+    }
+
+    function closeBuyerOrderDetail() {
+      document.getElementById('buyerOrderDetailModal').classList.add('hidden');
     }
 
     function filterPosts(statusValue) {
@@ -938,6 +1251,8 @@
       const tab = urlParams.get('tab') || (window.location.hash ? window.location.hash.replace('#', '') : null);
       if (tab === 'stats') {
         switchProfileSection('stats', false);
+      } else if (tab === 'orders') {
+        switchProfileSection('orders', false);
       } else if (tab === 'saved') {
         switchProfileSection('saved', false);
       } else if (tab === 'reviews') {
