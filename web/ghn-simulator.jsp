@@ -279,17 +279,18 @@
           </div>
         </div>
 
-        <!-- BẢNG ĐIỀU KHIỂN DEMO (SANDBOX CARRIER CONTROLS) -->
+        <!-- BẢNG ĐIỀU KHIỂN DÀNH CHO NGƯỜI BÁN (DEMO / SIMULATOR) -->
+        <% if (isSeller) { %>
         <div class="bg-amber-50/80 border-2 border-dashed border-amber-300 rounded-xl p-4 space-y-3">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-amber-900 uppercase tracking-wide flex items-center gap-1.5">
               <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
-              Bảng Điều Khiển Giả Lập Shipper GHN (Dành Cho Thuyết Trình & Kiểm Thử)
+              Bảng Điều Khiển Giả Lập Shipper GHN (Dành Cho Người Bán Demo & Kiểm Thử)
             </span>
-            <span class="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded font-semibold">Demo Tools</span>
+            <span class="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded font-semibold">Demo Shipper</span>
           </div>
           <p class="text-[11px] text-amber-800">
-            Vì không gọi API thật của GHN, bạn có thể click các nút dưới đây để mô phỏng shipper cập nhật trạng thái gói hàng theo thời gian thực:
+            Vì không gọi API thật của GHN, người bán có thể click các nút dưới đây để mô phỏng shipper cập nhật trạng thái gói hàng theo thời gian thực:
           </p>
           <div class="flex flex-wrap items-center gap-2.5 pt-1">
             <form action="order-action" method="POST" class="inline">
@@ -320,28 +321,45 @@
             </form>
           </div>
         </div>
+        <% } %>
 
-        <!-- HÀNH ĐỘNG DÀNH CHO NGƯỜI MUA -->
+        <!-- GIAO DIỆN THEO DÕI & HÀNH ĐỘNG DÀNH CHO NGƯỜI MUA -->
         <% if (isBuyer && !"COMPLETED".equalsIgnoreCase(order.status)) { %>
-          <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-blue-900 uppercase">Hành động của Người Mua:</span>
-              <span class="text-[10px] text-blue-700 bg-blue-100 px-2 py-0.5 rounded font-semibold">Bảo đảm quyền lợi</span>
+          <% boolean isDeliveredToBuyer = "DA_GIAO".equalsIgnoreCase(currentShippingStatus); %>
+          <% if (isDeliveredToBuyer) { %>
+            <div class="p-4 bg-green-50 border border-green-200 rounded-xl space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-green-900 uppercase">Gói hàng đã được giao đến bạn:</span>
+                <span class="text-[10px] text-green-700 bg-green-100 px-2 py-0.5 rounded font-semibold">Đã giao hàng</span>
+              </div>
+              <p class="text-[11px] text-green-800">
+                Shipper GHN đã cập nhật giao hàng thành công. Khi bạn đã kiểm tra sản phẩm đạt chuẩn, vui lòng bấm nút xác nhận dưới đây để hoàn tất đơn hàng và giải ngân tiền cọc cho người bán:
+              </p>
+              <div class="pt-2">
+                <form action="order-action" method="POST" onsubmit="return confirm('Bạn xác nhận đã nhận hàng từ shipper GHN và món đồ hoàn toàn đạt yêu cầu?');">
+                  <input type="hidden" name="action" value="confirm_receipt">
+                  <input type="hidden" name="orderId" value="<%= order.id %>">
+                  <button type="submit" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-xl transition shadow-md flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>Tôi Xác Nhận Đã Nhận Hàng & Tất Toán Đơn</span>
+                  </button>
+                </form>
+              </div>
             </div>
-            <p class="text-[11px] text-blue-800">
-              Khi shipper GHN giao món đồ tới nhà bạn và bạn đã kiểm tra sản phẩm đạt chuẩn, vui lòng bấm nút xác nhận dưới đây để hoàn tất đơn hàng và giải ngân tiền cọc cho người bán:
-            </p>
-            <div class="pt-2">
-              <form action="order-action" method="POST" onsubmit="return confirm('Bạn xác nhận đã nhận hàng từ shipper GHN và món đồ hoàn toàn đạt yêu cầu?');">
-                <input type="hidden" name="action" value="confirm_receipt">
-                <input type="hidden" name="orderId" value="<%= order.id %>">
-                <button type="submit" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-xl transition shadow-md flex items-center gap-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                  <span>Tôi Xác Nhận Đã Nhận Hàng & Tất Toán Đơn</span>
-                </button>
-              </form>
+          <% } else { %>
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800 uppercase flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Thông tin theo dõi đơn hàng (Dành cho Người Mua)
+                </span>
+                <span class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-semibold">Đang vận chuyển</span>
+              </div>
+              <p class="text-xs text-slate-600 leading-relaxed">
+                Trạng thái vận chuyển do bưu tá và hệ thống GHN tự động cập nhật. Khi shipper giao hàng thành công đến địa chỉ của bạn, hệ thống sẽ mở nút <strong>"Xác Nhận Đã Nhận Hàng"</strong> để bạn kiểm tra và giải ngân tiền cọc.
+              </p>
             </div>
-          </div>
+          <% } %>
         <% } %>
 
         <div class="flex items-center justify-between pt-3 border-t border-slate-200">
