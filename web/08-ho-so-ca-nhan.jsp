@@ -112,71 +112,73 @@
   <main class="max-w-5xl mx-auto px-4 py-8 flex-1 w-full space-y-6">
     
     <!-- THẺ TỔNG QUAN TÀI KHOẢN -->
-    <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="bg-white rounded-xl border border-slate-200 p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
       <div class="flex items-center gap-4">
-        <div id="profileAvatarBig" class="w-16 h-16 rounded-xl bg-blue-600 text-white font-black text-2xl flex items-center justify-center shadow-xs shrink-0">
+        <div id="profileAvatarBig" class="w-16 h-16 rounded-xl bg-teal-600 text-white font-bold text-2xl flex items-center justify-center shrink-0">
           <%= h(avatarText) %>
         </div>
         <div>
-          <div class="flex items-center gap-2">
-            <h1 id="profileDisplayName" class="text-lg font-bold text-slate-900"><%= h(displayName) %></h1>
-            <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-              <%= phone.trim().isEmpty() ? "Tài Khoản Chưa Cập Nhật SĐT" : "Tài Khoản Đã Cập Nhật SĐT" %>
-            </span>
+          <h1 id="profileDisplayName" class="text-lg font-bold text-slate-900"><%= h(displayName) %></h1>
+          <div class="text-xs text-slate-500 mt-0.5">
+            Thành viên MuaNgay<%= fullAddress.isEmpty() ? "" : " • " + h(fullAddress) %>
           </div>
-          <div id="profileMetaText" class="text-xs text-slate-500 mt-1">
-            Thành viên MuaNgay từ <%= h(createdText) %> • <%= h(email) %> • Trạng thái: <%= h(statusText) %><%= fullAddress.isEmpty() ? "" : " • " + h(fullAddress) %>
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+            <span class="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 text-xs font-semibold border border-teal-200">Thành viên mới</span>
+            <span class="text-xs text-slate-600">Đã giao dịch thành công: <strong class="text-slate-800">0 đơn</strong></span>
+            <span class="text-xs text-slate-500">0 đánh giá</span>
           </div>
-          <div class="flex items-center gap-3 text-xs mt-2 font-medium">
-            <span class="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded">
-              Điểm Uy Tín: 4.9 / 5.0 (24 Đánh Giá Tốt)
-            </span>
-            <span class="text-emerald-700 font-semibold">
-              Tỷ lệ hoàn thành đơn: 100%
-            </span>
+          <div class="flex items-center gap-1.5 mt-2 text-xs text-teal-600 font-medium">
+            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+            Email đã xác thực
           </div>
+          <div class="text-xs text-slate-400 mt-1">Chưa đủ lịch sử giao dịch. Cần hoàn tất tối thiểu 3 giao dịch để mở khoá Điểm Uy Tín.</div>
+          <div class="text-xs text-slate-400 mt-0.5">0/3 giao dịch</div>
         </div>
       </div>
 
       <div class="flex sm:flex-col gap-2 shrink-0">
-        <button onclick="openEditProfileModal()" class="px-3.5 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-lg transition text-center shadow-xs">
+        <button onclick="openEditProfileModal()" class="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs rounded-lg transition text-center">
           Chỉnh sửa thông tin
         </button>
-        <button onclick="openChangePasswordModal()" class="px-3.5 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-lg transition text-center">
+        <button onclick="openChangePasswordModal()" class="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs rounded-lg transition text-center">
           Đổi mật khẩu
         </button>
       </div>
     </div>
 
     <!-- TABS ĐIỀU HƯỚNG NỘI DUNG TRANG CÁ NHÂN -->
-    <div class="flex border-b border-slate-200 space-x-2 text-xs font-bold">
-      <button id="profileTabPosts" onclick="switchProfileSection('posts')" class="pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition">
+    <c:set var="isStatsTab" value="${param.tab == 'stats'}" />
+    <div class="flex border-b border-slate-200 gap-1 text-xs font-semibold overflow-x-auto">
+      <button id="profileTabPosts" onclick="switchProfileSection('posts')" class="${isStatsTab ? 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap' : 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap'}">
         Tin Tôi Đang Đăng Bán (<c:choose><c:when test="${not empty myPosts}">${myPosts.size()}</c:when><c:otherwise>0</c:otherwise></c:choose>)
       </button>
-      <button id="profileTabSaved" onclick="switchProfileSection('saved')" class="pb-3 px-3 text-slate-500 hover:text-slate-900 transition">
+      <button id="profileTabStats" onclick="switchProfileSection('stats')" class="${isStatsTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
+        Thống Kê Doanh Thu &amp; Đơn Bán
+      </button>
+      <button id="profileTabSaved" onclick="switchProfileSection('saved')" class="pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap">
         Tin Đã Lưu Yêu Thích
       </button>
-      <button id="profileTabReviews" onclick="switchProfileSection('reviews')" class="pb-3 px-3 text-slate-500 hover:text-slate-900 transition">
+      <button id="profileTabReviews" onclick="switchProfileSection('reviews')" class="pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap">
         Đánh Giá Từ Khách Hàng
       </button>
     </div>
 
     <!-- PHẦN 1: QUẢN LÝ BÀI ĐĂNG CỦA TÔI -->
-    <section id="sectionPosts" class="space-y-4">
+    <section id="sectionPosts" class="space-y-3 ${isStatsTab ? 'hidden' : ''}">
       
       <!-- BỘ LỌC TRẠNG THÁI BÀI ĐĂNG -->
       <div class="flex items-center justify-between text-xs">
         <div class="flex items-center gap-2">
           <span class="text-slate-500">Xem theo:</span>
-          <select id="postStatusFilter" onchange="filterPosts(this.value)" class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="all" selected>Tất cả bài đăng</option>
-            <option value="active">Đang rao bán</option>
+          <select id="postStatusFilter" onchange="filterPosts(this.value)" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400">
+            <option value="all" selected>Đang rao bán</option>
+            <option value="active">Đang hiển thị</option>
             <option value="pending">Chờ duyệt</option>
             <option value="sold">Đã bán xong</option>
           </select>
         </div>
 
-        <a href="post-ad" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-lg transition shadow-xs">
+        <a href="post-ad" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-lg transition">
           + Đăng món đồ mới
         </a>
       </div>
@@ -186,50 +188,48 @@
       <c:choose>
         <c:when test="${not empty myPosts}">
           <c:forEach var="post" items="${myPosts}">
-            <div class="post-item bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+            <div class="post-item bg-white rounded-xl border border-slate-200 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
                  data-status="${post.status}">
-              <div class="flex items-center gap-3.5">
+              <div class="flex items-center gap-3">
                 <c:choose>
                   <c:when test="${not empty post.primaryImage}">
-                    <img src="${post.primaryImage}" alt="${post.title}" class="w-16 h-16 rounded-lg object-cover shrink-0 border border-slate-200">
+                    <img src="${post.primaryImage}" alt="${post.title}" class="w-14 h-14 rounded-lg object-cover shrink-0 border border-slate-200">
                   </c:when>
                   <c:otherwise>
-                    <div class="w-16 h-16 rounded-lg bg-slate-200 flex items-center justify-center shrink-0 border border-slate-200">
-                      <span class="text-slate-400 text-[10px]">No img</span>
+                    <div class="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
+                      <span class="text-slate-300 text-[10px]">No img</span>
                     </div>
                   </c:otherwise>
                 </c:choose>
                 <div>
-                  <span class="font-bold text-slate-900 text-sm block">${post.title}</span>
-                  <div class="flex items-center gap-2 text-xs mt-1 flex-wrap">
+                  <span class="font-semibold text-slate-900 text-sm block">${post.title}</span>
+                  <div class="flex items-center gap-2 text-xs mt-1 text-slate-500 flex-wrap">
                     <c:choose>
                       <c:when test="${post.price == 0}">
-                        <span class="text-amber-600 font-bold">Miễn phí 0 đ</span>
+                        <span class="text-slate-700 font-semibold">Miễn phí</span>
                       </c:when>
                       <c:otherwise>
-                        <span class="text-green-600 font-bold"><fmt:formatNumber value="${post.price}" type="number" groupingUsed="true" maxFractionDigits="0"/> đ</span>
+                        <span class="text-slate-800 font-semibold"><fmt:formatNumber value="${post.price}" type="number" groupingUsed="true" maxFractionDigits="0"/> đ</span>
                       </c:otherwise>
                     </c:choose>
                     <span>•</span>
-                    <span class="text-slate-500">
-                      <fmt:formatDate value="${post.createdAt}" pattern="dd/MM/yyyy HH:mm"/>
-                    </span>
+                    <fmt:formatDate value="${post.createdAt}" pattern="dd/MM/yyyy"/>
                     <span>•</span>
                     <c:choose>
                       <c:when test="${post.status == 'ACTIVE'}">
-                        <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Đang hiển thị</span>
+                        <span class="text-teal-700 font-medium">Đang hiển thị</span>
                       </c:when>
                       <c:when test="${post.status == 'PENDING'}">
-                        <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">Chờ duyệt</span>
+                        <span class="text-amber-600 font-medium">Chờ duyệt</span>
                       </c:when>
                       <c:when test="${post.status == 'SOLD'}">
-                        <span class="px-2 py-0.5 rounded bg-slate-200 text-slate-600 text-[10px] font-bold">Đã bán</span>
+                        <span class="text-slate-400 font-medium">Đã bán</span>
                       </c:when>
                       <c:when test="${post.status == 'HIDDEN'}">
-                        <span class="px-2 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold">Đã ẩn</span>
+                        <span class="text-red-500 font-medium">Đã ẩn</span>
                       </c:when>
                       <c:otherwise>
-                        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">${post.status}</span>
+                        <span>${post.status}</span>
                       </c:otherwise>
                     </c:choose>
                   </div>
@@ -237,31 +237,24 @@
               </div>
 
               <div class="flex items-center gap-2 shrink-0 flex-wrap">
-                <!-- Xem bài -->
-                <a href="product-detail?id=${post.id}" class="px-3 py-1.5 border border-slate-300 hover:bg-slate-100 rounded-lg text-xs font-semibold text-slate-700">
+                <a href="product-detail?id=${post.id}" class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-xs text-slate-600">
                   Xem bài
                 </a>
-
-                <!-- Sửa bài -->
-                <a href="edit-post?id=${post.id}" class="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold border border-blue-200">
+                <a href="edit-post?id=${post.id}" class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-xs text-slate-700 font-medium">
                   Sửa Tin
                 </a>
-
-                <!-- Đánh dấu đã bán (chỉ hiện khi chưa bán) -->
                 <c:if test="${post.status != 'SOLD'}">
-                  <form action="update-post-status" method="post" style="display:inline" onsubmit="return confirm('Bạn muốn đánh dấu đã bán cho bài đăng này?')">
+                  <form action="update-post-status" method="post" style="display:inline" onsubmit="return confirm('Đánh dấu đã bán bài đăng này?')">
                     <input type="hidden" name="productId" value="${post.id}">
                     <input type="hidden" name="status" value="SOLD">
-                    <button type="submit" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium">
+                    <button type="submit" class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs">
                       Đã Bán
                     </button>
                   </form>
                 </c:if>
-
-                <!-- Xóa bài -->
-                <form action="delete-post" method="post" style="display:inline" onsubmit="return confirm('Bạn có chắc muốn xóa bài đăng này? Hành động này không thể hoàn tác.')">
+                <form action="delete-post" method="post" style="display:inline" onsubmit="return confirm('Xóa bài đăng này?')">
                   <input type="hidden" name="productId" value="${post.id}">
-                  <button type="submit" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold border border-red-200">
+                  <button type="submit" class="px-3 py-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg text-xs">
                     Xóa
                   </button>
                 </form>
@@ -270,18 +263,162 @@
           </c:forEach>
         </c:when>
         <c:otherwise>
-          <div class="bg-white rounded-xl border border-slate-200 p-8 shadow-xs text-center">
-            <p class="text-sm text-slate-500">Bạn chưa có bài đăng nào.</p>
-            <a href="post-ad" class="inline-block mt-3 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-lg transition">
-              Đăng tin ngay
-            </a>
+          <div class="bg-white rounded-xl border border-slate-200 p-10 text-center">
+            <p class="text-sm text-slate-400">Chưa có bài đăng nào trong mục này.</p>
           </div>
         </c:otherwise>
       </c:choose>
 
     </section>
 
-    <!-- PHẦN 2: TIN ĐÃ LƯU YÊU THÍCH (WISHLIST) -->
+    <!-- PHẦN 2: THỐNG KÊ DOANH THU & ĐƠN BÁN -->
+    <%
+      java.util.List<dao.OrderDAO.OrderSummary> sellerOrders =
+          (java.util.List<dao.OrderDAO.OrderSummary>) request.getAttribute("sellerOrders");
+      if (sellerOrders == null) sellerOrders = java.util.Collections.emptyList();
+
+      double totalRevenue = 0, totalDeposit = 0, holdingDeposit = 0;
+      int completedOrders = 0;
+      for (dao.OrderDAO.OrderSummary o : sellerOrders) {
+        if ("COMPLETED".equals(o.status)) {
+          totalRevenue += o.agreedPrice > 0 ? o.agreedPrice : o.productPrice;
+          totalDeposit += o.depositAmount;
+          completedOrders++;
+        } else if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status)) {
+          holdingDeposit += o.depositAmount;
+        }
+      }
+      int totalOrders = sellerOrders.size();
+      java.text.NumberFormat nfStat = java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi","VN"));
+      String fmtRevenue = nfStat.format(totalRevenue);
+      String fmtDeposit = nfStat.format(totalDeposit);
+      String fmtHolding = nfStat.format(holdingDeposit);
+    %>
+    <section id="sectionStats" class="space-y-4 ${isStatsTab ? '' : 'hidden'}">
+
+      <!-- 4 METRIC CARDS -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">TỔNG DOANH THU ĐÃ BÁN</div>
+          <div class="text-2xl font-bold text-blue-600"><%= fmtRevenue %> đ</div>
+          <div class="text-[11px] text-slate-400 mt-1">Các đơn hàng hoàn tất bàn giao</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">TIỀN CỌC ĐÃ GIẢI NGÂN</div>
+          <div class="text-2xl font-bold text-blue-600"><%= fmtDeposit %> đ</div>
+          <div class="text-[11px] text-slate-400 mt-1">Đã chuyển về tài khoản người bán</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">TIỀN CỌC XÁC NHẬN ĐANG GIỮ</div>
+          <div class="text-2xl font-bold text-amber-500"><%= fmtHolding %> đ</div>
+          <div class="text-[11px] text-slate-400 mt-1">Chỉ tính đơn đã được SePay xác nhận cọc</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">ĐƠN HÀNG THÀNH CÔNG</div>
+          <div class="text-2xl font-bold text-slate-800"><%= completedOrders %> / <%= totalOrders %> đơn</div>
+          <% if (totalOrders == 0) { %>
+            <div class="text-[11px] text-blue-600 mt-1 font-medium">Chưa có đơn hàng để tính tỷ lệ</div>
+          <% } else { %>
+            <div class="text-[11px] text-teal-600 mt-1 font-medium"><%= Math.round(100.0 * completedOrders / totalOrders) %>% hoàn tất</div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- BIỂU ĐỒ DOANH THU + DONUT CƠ CẤU -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <div class="text-xs font-bold text-slate-800 uppercase tracking-wide">BIỂU ĐỒ DOANH THU GIAO DỊCH (VNĐ)</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Theo dõi dòng tiền thu được từ giao dịch sản phẩm</div>
+            </div>
+            <span class="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 text-slate-600 rounded-lg">Dữ liệu thực tế</span>
+          </div>
+          <div style="position:relative;height:210px">
+            <canvas id="revenueChart"></canvas>
+          </div>
+          <% if (totalOrders == 0) { %>
+            <div class="text-center text-xs text-slate-400 mt-2">Chưa có đơn</div>
+          <% } %>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+          <div class="text-xs font-bold text-slate-800 uppercase tracking-wide mb-0.5">CƠ CẤU ĐƠN BÁN RA</div>
+          <div class="text-[11px] text-slate-400 mb-3">Tỷ lệ đơn hoàn tất, đang cọc và khiếu nại</div>
+          <div style="position:relative;height:170px">
+            <canvas id="structureChart"></canvas>
+          </div>
+          <div class="flex flex-col gap-1.5 mt-3 text-[11px]">
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm" style="background:#14b8a6"></span> Đã hoàn tất</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm" style="background:#f59e0b"></span> Đang giữ cọc</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm" style="background:#f87171"></span> Đã hủy/khiếu nại</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BẢNG ĐƠN HÀNG CHI TIẾT -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="text-xs font-bold text-slate-800 uppercase tracking-wide">ĐƠN HÀNG BÁN CỦA BẠN (CHI TIẾT)</div>
+          <a href="05-quan-ly-don-hang.jsp" class="text-xs text-blue-600 hover:underline font-semibold">Xem tất cả tại Quản lý đơn hàng</a>
+        </div>
+        <% if (sellerOrders.isEmpty()) { %>
+          <div class="text-center py-8 text-xs text-slate-400">Bạn chưa có đơn hàng bán nào phát sinh trên sàn.</div>
+        <% } else { %>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-slate-100 text-[11px] text-slate-400 uppercase tracking-wide">
+                  <th class="pb-2 text-left font-semibold">Sản phẩm</th>
+                  <th class="pb-2 text-left font-semibold">Người mua</th>
+                  <th class="pb-2 text-right font-semibold">Giá thỏa</th>
+                  <th class="pb-2 text-right font-semibold">Tiền cọc</th>
+                  <th class="pb-2 text-center font-semibold">Trạng thái</th>
+                  <th class="pb-2 text-right font-semibold">Ngày</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-50">
+                <%
+                  java.text.NumberFormat nf2 = java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi","VN"));
+                  java.text.SimpleDateFormat sdf2 = new java.text.SimpleDateFormat("dd/MM/yyyy");
+                  int shown = 0;
+                  for (dao.OrderDAO.OrderSummary ord : sellerOrders) {
+                    if (shown >= 10) break; shown++;
+                    String bCls, bTxt;
+                    if ("COMPLETED".equals(ord.status))            { bCls="bg-teal-50 text-teal-700";   bTxt="Hoàn tất"; }
+                    else if ("DEPOSIT_CONFIRMED".equals(ord.status)){ bCls="bg-amber-50 text-amber-600"; bTxt="Có cọc"; }
+                    else if ("DEPOSIT_PENDING".equals(ord.status))  { bCls="bg-blue-50 text-blue-600";   bTxt="Chờ cọc"; }
+                    else if ("CANCELED".equals(ord.status))         { bCls="bg-slate-100 text-slate-500"; bTxt="Hủy"; }
+                    else if ("DISPUTED".equals(ord.status))         { bCls="bg-red-50 text-red-600";     bTxt="Khiếu nại"; }
+                    else                                             { bCls="bg-slate-100 text-slate-500"; bTxt=ord.status; }
+                    double pr = ord.agreedPrice > 0 ? ord.agreedPrice : ord.productPrice;
+                %>
+                <tr class="hover:bg-slate-50 transition">
+                  <td class="py-2.5 pr-3">
+                    <div class="flex items-center gap-2">
+                      <img src="<%= ord.productImage %>" alt="" class="w-8 h-8 rounded object-cover border border-slate-100 shrink-0">
+                      <span class="line-clamp-1 font-medium text-slate-800"><%= h(ord.productTitle) %></span>
+                    </div>
+                  </td>
+                  <td class="py-2.5 pr-3 text-slate-500"><%= h(ord.buyerName != null ? ord.buyerName : "N/A") %></td>
+                  <td class="py-2.5 pr-3 text-right font-semibold text-slate-800"><%= nf2.format(pr) %> đ</td>
+                  <td class="py-2.5 pr-3 text-right text-slate-500"><%= nf2.format(ord.depositAmount) %> đ</td>
+                  <td class="py-2.5 pr-3 text-center">
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold <%= bCls %>"><%= bTxt %></span>
+                  </td>
+                  <td class="py-2.5 text-right text-slate-400"><%= ord.createdAt != null ? sdf2.format(ord.createdAt) : "" %></td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+
+    </section>
+
+    <!-- PHẦN 3: TIN ĐÃ LƯU YÊU THÍCH (WISHLIST) -->
+
     <section id="sectionSaved" class="space-y-4 hidden">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex gap-3.5">
@@ -450,23 +587,47 @@
   <jsp:include page="includes/footer.jsp" />
 
   <script>
-    function switchProfileSection(sec) {
-      document.getElementById('sectionPosts').classList.add('hidden');
-      document.getElementById('sectionSaved').classList.add('hidden');
-      document.getElementById('sectionReviews').classList.add('hidden');
-      document.getElementById('profileTabPosts').className = 'pb-3 px-3 text-slate-500 hover:text-slate-900 transition';
-      document.getElementById('profileTabSaved').className = 'pb-3 px-3 text-slate-500 hover:text-slate-900 transition';
-      document.getElementById('profileTabReviews').className = 'pb-3 px-3 text-slate-500 hover:text-slate-900 transition';
+    function switchProfileSection(sec, updateUrl) {
+      if (typeof updateUrl === 'undefined') updateUrl = true;
+      ['sectionPosts','sectionStats','sectionSaved','sectionReviews'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+      ['profileTabPosts','profileTabStats','profileTabSaved','profileTabReviews'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.className = 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap';
+      });
 
+      const activeClass = 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap';
       if (sec === 'posts') {
-        document.getElementById('sectionPosts').classList.remove('hidden');
-        document.getElementById('profileTabPosts').className = 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition';
+        const secEl = document.getElementById('sectionPosts');
+        if (secEl) secEl.classList.remove('hidden');
+        const tabEl = document.getElementById('profileTabPosts');
+        if (tabEl) tabEl.className = activeClass;
+      } else if (sec === 'stats') {
+        const secEl = document.getElementById('sectionStats');
+        if (secEl) secEl.classList.remove('hidden');
+        const tabEl = document.getElementById('profileTabStats');
+        if (tabEl) tabEl.className = activeClass;
+        initCharts();
       } else if (sec === 'saved') {
-        document.getElementById('sectionSaved').classList.remove('hidden');
-        document.getElementById('profileTabSaved').className = 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition';
-      } else {
-        document.getElementById('sectionReviews').classList.remove('hidden');
-        document.getElementById('profileTabReviews').className = 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition';
+        const secEl = document.getElementById('sectionSaved');
+        if (secEl) secEl.classList.remove('hidden');
+        const tabEl = document.getElementById('profileTabSaved');
+        if (tabEl) tabEl.className = activeClass;
+      } else if (sec === 'reviews') {
+        const secEl = document.getElementById('sectionReviews');
+        if (secEl) secEl.classList.remove('hidden');
+        const tabEl = document.getElementById('profileTabReviews');
+        if (tabEl) tabEl.className = activeClass;
+      }
+
+      if (updateUrl && window.history && window.history.replaceState) {
+        try {
+          const url = new URL(window.location);
+          url.searchParams.set('tab', sec);
+          window.history.replaceState(null, '', url);
+        } catch (e) {}
       }
     }
 
@@ -671,6 +832,124 @@
         showToast('<%= h(profileMessage) %>');
         <% if (profileMessageError || !profileFieldErrors.isEmpty()) { %>openEditProfileModal();<% } %>
       <% } %>
+    });
+  </script>
+
+  <!-- CHART.JS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    let chartsInited = false;
+    function initCharts() {
+      if (chartsInited) return;
+      chartsInited = true;
+
+      // Dữ liệu thực tế từ server
+      const completed = <%= completedOrders %>;
+      const depositOrders = <%
+        int dOrd = 0;
+        for (dao.OrderDAO.OrderSummary o : sellerOrders) {
+          if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status)) dOrd++;
+        }
+        out.print(dOrd);
+      %>;
+      const canceledOrders = <%
+        int cOrd = 0;
+        for (dao.OrderDAO.OrderSummary o : sellerOrders) {
+          if ("CANCELED".equals(o.status) || "DISPUTED".equals(o.status)) cOrd++;
+        }
+        out.print(cOrd);
+      %>;
+
+      // Biểu đồ doanh thu theo ngày
+      const revenueLabels = [<%
+        java.util.LinkedHashMap<String,Double> revByDay = new java.util.LinkedHashMap<>();
+        java.text.SimpleDateFormat sdfDay = new java.text.SimpleDateFormat("dd/MM");
+        for (dao.OrderDAO.OrderSummary o : sellerOrders) {
+          if ("COMPLETED".equals(o.status) && o.createdAt != null) {
+            String day = sdfDay.format(o.createdAt);
+            revByDay.merge(day, o.agreedPrice > 0 ? o.agreedPrice : o.productPrice, Double::sum);
+          }
+        }
+        if (revByDay.isEmpty()) { out.print("''"); }
+        else { out.print(revByDay.keySet().stream().map(k -> "'" + k + "'").collect(java.util.stream.Collectors.joining(","))); }
+      %>];
+      const revenueData = [<%
+        if (revByDay.isEmpty()) { out.print("0"); }
+        else { out.print(revByDay.values().stream().map(Object::toString).collect(java.util.stream.Collectors.joining(","))); }
+      %>];
+
+      // Biểu đồ bar doanh thu
+      const rCtx = document.getElementById('revenueChart').getContext('2d');
+      new Chart(rCtx, {
+        type: 'bar',
+        data: {
+          labels: revenueLabels,
+          datasets: [{
+            label: 'Doanh thu (đ)',
+            data: revenueData,
+            backgroundColor: 'rgba(20,184,166,0.7)',
+            borderColor: '#14b8a6',
+            borderWidth: 1,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                font: { size: 10 },
+                callback: v => (v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v) + ' đ'
+              },
+              grid: { color: '#f1f5f9' }
+            }
+          }
+        }
+      });
+
+      // Biểu đồ donut cơ cấu
+      const sCtx = document.getElementById('structureChart').getContext('2d');
+      const total = completed + depositOrders + canceledOrders;
+      new Chart(sCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Đã hoàn tất', 'Đang giữ cọc', 'Đã hủy/khiếu nại'],
+          datasets: [{
+            data: total > 0 ? [completed, depositOrders, canceledOrders] : [1, 0, 0],
+            backgroundColor: ['#14b8a6', '#f59e0b', '#f87171'],
+            borderWidth: total > 0 ? 2 : 0,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          cutout: '60%',
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // Tự động kích hoạt tab dựa vào URL parameter ?tab= hoặc #hash
+    document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tab = urlParams.get('tab') || (window.location.hash ? window.location.hash.replace('#', '') : null);
+      if (tab === 'stats') {
+        switchProfileSection('stats', false);
+      } else if (tab === 'saved') {
+        switchProfileSection('saved', false);
+      } else if (tab === 'reviews') {
+        switchProfileSection('reviews', false);
+      } else if (tab === 'posts') {
+        switchProfileSection('posts', false);
+      } else {
+        // Nếu server-side đã render tab stats (isStatsTab = true)
+        <c:if test="${isStatsTab}">
+          initCharts();
+        </c:if>
+      }
     });
   </script>
 </body>
