@@ -125,7 +125,11 @@ public class OrderActionServlet extends HttpServlet {
                 sendResponse(request, response, false, "Không thể tạo vận đơn GHN. Vui lòng thử lại.", null);
             }
         } else if ("ghn_update_status".equalsIgnoreCase(action)) {
-            // Cập nhật trạng thái GHN (Sandbox test)
+            // Cập nhật trạng thái GHN (Sandbox test) - Người mua không được phép tự cập nhật
+            if (isBuyer) {
+                sendResponse(request, response, false, "Người Mua không có quyền tự cập nhật trạng thái vận đơn GHN.", null);
+                return;
+            }
             String newStatus = request.getParameter("shippingStatus");
             if (newStatus == null || newStatus.trim().isEmpty()) {
                 sendResponse(request, response, false, "Trạng thái vận chuyển không hợp lệ.", null);
