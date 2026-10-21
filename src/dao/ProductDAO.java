@@ -320,7 +320,7 @@ public class ProductDAO {
     // Cập nhật thông tin bài đăng (sửa bài)
     public boolean updateProduct(Product product) {
         String sql = "UPDATE products SET title = ?, description = ?, price = ?, category_id = ?, " +
-                     "condition_status = ?, specifications = ?, province = ?, ward = ?, address_detail = ?, delivery_method = ?, deal_type = ? " +
+                     "condition_status = ?, specifications = ?, province = ?, ward = ?, address_detail = ?, delivery_method = ?, deal_type = ?, status = ? " +
                      "WHERE id = ? AND user_id = ?";
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -335,8 +335,9 @@ public class ProductDAO {
             ps.setString(9, product.getAddressDetail());
             ps.setInt(10, product.getDeliveryMethod());
             ps.setString(11, product.getDealType());
-            ps.setInt(12, product.getId());
-            ps.setInt(13, product.getUserId());
+            ps.setString(12, product.getStatus());
+            ps.setInt(13, product.getId());
+            ps.setInt(14, product.getUserId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();

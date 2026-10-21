@@ -1,7 +1,9 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="model.Product" %>
+<%@ page import="model.ProductImage" %>
 <%@ page import="util.JsonUtil" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="java.util.List" %>
 <%@ page import="model.User" %>
 <%!
   private String h(String value) {
@@ -13,6 +15,18 @@
 <%
   Product editProduct = (Product) request.getAttribute("editProduct");
   boolean isEditMode = (editProduct != null);
+  @SuppressWarnings("unchecked")
+  List<ProductImage> editProductImages = (List<ProductImage>) request.getAttribute("editProductImages");
+  if (editProductImages == null) editProductImages = new java.util.ArrayList<>();
+  // Build JSON array of existing image URLs for JS
+  StringBuilder existingImagesJsonSb = new StringBuilder("[");
+  for (int i = 0; i < editProductImages.size(); i++) {
+    if (i > 0) existingImagesJsonSb.append(",");
+    existingImagesJsonSb.append("{\"url\":\"").append(editProductImages.get(i).getImageUrl().replace("\\", "\\\\").replace("\"", "\\\"")).append("\",\"primary\":").append(editProductImages.get(i).isPrimary()).append("}");
+  }
+  existingImagesJsonSb.append("]");
+  String existingImagesJson = existingImagesJsonSb.toString();
+
   // Kiểm tra trạng thái đăng nhập để truyền vào JS
   boolean isLoggedIn = (session != null && session.getAttribute("user") != null);
   User sessionUser = session != null ? (User) session.getAttribute("user") : null;
@@ -59,6 +73,9 @@
     <form action="<%= isEditMode ? "edit-post" : "post-ad" %>" method="POST" enctype="multipart/form-data" class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-8">
       <% if (isEditMode) { %>
         <input type="hidden" name="productId" value="<%= editProduct.getId() %>">
+        <script type="application/json" id="editSpecsJson"><%= specsJsObj %></script>
+      <% } else { %>
+        <script type="application/json" id="editSpecsJson">{}</script>
       <% } %>
       <div>
         <h1 class="text-xl sm:text-2xl font-bold text-slate-900"><%= isEditMode ? "Sửa Tin Đăng" : "Đăng Tin Mua Bán & Thanh Lý Đồ Dùng" %></h1>
@@ -88,18 +105,41 @@
         </div>
       </div>
 
-                  <!-- BƯỚC 2: HÌNH ẢNH THỰC TẾ -->
+      <!-- BƯỚC 2: HÌNH ẢNH THỰC TẾ -->
       <div class="space-y-3">
         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
           Bước 2: Hình ảnh thực tế (Tối đa 6 ảnh chụp rõ nét) <span class="text-red-500">*</span>
         </label>
+        <% if (isEditMode && !editProductImages.isEmpty()) { %>
+        <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700 mb-2">
+          Đang hiển thị <strong><%= editProductImages.size() %> ảnh</strong> hiện tại của tin đăng.
+          Nếu bạn chọn ảnh mới bên dưới, ảnh cũ sẽ được <strong>thay thế hoàn toàn</strong>.
+          Nếu không chọn ảnh mới, ảnh cũ sẽ được giữ nguyên.
+        </div>
+        <!-- Hiển thị ảnh cũ hiện tại -->
+        <div class="flex flex-wrap gap-2 p-3 bg-white border border-slate-200 rounded-xl">
+          <% for (ProductImage img : editProductImages) { %>
+          <div class="relative w-20 h-20 flex-shrink-0">
+            <img src="<%= request.getContextPath() %>/<%= h(img.getImageUrl()) %>"
+                 alt="Ảnh sản phẩm"
+                 class="w-full h-full object-cover rounded-lg border-2 <%= img.isPrimary() ? "border-amber-500" : "border-slate-200" %>"
+                 onerror="this.src='<%= request.getContextPath() %>/assets/images/no-image.png'">
+            <% if (img.isPrimary()) { %>
+            <div class="absolute bottom-0 left-0 right-0 bg-amber-500 text-white text-[9px] text-center font-bold py-0.5 rounded-b-lg">Ảnh đại diện</div>
+            <% } %>
+          </div>
+          <% } %>
+        </div>
+        <% } %>
         <label class="block border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-blue-500 transition cursor-pointer bg-slate-50 relative">
           <input type="file" name="images" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-0" onchange="previewImages(this)">
-          <div class="text-xs font-semibold text-blue-600">Bấm để tải ảnh chụp món đồ lên hoặc kéo thả tệp vào đây</div>
+          <div class="text-xs font-semibold text-blue-600"><%= isEditMode ? "Bấm để tải ảnh MỚI lên (bỏ qua nếu giữ ảnh cũ)" : "Bấm để tải ảnh chụp món đồ lên hoặc kéo thả tệp vào đây" %></div>
           <p class="text-[11px] text-slate-500 mt-1">Chụp đủ các góc cạnh, tem thông số, các vết trầy xước (nếu có) để người mua yên tâm</p>
           <div id="previewContainer" class="mt-4 flex flex-wrap justify-center gap-2.5 relative z-10">
           </div>
         </label>
+        <!-- Lưu danh sách ảnh cũ để server giữ nguyên nếu không upload ảnh mới -->
+        <script type="application/json" id="existingImagesJson"><%= existingImagesJson %></script>
       </div>
 
       <!-- BƯỚC 3: THÔNG TIN CHI TIẾT VÀ GIÁ BÁN -->
@@ -122,7 +162,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-medium text-slate-700 mb-1">Danh mục hàng hóa <span class="text-red-500">*</span></label>
-            <select id="categorySelect" name="categoryId" class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="renderCategorySpecs(this.value)">
+            <select id="categorySelect" name="categoryId" class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="renderCategorySpecs(this.value, IS_EDIT_MODE ? window._editSpecsFromServer : {})">  
               <option value="1" <%= formCatId == 1 ? "selected" : "" %>>Điện Tử & Thiết Bị Số</option>
               <option value="2" <%= formCatId == 2 ? "selected" : "" %>>Xe Cộ & Phương Tiện</option>
               <option value="3" <%= formCatId == 3 ? "selected" : "" %>>Điện Lạnh & Gia Dụng</option>
@@ -706,8 +746,13 @@
       // KHỞI TẠO THÔNG SỐ DANH MỤC BAN ĐẦU
       const catSelect = document.getElementById('categorySelect');
       if (catSelect) {
-        const editSpecsFromServer = <%=specsJsObj%>;
-        renderCategorySpecs(catSelect.value, editSpecsFromServer);
+        // Dùng JSON.parse để tránh HTML-escaping ký tự & thành &amp; khi JSP render trực tiếp
+        try {
+          window._editSpecsFromServer = JSON.parse(document.getElementById('editSpecsJson').textContent);
+        } catch(e) {
+          window._editSpecsFromServer = {};
+        }
+        renderCategorySpecs(catSelect.value, window._editSpecsFromServer);
       }
 
       // PHỤC HỒI DRAFT SAU KHI ĐÃ ĐĂNG NHẬP THÀNH CÔNG
