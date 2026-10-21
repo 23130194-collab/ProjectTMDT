@@ -214,7 +214,8 @@
             <input type="radio" name="delivery_method" value="1" <%= formDelivery == 1 ? "checked" : "" %> class="mt-0.5 w-4 h-4 text-blue-600 rounded">
             <div>
               <span class="text-xs font-bold text-slate-900 block">1. Hẹn gặp trực tiếp (Người mua cọc giữ chỗ 10%)</span>
-              <p class="text-[11px] text-slate-600 mt-0.5">Phù hợp với mặt hàng Xe cộ, Đồ cồng kềnh. Người mua đặt cọc trước qua VietQR để hẹn giờ xem đồ, chống bỏ hẹn.</p>
+          <p class="text-[11px] text-slate-600 mt-0.5">Phù hợp với mặt hàng Xe cộ, Đồ cồng kềnh. Người mua đặt cọc trước qua VNPay để hẹn giờ xem đồ, chống bỏ hẹn.</p>
+  
             </div>
           </label>
 
