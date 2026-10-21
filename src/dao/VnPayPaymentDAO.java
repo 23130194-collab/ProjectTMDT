@@ -216,14 +216,15 @@ public class VnPayPaymentDAO {
 
     private int createDepositedOrder(Connection conn, int productId, int buyerId, int sellerId,
                                      double agreedPrice, double depositAmount) throws SQLException {
-        String sql = "INSERT INTO orders (product_id, buyer_id, seller_id, agreed_price, deposit_amount, status) " +
-                "VALUES (?, ?, ?, ?, ?, 'DEPOSITED')";
+        String sql = "INSERT INTO orders (product_id, buyer_id, seller_id, agreed_price, deposit_amount, delivery_method, status) " +
+                "SELECT ?, ?, ?, ?, ?, COALESCE(delivery_method, 1), 'DEPOSITED' FROM products WHERE id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, productId);
             ps.setInt(2, buyerId);
             ps.setInt(3, sellerId);
             ps.setDouble(4, agreedPrice);
             ps.setDouble(5, depositAmount);
+            ps.setInt(6, productId);
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) return keys.getInt(1);

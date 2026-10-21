@@ -1,6 +1,9 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="model.User" %>
+<%@ page import="model.Notification" %>
 <%@ page import="dao.OrderDAO" %>
+<%@ page import="dao.NotificationDAO" %>
+<%@ page import="java.util.List" %>
 <%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%!
   private String h(String value) {
@@ -20,6 +23,9 @@
   String avatarText = "";
   String avatarImage = "";
   int orderCount = currentUser != null ? new OrderDAO().countOrdersForUser(currentUser.getId()) : 0;
+  NotificationDAO headerNotifDAO = new NotificationDAO();
+  int unreadNotifCount = currentUser != null ? headerNotifDAO.countUnreadNotifications(currentUser.getId()) : 0;
+  List<Notification> headerNotifs = currentUser != null ? headerNotifDAO.getNotificationsForUser(currentUser.getId(), 15) : java.util.Collections.emptyList();
   if (currentUser != null) {
     avatarImage = currentUser.getAvatar() != null ? currentUser.getAvatar().trim() : "";
     String displayName = currentUser.getFullName() != null && !currentUser.getFullName().trim().isEmpty()
@@ -96,6 +102,99 @@
         Tin nhắn
         <span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500"></span>
       </a>
+
+      <!-- NÚT THÔNG BÁO VỚI DROPDOWN -->
+      <div class="relative" id="notifWrapper">
+        <button id="notifBtn" onclick="toggleNotifDropdown(event)"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition relative select-none"
+          aria-haspopup="true" aria-expanded="false" title="Thông báo của bạn">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          <span class="hidden md:inline">Thông báo</span>
+          <span id="notifBadge" class="<%= unreadNotifCount > 0 ? "inline-flex" : "hidden" %> items-center justify-center min-w-4 h-4 px-1 text-[10px] font-bold bg-red-600 text-white rounded-full">
+            <%= unreadNotifCount %>
+          </span>
+        </button>
+
+        <!-- DROPDOWN DANH SÁCH THÔNG BÁO -->
+        <div id="notifDropdown"
+          class="hidden absolute right-0 sm:-right-20 top-full mt-2 w-80 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[120] overflow-hidden"
+          role="menu">
+          
+          <!-- HEADER DROPDOWN -->
+          <div class="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-xs text-slate-900 uppercase tracking-wide">Thông Báo</span>
+              <span id="notifHeaderCount" class="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold <%= unreadNotifCount > 0 ? "" : "hidden" %>">
+                <%= unreadNotifCount %> mới
+              </span>
+            </div>
+            <button id="btnMarkAllRead" onclick="markAllNotificationsRead(event)" class="text-[11px] text-blue-600 hover:text-blue-800 font-semibold transition <%= unreadNotifCount > 0 ? "" : "hidden" %>">
+              Đánh dấu tất cả đã đọc
+            </button>
+          </div>
+
+          <!-- DANH SÁCH CÁC MỤC THÔNG BÁO -->
+          <div id="notifList" class="max-h-96 overflow-y-auto divide-y divide-slate-100">
+            <% if (headerNotifs.isEmpty()) { %>
+              <div class="p-8 text-center space-y-2">
+                <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-lg">🔔</div>
+                <p class="text-xs text-slate-500">Bạn chưa có thông báo nào</p>
+              </div>
+            <% } else { %>
+              <% for (Notification n : headerNotifs) {
+                boolean isUnread = !n.isRead();
+              %>
+                <div id="notif-item-<%= n.getId() %>"
+                  data-notif-id="<%= n.getId() %>"
+                  data-target-url="<%= n.getTargetUrl() != null ? n.getTargetUrl() : "" %>"
+                  data-is-read="<%= !isUnread %>"
+                  onclick="handleNotificationClick(event, this)"
+                  class="notif-item p-3.5 transition cursor-pointer flex gap-3 items-start <%= isUnread ? "bg-blue-50/80 border-l-4 border-l-blue-600 text-slate-900 font-medium" : "bg-white hover:bg-slate-50 border-l-4 border-l-transparent text-slate-500" %>">
+                  
+                  <!-- ICON THEO LOẠI THÔNG BÁO -->
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 <%= "ORDER_SHIPPING".equals(n.getType()) ? "bg-amber-100 text-amber-700" : ("REVIEW_RECEIVED".equals(n.getType()) ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700") %>">
+                    <% if ("ORDER_SHIPPING".equals(n.getType())) { %>
+                      📦
+                    <% } else if ("REVIEW_RECEIVED".equals(n.getType())) { %>
+                      ⭐
+                    <% } else { %>
+                      🔔
+                    <% } %>
+                  </div>
+
+                  <!-- NỘI DUNG THÔNG BÁO -->
+                  <div class="flex-1 min-w-0 space-y-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-xs font-bold <%= isUnread ? "text-slate-900" : "text-slate-700" %> truncate">
+                        <%= h(n.getTitle()) %>
+                      </span>
+                      <span class="text-[10px] text-slate-400 shrink-0"><%= n.getTimeAgo() %></span>
+                    </div>
+                    <p class="text-xs <%= isUnread ? "text-slate-700" : "text-slate-500" %> leading-relaxed line-clamp-2">
+                      <%= h(n.getMessage()) %>
+                    </p>
+                  </div>
+
+                  <!-- CHẤM TRÒN CHƯA ĐỌC -->
+                  <% if (isUnread) { %>
+                    <span class="notif-dot w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1.5" title="Chưa đọc"></span>
+                  <% } %>
+                </div>
+              <% } %>
+            <% } %>
+          </div>
+
+          <!-- FOOTER DROPDOWN -->
+          <div class="p-2 bg-slate-50 border-t border-slate-100 text-center">
+            <a href="05-quan-ly-don-hang.jsp" class="text-xs text-blue-600 hover:text-blue-800 font-semibold block py-1">
+              Xem tất cả đơn hàng &rarr;
+            </a>
+          </div>
+
+        </div>
+      </div>
 
       <a href="${pageContext.request.contextPath}/post-ad" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-bold rounded-lg shadow-sm transition">
         Đăng Tin Miễn Phí
@@ -194,16 +293,116 @@
 <script>
   function toggleUserMenu() {
     const dropdown = document.getElementById('userMenuDropdown');
+    const notifDropdown = document.getElementById('notifDropdown');
+    if (notifDropdown) notifDropdown.classList.add('hidden');
     const btn = document.getElementById('userMenuBtn');
     const isHidden = dropdown.classList.contains('hidden');
     dropdown.classList.toggle('hidden', !isHidden);
     btn.setAttribute('aria-expanded', String(isHidden));
   }
+
+  function toggleNotifDropdown(e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById('notifDropdown');
+    const userDropdown = document.getElementById('userMenuDropdown');
+    if (userDropdown) userDropdown.classList.add('hidden');
+    const btn = document.getElementById('notifBtn');
+    if (dropdown) {
+      const isHidden = dropdown.classList.contains('hidden');
+      dropdown.classList.toggle('hidden', !isHidden);
+      if (btn) btn.setAttribute('aria-expanded', String(isHidden));
+    }
+  }
+
+  function handleNotificationClick(event, element) {
+    if (event) event.stopPropagation();
+    const notifId = element.dataset.notifId;
+    const targetUrl = element.dataset.targetUrl;
+    const isAlreadyRead = element.dataset.isRead === 'true';
+
+    if (!isAlreadyRead) {
+      // 1. Đổi màu nền nhạt hơn (đã xem)
+      element.className = 'notif-item p-3.5 transition cursor-pointer flex gap-3 items-start bg-white hover:bg-slate-50 border-l-4 border-l-transparent text-slate-500';
+      element.dataset.isRead = 'true';
+      const dot = element.querySelector('.notif-dot');
+      if (dot) dot.remove();
+
+      // 2. Số lượng thông báo -1
+      const badge = document.getElementById('notifBadge');
+      const headerCount = document.getElementById('notifHeaderCount');
+      if (badge) {
+        let currentCount = parseInt(badge.textContent.trim()) || 0;
+        let newCount = Math.max(0, currentCount - 1);
+        if (newCount > 0) {
+          badge.textContent = newCount;
+          if (headerCount) headerCount.textContent = newCount + ' mới';
+        } else {
+          badge.textContent = '0';
+          badge.classList.add('hidden');
+          if (headerCount) headerCount.classList.add('hidden');
+          const btnMarkAll = document.getElementById('btnMarkAllRead');
+          if (btnMarkAll) btnMarkAll.classList.add('hidden');
+        }
+      }
+
+      // 3. Gọi server cập nhật trạng thái đã xem
+      fetch('${pageContext.request.contextPath}/mark-notification-read?id=' + notifId, {
+        method: 'POST'
+      }).catch(err => console.error('Lỗi cập nhật đã đọc:', err));
+    }
+
+    // 4. Chuyển hướng ngay lập tức tới trang liên quan
+    if (targetUrl && targetUrl.trim() !== '') {
+      let finalUrl = targetUrl.trim();
+      if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://') && !finalUrl.startsWith('/')) {
+        finalUrl = '${pageContext.request.contextPath}/' + finalUrl;
+      }
+      window.location.href = finalUrl;
+    }
+  }
+
+  function markAllNotificationsRead(e) {
+    if (e) e.stopPropagation();
+    fetch('${pageContext.request.contextPath}/mark-notification-read?action=read_all', {
+      method: 'POST'
+    }).then(res => res.json()).then(data => {
+      // Đổi toàn bộ các mục sang màu nhạt hơn
+      const items = document.querySelectorAll('.notif-item');
+      items.forEach(el => {
+        el.className = 'notif-item p-3.5 transition cursor-pointer flex gap-3 items-start bg-white hover:bg-slate-50 border-l-4 border-l-transparent text-slate-500';
+        el.dataset.isRead = 'true';
+        const dot = el.querySelector('.notif-dot');
+        if (dot) dot.remove();
+      });
+
+      // Ẩn badge đếm số lượng
+      const badge = document.getElementById('notifBadge');
+      if (badge) {
+        badge.textContent = '0';
+        badge.classList.add('hidden');
+      }
+      const headerCount = document.getElementById('notifHeaderCount');
+      if (headerCount) headerCount.classList.add('hidden');
+      const btnMarkAll = document.getElementById('btnMarkAllRead');
+      if (btnMarkAll) btnMarkAll.classList.add('hidden');
+    }).catch(err => console.error('Lỗi mark all read:', err));
+  }
+
   document.addEventListener('click', function(e) {
-    const wrapper = document.getElementById('userMenuWrapper');
-    if (wrapper && !wrapper.contains(e.target)) {
-      document.getElementById('userMenuDropdown').classList.add('hidden');
-      document.getElementById('userMenuBtn').setAttribute('aria-expanded', 'false');
+    const userWrapper = document.getElementById('userMenuWrapper');
+    if (userWrapper && !userWrapper.contains(e.target)) {
+      const userDropdown = document.getElementById('userMenuDropdown');
+      if (userDropdown) userDropdown.classList.add('hidden');
+      const userBtn = document.getElementById('userMenuBtn');
+      if (userBtn) userBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    const notifWrapper = document.getElementById('notifWrapper');
+    if (notifWrapper && !notifWrapper.contains(e.target)) {
+      const notifDropdown = document.getElementById('notifDropdown');
+      if (notifDropdown) notifDropdown.classList.add('hidden');
+      const notifBtn = document.getElementById('notifBtn');
+      if (notifBtn) notifBtn.setAttribute('aria-expanded', 'false');
     }
   });
 </script>
