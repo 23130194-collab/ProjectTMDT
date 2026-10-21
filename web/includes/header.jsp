@@ -78,35 +78,129 @@
 
     <!-- CỤM TÀI KHOẢN, QUẢN LÝ ĐƠN HÀNG VÀ ĐĂNG TIN -->
     <div class="flex items-center gap-2 sm:gap-3">
-      <a href="<%= currentUser == null ? "07-dang-nhap-xac-thuc.jsp" : "logout" %>" class="hidden sm:inline-block px-2 py-1 text-xs text-slate-600 hover:text-blue-600 font-semibold">
-        <%= currentUser == null ? "Đăng nhập" : "Đăng xuất" %>
+
+      <% if (currentUser == null) { %>
+        <!-- Chưa đăng nhập: Hiện nút đăng nhập -->
+        <a href="07-dang-nhap-xac-thuc.jsp" class="hidden sm:inline-block px-3 py-1.5 text-xs text-slate-600 hover:text-blue-600 font-semibold border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+          Đăng nhập
+        </a>
+      <% } %>
+
+      <a href="05-quan-ly-don-hang.jsp" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        Đơn hàng<% if (currentUser != null && orderCount > 0) { %> <span class="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold bg-blue-600 text-white rounded-full"><%= orderCount %></span><% } %>
       </a>
-      <a href="05-quan-ly-don-hang.jsp" class="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition border border-slate-200">
-        Đơn hàng<%= currentUser != null ? " (" + orderCount + ")" : "" %>
-      </a>
-      <a href="04-chat-tra-gia-vietqr.jsp" class="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition relative">
+
+      <a href="04-chat-tra-gia-vietqr.jsp" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition relative">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
         Tin nhắn
-        <span class="inline-block w-2 h-2 rounded-full bg-red-500 ml-0.5"></span>
+        <span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500"></span>
       </a>
-      <a href="06-quan-tri-admin.jsp" class="hidden md:inline-block px-2.5 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 rounded-lg transition border border-purple-200">
-        Admin Sàn
-      </a>
+
       <a href="${pageContext.request.contextPath}/post-ad" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-bold rounded-lg shadow-sm transition">
         Đăng Tin Miễn Phí
       </a>
-      <a href="${pageContext.request.contextPath}/my-posts" title="Hồ sơ cá nhân" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold hover:ring-2 hover:ring-blue-400 transition shrink-0">
-        <% if (currentUser == null) { %>
-          <i class="fa-solid fa-user text-sm"></i>
-        <% } else if (!avatarImage.isEmpty()) { %>
-          <img src="<%= h(avatarImage) %>" alt="Ảnh đại diện" class="w-full h-full rounded-full object-cover">
-        <% } else { %>
-          <%= h(avatarText) %>
-        <% } %>
-      </a>
+
+      <!-- AVATAR + USER DROPDOWN -->
+      <div class="relative" id="userMenuWrapper">
+        <button id="userMenuBtn" onclick="toggleUserMenu()"
+          class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-bold hover:ring-2 hover:ring-teal-400 transition shrink-0 select-none"
+          aria-haspopup="true" aria-expanded="false">
+          <% if (currentUser == null) { %>
+            <i class="fa-solid fa-user text-sm"></i>
+          <% } else if (!avatarImage.isEmpty()) { %>
+            <img src="<%= h(avatarImage) %>" alt="Ảnh đại diện" referrerpolicy="no-referrer" class="w-full h-full rounded-full object-cover">
+          <% } else { %>
+            <%= h(avatarText) %>
+          <% } %>
+        </button>
+
+        <!-- DROPDOWN PANEL -->
+        <div id="userMenuDropdown"
+          class="hidden absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-[100] overflow-hidden py-1"
+          role="menu">
+
+          <% if (currentUser != null) { %>
+            <!-- Thông tin user -->
+            <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+              <div class="w-9 h-9 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                <% if (!avatarImage.isEmpty()) { %>
+                  <img src="<%= h(avatarImage) %>" alt="" referrerpolicy="no-referrer" class="w-full h-full rounded-full object-cover">
+                <% } else { %>
+                  <%= h(avatarText) %>
+                <% } %>
+              </div>
+              <div class="min-w-0">
+                <div class="text-sm font-bold text-slate-900 truncate">
+                  <%
+                    String _dn = currentUser.getFullName() != null && !currentUser.getFullName().trim().isEmpty()
+                        ? currentUser.getFullName().trim() : currentUser.getUsername();
+                  %>
+                  <%= h(_dn) %>
+                </div>
+                <div class="text-[11px] text-slate-500 truncate"><%= h(currentUser.getEmail() != null ? currentUser.getEmail() : "") %></div>
+              </div>
+            </div>
+
+            <a href="${pageContext.request.contextPath}/my-posts" role="menuitem"
+              class="flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition"
+              onclick="if (typeof switchProfileSection === 'function') { switchProfileSection('posts'); const dd = document.getElementById('userMenuDropdown'); if(dd) dd.classList.add('hidden'); return false; }">
+              <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+              Hồ sơ cá nhân &amp; Điểm uy tín
+            </a>
+            <a href="${pageContext.request.contextPath}/my-posts?tab=stats" role="menuitem"
+              class="flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition"
+              onclick="if (typeof switchProfileSection === 'function') { switchProfileSection('stats'); const dd = document.getElementById('userMenuDropdown'); if(dd) dd.classList.add('hidden'); return false; }">
+              <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+              Thống kê doanh thu người bán
+            </a>
+            <a href="05-quan-ly-don-hang.jsp" role="menuitem"
+              class="flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition">
+              <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+              Quản lý đơn hàng &amp; Ký quỹ
+            </a>
+            <a href="${pageContext.request.contextPath}/post-ad" role="menuitem"
+              class="flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition">
+              <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Đăng bán món đồ mới
+            </a>
+            <div class="border-t border-slate-100 mt-1 pt-1">
+              <a href="${pageContext.request.contextPath}/logout" role="menuitem"
+                class="flex items-center gap-2.5 px-4 py-2 text-xs text-red-600 hover:bg-red-50 transition font-semibold">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                Đăng Xuất Tài Khoản
+              </a>
+            </div>
+          <% } else { %>
+            <a href="07-dang-nhap-xac-thuc.jsp" role="menuitem"
+              class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition">
+              Đăng nhập
+            </a>
+          <% } %>
+        </div>
+      </div>
+
     </div>
 
   </div>
 </header>
+
+<script>
+  function toggleUserMenu() {
+    const dropdown = document.getElementById('userMenuDropdown');
+    const btn = document.getElementById('userMenuBtn');
+    const isHidden = dropdown.classList.contains('hidden');
+    dropdown.classList.toggle('hidden', !isHidden);
+    btn.setAttribute('aria-expanded', String(isHidden));
+  }
+  document.addEventListener('click', function(e) {
+    const wrapper = document.getElementById('userMenuWrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+      document.getElementById('userMenuDropdown').classList.add('hidden');
+      document.getElementById('userMenuBtn').setAttribute('aria-expanded', 'false');
+    }
+  });
+</script>
 
 <script>
   (() => {

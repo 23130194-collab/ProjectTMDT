@@ -1,5 +1,6 @@
 package controller;
 
+import dao.OrderDAO;
 import dao.ProductDAO;
 import model.Product;
 import model.User;
@@ -17,6 +18,7 @@ import java.util.List;
 @WebServlet("/my-posts")
 public class MyPostsController extends HttpServlet {
     private ProductDAO productDAO = new ProductDAO();
+    private OrderDAO orderDAO = new OrderDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -28,6 +30,16 @@ public class MyPostsController extends HttpServlet {
         User user = (User) session.getAttribute("user");
         List<Product> myPosts = productDAO.getProductsByUserId(user.getId());
         req.setAttribute("myPosts", myPosts);
+
+        // Load đơn hàng bán để hiển thị thống kê doanh thu
+        List<OrderDAO.OrderSummary> allOrders = orderDAO.getOrderSummariesForUser(user.getId());
+        // Chỉ lấy đơn mà user là người bán
+        List<OrderDAO.OrderSummary> sellerOrders = allOrders.stream()
+                .filter(o -> o.sellerId == user.getId())
+                .collect(java.util.stream.Collectors.toList());
+        req.setAttribute("sellerOrders", sellerOrders);
+
         req.getRequestDispatcher("/08-ho-so-ca-nhan.jsp").forward(req, resp);
     }
 }
+
