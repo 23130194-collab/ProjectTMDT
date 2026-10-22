@@ -66,8 +66,19 @@
                 aria-controls="searchDropdown"
                 aria-expanded="false"
                 placeholder="Tìm xe máy, iPhone, tủ lạnh, bàn ghế, laptop, máy ảnh..."
-                class="w-full pl-4 pr-24 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                class="w-full pl-4 pr-32 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
         >
+        <!-- NÚT TÌM KIẾM BẰNG HÌNH ẢNH (AI CLIP) -->
+        <button type="button" id="visualSearchTriggerBtn"
+                class="absolute right-20 top-1 bottom-1 px-2.5 text-slate-500 hover:text-blue-600 rounded-md transition flex items-center justify-center group"
+                title="Tìm kiếm bằng hình ảnh (AI CLIP)">
+          <svg class="w-4 h-4 transition-transform group-hover:scale-110 text-slate-500 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+        <input type="file" id="visualSearchFileInput" accept="image/png, image/jpeg, image/webp" class="hidden">
+
         <button type="submit" class="absolute right-1 top-1 bottom-1 px-3 bg-blue-600 text-white rounded-md text-xs font-semibold hover:bg-blue-700 transition">
           Tìm kiếm
         </button>
@@ -638,5 +649,233 @@
         refreshDropdown('');
       }
     });
+  })();
+</script>
+
+<!-- MODAL TÌM KIẾM BẰNG HÌNH ẢNH (AI CLIP VISUAL SEARCH) -->
+<div id="visualSearchModal" class="hidden fixed inset-0 z-[100] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <!-- Header Modal -->
+    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900">Tìm kiếm bằng hình ảnh (AI CLIP)</h3>
+          <p class="text-[11px] text-slate-500">So khớp đặc trưng thị giác 512 chiều với mô hình OpenAI ViT-B/32</p>
+        </div>
+      </div>
+      <button type="button" id="closeVisualSearchModal" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Body Modal -->
+    <div class="p-5 max-h-[80vh] overflow-y-auto">
+      <!-- Trạng thái Đang quét ảnh (Loading) -->
+      <div id="vsLoadingState" class="py-12 flex flex-col items-center justify-center text-center">
+        <div class="relative w-16 h-16 mb-4">
+          <div class="absolute inset-0 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin"></div>
+          <div class="absolute inset-2 rounded-full bg-blue-50 flex items-center justify-center">
+            <svg class="w-6 h-6 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+        </div>
+        <h4 class="text-sm font-bold text-slate-800 mb-1">Đang phân tích hình ảnh...</h4>
+        <p class="text-xs text-slate-500 max-w-sm">Mô hình AI CLIP đang trích xuất vector đặc trưng và so sánh Cosine Similarity với các tin đăng trên sàn MuaNgay.</p>
+      </div>
+
+      <!-- Trạng thái Lỗi -->
+      <div id="vsErrorState" class="hidden py-8 text-center">
+        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <h4 id="vsErrorMessage" class="text-xs font-semibold text-red-600 mb-4">Đã xảy ra lỗi khi tìm kiếm hình ảnh</h4>
+        <button type="button" id="vsRetryBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition">
+          Thử chọn ảnh khác
+        </button>
+      </div>
+
+      <!-- Trạng thái Kết quả -->
+      <div id="vsResultState" class="hidden grid grid-cols-1 md:grid-cols-12 gap-5">
+        <!-- Cột trái: Ảnh query -->
+        <div class="md:col-span-4 bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col items-center">
+          <span class="text-[11px] font-bold text-slate-600 mb-2.5 uppercase tracking-wide">Ảnh bạn vừa tìm kiếm</span>
+          <div class="w-full aspect-square rounded-lg overflow-hidden bg-white border border-slate-200 shadow-xs mb-3 flex items-center justify-center">
+            <img id="vsPreviewImg" src="" alt="Ảnh tìm kiếm" class="w-full h-full object-cover">
+          </div>
+          <button type="button" id="vsChangeImgBtn" class="w-full py-2 px-3 border border-slate-200 text-slate-700 hover:bg-white text-xs font-semibold rounded-lg shadow-xs transition">
+            🔄 Đổi ảnh khác
+          </button>
+        </div>
+
+        <!-- Cột phải: Danh sách sản phẩm tương đồng -->
+        <div class="md:col-span-8">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-bold text-slate-800">
+              Sản phẩm tương đồng phát hiện: <span id="vsCountText" class="text-blue-600">0</span>
+            </h4>
+            <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Sắp xếp theo độ khớp cao nhất</span>
+          </div>
+
+          <div id="vsProductList" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[460px] overflow-y-auto pr-1">
+            <!-- Render bằng JavaScript -->
+          </div>
+
+          <div id="vsEmptyList" class="hidden py-8 text-center text-slate-500">
+            <svg class="w-10 h-10 mx-auto mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <p class="text-xs">Không tìm thấy sản phẩm nào có độ tương đồng đủ cao với bức ảnh này.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const triggerBtn = document.getElementById('visualSearchTriggerBtn');
+    const fileInput = document.getElementById('visualSearchFileInput');
+    const modal = document.getElementById('visualSearchModal');
+    const closeBtn = document.getElementById('closeVisualSearchModal');
+    const changeImgBtn = document.getElementById('vsChangeImgBtn');
+    const retryBtn = document.getElementById('vsRetryBtn');
+    const previewImg = document.getElementById('vsPreviewImg');
+
+    const loadingState = document.getElementById('vsLoadingState');
+    const errorState = document.getElementById('vsErrorState');
+    const resultState = document.getElementById('vsResultState');
+    const errorMessage = document.getElementById('vsErrorMessage');
+    const countText = document.getElementById('vsCountText');
+    const productList = document.getElementById('vsProductList');
+    const emptyList = document.getElementById('vsEmptyList');
+
+    if (!triggerBtn || !fileInput) return;
+
+    // Bấm nút Camera -> Mở chọn file
+    triggerBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    changeImgBtn?.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    retryBtn?.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    closeBtn?.addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+
+    modal?.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.add('hidden');
+    });
+
+    // Khi người dùng đã chọn file ảnh
+    fileInput.addEventListener('change', () => {
+      if (!fileInput.files || fileInput.files.length === 0) return;
+      const file = fileInput.files[0];
+
+      // Đọc preview ảnh
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previewImg.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+
+      // Mở modal & chuyển sang trạng thái Loading
+      modal.classList.remove('hidden');
+      loadingState.classList.remove('hidden');
+      errorState.classList.add('hidden');
+      resultState.classList.add('hidden');
+
+      // Gửi AJAX lên /visual-search
+      const formData = new FormData();
+      formData.append('searchImage', file);
+
+      fetch('${pageContext.request.contextPath}/visual-search', {
+        method: 'POST',
+        body: formData
+      })
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Lỗi xử lý hình ảnh');
+        }
+        return data;
+      })
+      .then(data => {
+        loadingState.classList.add('hidden');
+        resultState.classList.remove('hidden');
+        renderVisualResults(data.products || []);
+      })
+      .catch(err => {
+        loadingState.classList.add('hidden');
+        errorState.classList.remove('hidden');
+        errorMessage.textContent = err.message || 'Không thể kết nối đến hệ thống AI';
+      })
+      .finally(() => {
+        fileInput.value = ''; // Reset input để có thể chọn lại ảnh giống cũ
+      });
+    });
+
+    function renderVisualResults(products) {
+      productList.innerHTML = '';
+      countText.textContent = products.length;
+
+      if (products.length === 0) {
+        emptyList.classList.remove('hidden');
+        return;
+      }
+      emptyList.classList.add('hidden');
+
+      products.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'flex gap-3 p-2.5 bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition group';
+        
+        const priceFormatted = new Intl.NumberFormat('vi-VN').format(p.price) + ' đ';
+        const imgPath = p.image ? p.image : 'assets/images/no-image.png';
+
+        // Badge phần trăm tương đồng
+        let badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        if (p.similarity_percent < 70) {
+          badgeColor = 'bg-blue-100 text-blue-800 border-blue-200';
+        }
+
+        card.innerHTML = `
+          <div class="w-20 h-20 rounded-lg overflow-hidden bg-slate-100 shrink-0 relative">
+            <img src="\${imgPath}" alt="\${escapeHtml(p.title)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+            <span class="absolute top-1 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded \${badgeColor} border shadow-2xs">
+              \${p.similarity_percent}% khớp
+            </span>
+          </div>
+          <div class="flex-1 min-w-0 flex flex-col justify-between">
+            <div>
+              <a href="02-chi-tiet-san-pham.jsp?id=\${p.id}" class="text-xs font-bold text-slate-900 hover:text-blue-600 line-clamp-1 transition">
+                \${escapeHtml(p.title)}
+              </a>
+              <div class="text-xs font-extrabold text-blue-600 mt-0.5">\${priceFormatted}</div>
+              <div class="text-[10px] text-slate-500 mt-0.5 truncate">📍 \${escapeHtml(p.province || 'Toàn quốc')}</div>
+            </div>
+            <a href="02-chi-tiet-san-pham.jsp?id=\${p.id}" class="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 mt-1">
+              Xem ngay &rarr;
+            </a>
+          </div>
+        `;
+        productList.appendChild(card);
+      });
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
   })();
 </script>
