@@ -2,6 +2,7 @@ package controller;
 
 import dao.OrderDAO;
 import dao.ProductDAO;
+import model.OrderSummary;
 import model.Product;
 import model.User;
 
@@ -32,15 +33,15 @@ public class MyPostsController extends HttpServlet {
         req.setAttribute("myPosts", myPosts);
 
         // Load đơn hàng bán để hiển thị thống kê doanh thu
-        List<OrderDAO.OrderSummary> allOrders = orderDAO.getOrderSummariesForUser(user.getId());
+        List<OrderSummary> allOrders = orderDAO.getOrderSummariesForUser(user.getId());
         // Lấy đơn mà user là người bán
-        List<OrderDAO.OrderSummary> sellerOrders = allOrders.stream()
+        List<OrderSummary> sellerOrders = allOrders.stream()
                 .filter(o -> o.sellerId == user.getId())
                 .collect(java.util.stream.Collectors.toList());
         req.setAttribute("sellerOrders", sellerOrders);
 
         // Lấy đơn mà user là người mua cho tab Lịch sử mua hàng
-        List<OrderDAO.OrderSummary> buyerOrders = allOrders.stream()
+        List<OrderSummary> buyerOrders = allOrders.stream()
                 .filter(o -> o.buyerId == user.getId())
                 .collect(java.util.stream.Collectors.toList());
         req.setAttribute("buyerOrders", buyerOrders);
@@ -50,6 +51,13 @@ public class MyPostsController extends HttpServlet {
                 .filter(o -> "COMPLETED".equalsIgnoreCase(o.status))
                 .count();
         req.setAttribute("successfulOrdersCount", successfulOrdersCount);
+
+        // Load các đánh giá từ khách hàng đã mua của user
+        dao.ReviewDAO reviewDAO = new dao.ReviewDAO();
+        List<dao.ReviewDAO.ReviewDetail> customerReviews = reviewDAO.getReviewsForSeller(user.getId());
+        dao.ReviewDAO.SellerRatingSummary sellerRatingSummary = reviewDAO.getSellerRatingSummary(user.getId());
+        req.setAttribute("customerReviews", customerReviews);
+        req.setAttribute("sellerRatingSummary", sellerRatingSummary);
 
         req.getRequestDispatcher("/08-ho-so-ca-nhan.jsp").forward(req, resp);
     }

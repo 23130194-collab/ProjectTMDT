@@ -1,7 +1,13 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="model.User" %>
+<%@ page import="model.OrderSummary" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="java.util.List" %>
+<%@ page import="java.util.Locale" %>
+<%@ page import="dao.ReviewDAO" %>
+<%@ page import="dao.ReviewDAO.ReviewDetail" %>
+<%@ page import="dao.ReviewDAO.SellerRatingSummary" %>
 <%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="jakarta.tags.fmt" prefix="fmt" %>
 <%!
@@ -40,12 +46,13 @@
 
   private String orderStatusText(String status) {
     if ("COMPLETED".equalsIgnoreCase(status)) return "Đã hoàn tất";
-    if ("DEPOSIT_CONFIRMED".equalsIgnoreCase(status) || "DEPOSITED".equalsIgnoreCase(status)) return "Đã giữ cọc an toàn";
+    if ("DEPOSIT_CONFIRMED".equalsIgnoreCase(status) || "DEPOSITED".equalsIgnoreCase(status)) return "Đang giữ cọc";
     if ("DEPOSIT_PENDING".equalsIgnoreCase(status)) return "Chờ xác nhận cọc";
     if ("SHIPPING".equalsIgnoreCase(status)) return "Đang giao hàng";
     if ("CANCELED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) return "Đã hủy đơn";
     if ("DISPUTED".equalsIgnoreCase(status)) return "Đang khiếu nại";
-    return "Đang xử lý";
+    if ("NEGOTIATING".equalsIgnoreCase(status)) return "Đang thương lượng";
+    return "Đang giữ cọc";
   }
 
   private String orderBadgeClass(String status) {
@@ -77,6 +84,11 @@
   String avatarImage = currentUser.getAvatar() != null ? currentUser.getAvatar().trim() : "";
   Integer reqSuccessCount = (Integer) request.getAttribute("successfulOrdersCount");
   int successCount = reqSuccessCount != null ? reqSuccessCount : 0;
+  List<ReviewDetail> customerReviews = (List<ReviewDetail>) request.getAttribute("customerReviews");
+  if (customerReviews == null) customerReviews = java.util.Collections.emptyList();
+  SellerRatingSummary sellerRatingSummary = (SellerRatingSummary) request.getAttribute("sellerRatingSummary");
+  if (sellerRatingSummary == null) sellerRatingSummary = new SellerRatingSummary();
+  SimpleDateFormat reviewDateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm");
   String createdText = currentUser.getCreatedAt() != null
           ? new SimpleDateFormat("MM/yyyy").format(currentUser.getCreatedAt())
           : "hôm nay";
@@ -157,7 +169,14 @@
               <span class="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 text-xs font-semibold border border-teal-200">Thành viên mới</span>
             <% } %>
             <span class="text-xs text-slate-600">Đã giao dịch thành công: <strong class="text-slate-800"><%= successCount %> đơn</strong></span>
-            <span class="text-xs text-slate-500">0 đánh giá</span>
+            <% if (sellerRatingSummary.totalReviews > 0) { %>
+              <a href="javascript:void(0)" onclick="switchProfileSection('reviews')" class="text-xs text-amber-600 font-semibold flex items-center gap-1 hover:underline">
+                <svg class="w-3.5 h-3.5 fill-amber-400 text-amber-400" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <%= String.format(Locale.US, "%.1f", sellerRatingSummary.averageRating) %> (<%= sellerRatingSummary.totalReviews %> đánh giá)
+              </a>
+            <% } else { %>
+              <span class="text-xs text-slate-500">0 đánh giá</span>
+            <% } %>
           </div>
           <div class="flex items-center gap-1.5 mt-2 text-xs text-teal-600 font-medium">
             <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
@@ -188,8 +207,9 @@
     <!-- TABS ĐIỀU HƯỚNG NỘI DUNG TRANG CÁ NHÂN -->
     <c:set var="isStatsTab" value="${param.tab == 'stats'}" />
     <c:set var="isOrdersTab" value="${param.tab == 'orders'}" />
+    <c:set var="isReviewsTab" value="${param.tab == 'reviews'}" />
     <div class="flex border-b border-slate-200 gap-1 text-xs font-semibold overflow-x-auto">
-      <button id="profileTabPosts" onclick="switchProfileSection('posts')" class="${!isStatsTab && !isOrdersTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
+      <button id="profileTabPosts" onclick="switchProfileSection('posts')" class="${!isStatsTab && !isOrdersTab && !isReviewsTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
         Tin Tôi Đang Đăng Bán (<c:choose><c:when test="${not empty myPosts}">${myPosts.size()}</c:when><c:otherwise>0</c:otherwise></c:choose>)
       </button>
       <button id="profileTabOrders" onclick="switchProfileSection('orders')" class="${isOrdersTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
@@ -201,13 +221,13 @@
       <button id="profileTabSaved" onclick="switchProfileSection('saved')" class="pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap">
         Tin Đã Lưu Yêu Thích
       </button>
-      <button id="profileTabReviews" onclick="switchProfileSection('reviews')" class="pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap">
-        Đánh Giá Từ Khách Hàng
+      <button id="profileTabReviews" onclick="switchProfileSection('reviews')" class="${isReviewsTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
+        Đánh Giá Từ Khách Hàng (<%= customerReviews.size() %>)
       </button>
     </div>
 
     <!-- PHẦN 1: QUẢN LÝ BÀI ĐĂNG CỦA TÔI -->
-    <section id="sectionPosts" class="space-y-3 ${isStatsTab || isOrdersTab ? 'hidden' : ''}">
+    <section id="sectionPosts" class="space-y-3 ${isStatsTab || isOrdersTab || isReviewsTab ? 'hidden' : ''}">
       
       <!-- BỘ LỌC TRẠNG THÁI BÀI ĐĂNG -->
       <div class="flex items-center justify-between text-xs">
@@ -316,8 +336,8 @@
 
     <!-- PHẦN: LỊCH SỬ MUA HÀNG (CÁC ĐƠN HÀNG ĐÃ MUA) -->
     <%
-      java.util.List<dao.OrderDAO.OrderSummary> buyerOrders =
-          (java.util.List<dao.OrderDAO.OrderSummary>) request.getAttribute("buyerOrders");
+      java.util.List<OrderSummary> buyerOrders =
+          (java.util.List<OrderSummary>) request.getAttribute("buyerOrders");
       if (buyerOrders == null) buyerOrders = java.util.Collections.emptyList();
       java.text.NumberFormat nfOrder = java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi","VN"));
       java.text.SimpleDateFormat sdfOrder = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm");
@@ -357,7 +377,7 @@
       <% } else { %>
         <!-- DANH SÁCH CÁC ĐƠN MUA -->
         <div class="space-y-3.5" id="buyerOrdersList">
-          <% for (dao.OrderDAO.OrderSummary bo : buyerOrders) {
+          <% for (OrderSummary bo : buyerOrders) {
             double finalPrice = bo.agreedPrice > 0 ? bo.agreedPrice : bo.productPrice;
             double remainPrice = Math.max(0, finalPrice - bo.depositAmount);
             String st = bo.status != null ? bo.status.toLowerCase() : "";
@@ -459,18 +479,18 @@
 
     <!-- PHẦN 2: THỐNG KÊ DOANH THU & ĐƠN BÁN -->
     <%
-      java.util.List<dao.OrderDAO.OrderSummary> sellerOrders =
-          (java.util.List<dao.OrderDAO.OrderSummary>) request.getAttribute("sellerOrders");
+      java.util.List<OrderSummary> sellerOrders =
+          (java.util.List<OrderSummary>) request.getAttribute("sellerOrders");
       if (sellerOrders == null) sellerOrders = java.util.Collections.emptyList();
 
       double totalRevenue = 0, totalDeposit = 0, holdingDeposit = 0;
       int completedOrders = 0;
-      for (dao.OrderDAO.OrderSummary o : sellerOrders) {
+      for (OrderSummary o : sellerOrders) {
         if ("COMPLETED".equals(o.status)) {
           totalRevenue += o.agreedPrice > 0 ? o.agreedPrice : o.productPrice;
           totalDeposit += o.depositAmount;
           completedOrders++;
-        } else if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status)) {
+        } else if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status) || "DEPOSITED".equals(o.status)) {
           holdingDeposit += o.depositAmount;
         }
       }
@@ -568,15 +588,31 @@
                   java.text.NumberFormat nf2 = java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi","VN"));
                   java.text.SimpleDateFormat sdf2 = new java.text.SimpleDateFormat("dd/MM/yyyy");
                   int shown = 0;
-                  for (dao.OrderDAO.OrderSummary ord : sellerOrders) {
+                  for (OrderSummary ord : sellerOrders) {
                     if (shown >= 10) break; shown++;
                     String bCls, bTxt;
-                    if ("COMPLETED".equals(ord.status))            { bCls="bg-teal-50 text-teal-700";   bTxt="Hoàn tất"; }
-                    else if ("DEPOSIT_CONFIRMED".equals(ord.status)){ bCls="bg-amber-50 text-amber-600"; bTxt="Có cọc"; }
-                    else if ("DEPOSIT_PENDING".equals(ord.status))  { bCls="bg-blue-50 text-blue-600";   bTxt="Chờ cọc"; }
-                    else if ("CANCELED".equals(ord.status))         { bCls="bg-slate-100 text-slate-500"; bTxt="Hủy"; }
-                    else if ("DISPUTED".equals(ord.status))         { bCls="bg-red-50 text-red-600";     bTxt="Khiếu nại"; }
-                    else                                             { bCls="bg-slate-100 text-slate-500"; bTxt=ord.status; }
+                    if ("COMPLETED".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-teal-50 text-teal-700";
+                      bTxt = "Hoàn tất";
+                    } else if ("DEPOSIT_CONFIRMED".equalsIgnoreCase(ord.status) || "DEPOSITED".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-amber-50 text-amber-600";
+                      bTxt = "Đang giữ cọc";
+                    } else if ("DEPOSIT_PENDING".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-blue-50 text-blue-600";
+                      bTxt = "Chờ cọc";
+                    } else if ("SHIPPING".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-blue-50 text-blue-600";
+                      bTxt = "Đang giao hàng";
+                    } else if ("CANCELED".equalsIgnoreCase(ord.status) || "CANCELLED".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-slate-100 text-slate-500";
+                      bTxt = "Đã hủy";
+                    } else if ("DISPUTED".equalsIgnoreCase(ord.status)) {
+                      bCls = "bg-red-50 text-red-600";
+                      bTxt = "Khiếu nại";
+                    } else {
+                      bCls = "bg-amber-50 text-amber-600";
+                      bTxt = orderStatusText(ord.status);
+                    }
                     double pr = ord.agreedPrice > 0 ? ord.agreedPrice : ord.productPrice;
                 %>
                 <tr class="hover:bg-slate-50 transition">
@@ -633,17 +669,125 @@
     </section>
 
     <!-- PHẦN 3: ĐÁNH GIÁ TỪ KHÁCH HÀNG -->
-    <section id="sectionReviews" class="space-y-3 hidden">
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-2">
-        <div class="flex items-center justify-between text-xs">
-          <span class="font-bold text-slate-900">Lê Minh Khang (Mua laptop cũ)</span>
-          <span class="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded">5 / 5 sao</span>
+    <section id="sectionReviews" class="space-y-4 ${isReviewsTab ? '' : 'hidden'}">
+      <!-- THẺ TỔNG QUAN ĐÁNH GIÁ -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+              <span>⭐</span> Đánh Giá Thực Tế Từ Khách Hàng Đã Mua
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">
+              Khách hàng chỉ có thể đánh giá bạn sau khi đã hoàn tất nhận hàng từ đơn cọc. Mỗi đơn hàng chỉ được đánh giá 1 lần.
+            </p>
+          </div>
+
+          <div class="text-center sm:text-right shrink-0">
+            <div class="text-3xl font-extrabold text-slate-900">
+              <%= String.format(Locale.US, "%.1f", sellerRatingSummary.averageRating) %><span class="text-base text-slate-400 font-normal"> / 5.0</span>
+            </div>
+            <div class="text-amber-400 text-base tracking-wider">
+              ★★★★★
+            </div>
+            <div class="text-[11px] text-slate-500 mt-0.5">Dựa trên <%= sellerRatingSummary.totalReviews %> lượt đánh giá</div>
+          </div>
         </div>
-        <p class="text-xs text-slate-600 leading-relaxed">
-          Anh chủ nhiệt tình, cho hẹn gặp tại nhà ở Quận 10 test máy thoải mái. Máy dùng rất tốt đúng như mô tả. Đã cọc qua sàn 10% rất yên tâm.
-        </p>
-        <span class="text-[10px] text-slate-400 block">Đánh giá ngày 20/09/2026</span>
+
+        <% if (sellerRatingSummary.totalReviews > 0) { %>
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-3 border-t border-slate-100 text-xs">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] text-slate-600 w-10">5 sao:</span>
+            <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-amber-400 rounded-full" style="width: <%= (sellerRatingSummary.count5Star * 100 / sellerRatingSummary.totalReviews) %>%"></div>
+            </div>
+            <span class="text-[10px] text-slate-400 w-6 text-right"><%= sellerRatingSummary.count5Star %></span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] text-slate-600 w-10">4 sao:</span>
+            <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-amber-400 rounded-full" style="width: <%= (sellerRatingSummary.count4Star * 100 / sellerRatingSummary.totalReviews) %>%"></div>
+            </div>
+            <span class="text-[10px] text-slate-400 w-6 text-right"><%= sellerRatingSummary.count4Star %></span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] text-slate-600 w-10">3 sao:</span>
+            <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-amber-400 rounded-full" style="width: <%= (sellerRatingSummary.count3Star * 100 / sellerRatingSummary.totalReviews) %>%"></div>
+            </div>
+            <span class="text-[10px] text-slate-400 w-6 text-right"><%= sellerRatingSummary.count3Star %></span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] text-slate-600 w-10">2 sao:</span>
+            <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-amber-400 rounded-full" style="width: <%= (sellerRatingSummary.count2Star * 100 / sellerRatingSummary.totalReviews) %>%"></div>
+            </div>
+            <span class="text-[10px] text-slate-400 w-6 text-right"><%= sellerRatingSummary.count2Star %></span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] text-slate-600 w-10">1 sao:</span>
+            <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-amber-400 rounded-full" style="width: <%= (sellerRatingSummary.count1Star * 100 / sellerRatingSummary.totalReviews) %>%"></div>
+            </div>
+            <span class="text-[10px] text-slate-400 w-6 text-right"><%= sellerRatingSummary.count1Star %></span>
+          </div>
+        </div>
+        <% } %>
       </div>
+
+      <!-- DANH SÁCH CHI TIẾT CÁC ĐÁNH GIÁ -->
+      <% if (customerReviews.isEmpty()) { %>
+        <div class="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-2 shadow-xs">
+          <div class="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto text-xl font-bold">★</div>
+          <h3 class="text-sm font-bold text-slate-800">Chưa có đánh giá nào từ khách hàng</h3>
+          <p class="text-xs text-slate-500 max-w-sm mx-auto">
+            Khi người mua xác nhận đã nhận hàng thành công và gửi đánh giá cho bạn, nhận xét và số sao sẽ xuất hiện tại đây.
+          </p>
+        </div>
+      <% } else { %>
+        <div class="space-y-3">
+          <% for (ReviewDetail r : customerReviews) {
+            String rInitial = r.reviewerName != null && !r.reviewerName.isEmpty() ? r.reviewerName.substring(0, 1).toUpperCase() : "K";
+          %>
+          <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-2.5">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-teal-50 text-teal-700 font-bold flex items-center justify-center text-sm border border-teal-200 shrink-0">
+                  <%= rInitial %>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold text-xs text-slate-900"><%= h(r.reviewerName) %></span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Đã mua hàng</span>
+                  </div>
+                  <span class="text-[11px] text-slate-500 block mt-0.5">
+                    Sản phẩm: <strong class="text-slate-700"><%= h(r.productTitle) %></strong> (Đơn #MN-<%= r.orderId %>)
+                  </span>
+                </div>
+              </div>
+
+              <div class="text-right shrink-0">
+                <div class="text-amber-400 text-sm tracking-wider">
+                  <% for (int s = 1; s <= 5; s++) { %>
+                    <%= s <= r.rating ? "★" : "☆" %>
+                  <% } %>
+                </div>
+                <div class="text-[10px] text-slate-400 mt-0.5">
+                  <%= r.createdAt != null ? reviewDateFormat.format(r.createdAt) : "" %>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-lg p-3 text-xs text-slate-700 leading-relaxed border border-slate-100">
+              <%= h(r.comment) %>
+            </div>
+          </div>
+          <% } %>
+        </div>
+      <% } %>
     </section>
 
   </main>
@@ -1160,55 +1304,84 @@
       const completed = <%= completedOrders %>;
       const depositOrders = <%
         int dOrd = 0;
-        for (dao.OrderDAO.OrderSummary o : sellerOrders) {
-          if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status)) dOrd++;
+        for (OrderSummary o : sellerOrders) {
+          if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status) || "DEPOSITED".equals(o.status)) dOrd++;
         }
         out.print(dOrd);
       %>;
       const canceledOrders = <%
         int cOrd = 0;
-        for (dao.OrderDAO.OrderSummary o : sellerOrders) {
+        for (OrderSummary o : sellerOrders) {
           if ("CANCELED".equals(o.status) || "DISPUTED".equals(o.status)) cOrd++;
         }
         out.print(cOrd);
       %>;
 
-      // Biểu đồ doanh thu theo ngày
-      const revenueLabels = [<%
+      // Biểu đồ doanh thu + cọc theo ngày — gom tất cả ngày có đơn (cả COMPLETED và DEPOSIT)
+      <%
         java.util.LinkedHashMap<String,Double> revByDay = new java.util.LinkedHashMap<>();
+        java.util.LinkedHashMap<String,Double> depByDay = new java.util.LinkedHashMap<>();
+        java.util.LinkedHashSet<String> allDays = new java.util.LinkedHashSet<>();
         java.text.SimpleDateFormat sdfDay = new java.text.SimpleDateFormat("dd/MM");
-        for (dao.OrderDAO.OrderSummary o : sellerOrders) {
-          if ("COMPLETED".equals(o.status) && o.createdAt != null) {
-            String day = sdfDay.format(o.createdAt);
+        for (OrderSummary o : sellerOrders) {
+          if (o.createdAt == null) continue;
+          String day = sdfDay.format(o.createdAt);
+          allDays.add(day);
+          if ("COMPLETED".equals(o.status)) {
             revByDay.merge(day, o.agreedPrice > 0 ? o.agreedPrice : o.productPrice, Double::sum);
           }
+          if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status) || "DEPOSITED".equals(o.status)) {
+            depByDay.merge(day, o.depositAmount, Double::sum);
+          }
         }
-        if (revByDay.isEmpty()) { out.print("''"); }
-        else { out.print(revByDay.keySet().stream().map(k -> "'" + k + "'").collect(java.util.stream.Collectors.joining(","))); }
-      %>];
-      const revenueData = [<%
-        if (revByDay.isEmpty()) { out.print("0"); }
-        else { out.print(revByDay.values().stream().map(Object::toString).collect(java.util.stream.Collectors.joining(","))); }
-      %>];
+      %>
+      const chartLabels = [<% if (allDays.isEmpty()) { out.print("''"); } else { out.print(allDays.stream().map(k -> "'" + k + "'").collect(java.util.stream.Collectors.joining(","))); } %>];
+      const revenueData  = [<% if (allDays.isEmpty()) { out.print("0"); } else { out.print(allDays.stream().map(k -> String.valueOf(revByDay.getOrDefault(k,0.0))).collect(java.util.stream.Collectors.joining(","))); } %>];
+      const depositData  = [<% if (allDays.isEmpty()) { out.print("0"); } else { out.print(allDays.stream().map(k -> String.valueOf(depByDay.getOrDefault(k,0.0))).collect(java.util.stream.Collectors.joining(","))); } %>];
 
-      // Biểu đồ bar doanh thu
+      // Biểu đồ bar nhóm: doanh thu hoàn tất + tiền cọc đang giữ
       const rCtx = document.getElementById('revenueChart').getContext('2d');
       new Chart(rCtx, {
         type: 'bar',
         data: {
-          labels: revenueLabels,
-          datasets: [{
-            label: 'Doanh thu (đ)',
-            data: revenueData,
-            backgroundColor: 'rgba(20,184,166,0.7)',
-            borderColor: '#14b8a6',
-            borderWidth: 1,
-            borderRadius: 4
-          }]
+          labels: chartLabels,
+          datasets: [
+            {
+              label: 'Doanh thu hoàn tất (đ)',
+              data: revenueData,
+              backgroundColor: 'rgba(20,184,166,0.75)',
+              borderColor: '#14b8a6',
+              borderWidth: 1,
+              borderRadius: 4
+            },
+            {
+              label: 'Tiền cọc đang giữ (đ)',
+              data: depositData,
+              backgroundColor: 'rgba(245,158,11,0.65)',
+              borderColor: '#f59e0b',
+              borderWidth: 1,
+              borderRadius: 4
+            }
+          ]
         },
         options: {
           responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: { font: { size: 10 }, boxWidth: 12, padding: 10 }
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const v = ctx.parsed.y;
+                  const fmt = v >= 1e6 ? (v/1e6).toFixed(1)+'M đ' : v >= 1e3 ? (v/1e3).toFixed(0)+'K đ' : v + ' đ';
+                  return ' ' + ctx.dataset.label.split(' (')[0] + ': ' + fmt;
+                }
+              }
+            }
+          },
           scales: {
             x: { grid: { display: false }, ticks: { font: { size: 10 } } },
             y: {
@@ -1223,16 +1396,16 @@
         }
       });
 
-      // Biểu đồ donut cơ cấu
+      // Biểu đồ donut cơ cấu — khi chưa có đơn hiển thị vòng xám trung tính
       const sCtx = document.getElementById('structureChart').getContext('2d');
       const total = completed + depositOrders + canceledOrders;
       new Chart(sCtx, {
         type: 'doughnut',
         data: {
-          labels: ['Đã hoàn tất', 'Đang giữ cọc', 'Đã hủy/khiếu nại'],
+          labels: total > 0 ? ['Đã hoàn tất', 'Đang giữ cọc', 'Đã hủy/khiếu nại'] : ['Chưa có đơn hàng'],
           datasets: [{
-            data: total > 0 ? [completed, depositOrders, canceledOrders] : [1, 0, 0],
-            backgroundColor: ['#14b8a6', '#f59e0b', '#f87171'],
+            data: total > 0 ? [completed, depositOrders, canceledOrders] : [1],
+            backgroundColor: total > 0 ? ['#14b8a6', '#f59e0b', '#f87171'] : ['#e2e8f0'],
             borderWidth: total > 0 ? 2 : 0,
             borderColor: '#fff'
           }]
@@ -1240,7 +1413,16 @@
         options: {
           responsive: true, maintainAspectRatio: false,
           cutout: '60%',
-          plugins: { legend: { display: false } }
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => total > 0
+                  ? ' ' + ctx.label + ': ' + ctx.parsed + ' đơn'
+                  : ' Chưa có đơn hàng nào'
+              }
+            }
+          }
         }
       });
     }
@@ -1257,6 +1439,16 @@
         switchProfileSection('saved', false);
       } else if (tab === 'reviews') {
         switchProfileSection('reviews', false);
+        setTimeout(() => {
+          const revSec = document.getElementById('sectionReviews');
+          if (revSec) {
+            revSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            revSec.classList.add('ring-4', 'ring-amber-400', 'ring-offset-2', 'rounded-2xl', 'transition-all', 'duration-500');
+            setTimeout(() => {
+              revSec.classList.remove('ring-4', 'ring-amber-400', 'ring-offset-2');
+            }, 3000);
+          }
+        }, 200);
       } else if (tab === 'posts') {
         switchProfileSection('posts', false);
       } else {

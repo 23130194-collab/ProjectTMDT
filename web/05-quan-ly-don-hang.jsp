@@ -1,7 +1,8 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="model.User" %>
 <%@ page import="dao.OrderDAO" %>
-<%@ page import="dao.OrderDAO.OrderSummary" %>
+<%@ page import="model.OrderSummary" %>
+<%@ page import="dao.ReviewDAO" %>
 <%@ page import="java.text.NumberFormat" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Locale" %>
@@ -19,12 +20,13 @@
   }
 
   private String orderStatusText(String status) {
-    if ("DEPOSITED".equalsIgnoreCase(status)) return "Đã đặt cọc";
+    if ("DEPOSITED".equalsIgnoreCase(status) || "DEPOSIT_CONFIRMED".equalsIgnoreCase(status)) return "Đang giữ cọc";
+    if ("DEPOSIT_PENDING".equalsIgnoreCase(status)) return "Chờ xác nhận cọc";
     if ("SHIPPING".equalsIgnoreCase(status)) return "Đang giao hàng / kiểm tra";
     if ("COMPLETED".equalsIgnoreCase(status)) return "Đã hoàn tất";
-    if ("CANCELLED".equalsIgnoreCase(status)) return "Đã hủy";
+    if ("CANCELLED".equalsIgnoreCase(status) || "CANCELED".equalsIgnoreCase(status)) return "Đã hủy";
     if ("DISPUTED".equalsIgnoreCase(status)) return "Đang khiếu nại";
-    return "Đang đàm phán";
+    return "Đang thương lượng";
   }
 
   private String orderBadgeClass(String status) {
@@ -38,18 +40,32 @@
   User ordersCurrentUser = (User) session.getAttribute("user");
   boolean ordersLoggedIn = ordersCurrentUser != null;
   OrderDAO orderDAO = new OrderDAO();
+  ReviewDAO reviewDAO = new ReviewDAO();
   List<OrderSummary> accountOrders = ordersLoggedIn
           ? orderDAO.getOrderSummariesForUser(ordersCurrentUser.getId())
           : java.util.Collections.emptyList();
   NumberFormat moneyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
+  java.text.SimpleDateFormat orderDateFormat = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm");
   int accountOrderCount = accountOrders.size();
+  int accountChannel1Count = 0; // Hẹn gặp trực tiếp
+  int accountChannel2Count = 0; // Giao tận nhà GHN
   int accountBuyCount = 0;
   int accountSellCount = 0;
   double accountEscrowTotal = 0;
   for (OrderSummary item : accountOrders) {
     if (item.buyerId == ordersCurrentUser.getId()) accountBuyCount++;
     if (item.sellerId == ordersCurrentUser.getId()) accountSellCount++;
+    if (item.deliveryMethod == 2) accountChannel2Count++;
+    else accountChannel1Count++;
     accountEscrowTotal += item.depositAmount;
+  }
+
+  // Lấy Flash message nếu có
+  String flashMsg = (String) session.getAttribute("orderFlashMessage");
+  Boolean flashSuccess = (Boolean) session.getAttribute("orderFlashSuccess");
+  if (flashMsg != null) {
+    session.removeAttribute("orderFlashMessage");
+    session.removeAttribute("orderFlashSuccess");
   }
 %>
 <!DOCTYPE html>
@@ -71,16 +87,27 @@
   <!-- THANH ĐIỀU HƯỚNG CHÍNH -->
   <jsp:include page="includes/header.jsp" />
 
-  <!-- NỘI DUNG CHÍNH: TRUNG TÂM QUẢN LÝ 4 ĐƠN HÀNG KÊNH 1 & KÊNH 2 -->
+  <!-- NỘI DUNG CHÍNH: TRUNG TÂM QUẢN LÝ ĐƠN HÀNG KÊNH 1 & KÊNH 2 -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6 relative">
     
+    <!-- THÔNG BÁO FLASH MESSAGE (KHI XÁC NHẬN / TẠO GHN THÀNH CÔNG) -->
+    <% if (flashMsg != null) { %>
+    <div class="p-4 rounded-xl <%= Boolean.TRUE.equals(flashSuccess) ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800" %> flex items-center justify-between shadow-xs">
+      <div class="flex items-center gap-2.5 text-xs font-semibold">
+        <span><%= Boolean.TRUE.equals(flashSuccess) ? "✓" : "✕" %></span>
+        <span><%= h(flashMsg) %></span>
+      </div>
+      <button onclick="this.parentElement.remove()" class="text-xs font-bold text-slate-400 hover:text-slate-600">✕</button>
+    </div>
+    <% } %>
+
     <!-- TIÊU ĐỀ TRANG VÀ GIẢI THÍCH MÔ HÌNH BẢO CHỨNG -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
       <div>
         <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Quản Lý Đơn Hàng & Trạng Thái Giữ Tiền An Toàn</h1>
         <p class="text-xs text-slate-500 mt-1">
           <%= ordersLoggedIn
-                  ? "Theo dõi các giao dịch mua/bán phát sinh từ tài khoản hiện tại."
+                  ? "Theo dõi và cập nhật trạng thái đơn hàng (Giao trực tiếp & Giao qua GHN Express)."
                   : "Theo dõi 4 đơn hàng demo: 2 đơn Hẹn gặp trực tiếp và 2 đơn Giao tận nhà qua bưu điện." %>
         </p>
       </div>
@@ -98,11 +125,11 @@
       <button onclick="filterOrders('all')" id="btnFilterAll" class="px-3.5 py-2 rounded-lg bg-blue-600 text-white transition shadow-xs">
         Tất Cả (<%= accountOrderCount %> Đơn)
       </button>
-      <button onclick="filterOrders('channel1')" id="btnFilterChannel1" data-filter-hidden="true" class="hidden px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition">
-        Hẹn Gặp Trực Tiếp (0 Đơn)
+      <button onclick="filterOrders('channel1')" id="btnFilterChannel1" class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition">
+        Hẹn Gặp Trực Tiếp (<%= accountChannel1Count %> Đơn)
       </button>
-      <button onclick="filterOrders('channel2')" id="btnFilterChannel2" data-filter-hidden="true" class="hidden px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition">
-        Giao Tận Nhà Dùng Thử 48H (0 Đơn)
+      <button onclick="filterOrders('channel2')" id="btnFilterChannel2" class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition">
+        Giao Tận Nhà (GHN) (<%= accountChannel2Count %> Đơn)
       </button>
       <button onclick="filterOrders('buy')" id="btnFilterBuy" class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition">
         Đơn Tôi Mua (<%= accountBuyCount %> Đơn)
@@ -131,14 +158,14 @@
     </div>
     <% } %>
 
-    <!-- DANH SÁCH 4 ĐƠN HÀNG CHI TIẾT -->
+    <!-- DANH SÁCH ĐƠN HÀNG CHI TIẾT -->
     <div class="space-y-6" id="ordersListContainer">
     <% if (ordersLoggedIn) { %>
       <% if (accountOrders.isEmpty()) { %>
       <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
         <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-lg font-bold">0</div>
         <h2 class="mt-3 text-sm font-bold text-slate-900">Tài khoản này chưa có đơn hàng</h2>
-        <p class="mt-1 text-xs text-slate-500">Khi bạn đặt cọc, mua hàng hoặc bán được sản phẩm, đơn sẽ xuất hiện tại đây.</p>
+        <p class="mt-1 text-xs text-slate-500">Khi bạn đặt cọc qua VNPay, mua hàng hoặc bán được sản phẩm, đơn sẽ xuất hiện tại đây.</p>
         <a href="01-trang-chu.jsp" class="inline-flex mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition">
           Về trang chủ
         </a>
@@ -147,67 +174,293 @@
         <% for (OrderSummary item : accountOrders) {
           boolean mineBuy = item.buyerId == ordersCurrentUser.getId();
           String type = mineBuy ? "buy" : "sell";
+          String channel = item.deliveryMethod == 2 ? "channel2" : "channel1";
           String partnerName = mineBuy ? item.sellerName : item.buyerName;
           double remain = Math.max(0, item.agreedPrice - item.depositAmount);
+          boolean isDirect = item.deliveryMethod != 2;
+          boolean isCompleted = "COMPLETED".equalsIgnoreCase(item.status);
+          boolean hasGhnTracking = item.trackingCode != null && !item.trackingCode.trim().isEmpty();
         %>
-      <div id="order-card-db-<%= item.id %>" data-channel="account" data-type="<%= type %>" class="order-card bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-4">
+      <div id="order-card-db-<%= item.id %>" data-channel="<%= channel %>" data-type="<%= type %>" class="order-card bg-white rounded-xl border <%= isDirect ? "border-amber-200" : "border-orange-200" %> shadow-sm p-5 sm:p-6 space-y-4">
+        
+        <!-- HEADER ĐƠN HÀNG -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
           <div class="flex flex-wrap items-center gap-2.5">
-            <span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 uppercase tracking-wider">
-              Giao dịch MuaNgay
-            </span>
+            <% if (isDirect) { %>
+              <span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider flex items-center gap-1">
+                <span></span> Hẹn Gặp Trực Tiếp
+              </span>
+            <% } else { %>
+              <span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-orange-100 text-orange-800 uppercase tracking-wider flex items-center gap-1">
+                <span></span> Giao Tận Nhà (GHN Express Demo)
+              </span>
+            <% } %>
+
             <span class="px-2 py-0.5 rounded text-[10px] font-bold <%= mineBuy ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-purple-50 text-purple-700 border border-purple-200" %>">
               <%= mineBuy ? "Tôi Là Người Mua" : "Tôi Là Người Bán" %>
             </span>
             <span class="text-xs font-mono text-slate-400">Mã đơn: #MN-<%= item.id %></span>
+            <% if (item.createdAt != null) { %>
+              <span class="text-[11px] text-slate-400">• <%= orderDateFormat.format(item.createdAt) %></span>
+            <% } %>
           </div>
           <div class="<%= orderBadgeClass(item.status) %>">
             Trạng thái: <%= h(orderStatusText(item.status)) %>
           </div>
         </div>
 
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <!-- THÔNG TIN SẢN PHẨM & TÀI CHÍNH -->
+        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div class="flex gap-3.5 items-start">
             <img src="<%= h(item.productImage) %>" alt="<%= h(item.productTitle) %>" class="w-20 h-20 rounded-lg object-cover shrink-0 border border-slate-200">
-            <div>
+            <div class="space-y-1">
               <h2 class="font-bold text-sm text-slate-900"><%= h(item.productTitle) %></h2>
-              <p class="text-[11px] text-slate-500 mt-0.5">
-                <%= mineBuy ? "Người bán" : "Người mua" %>: <strong><%= h(partnerName) %></strong>
+              <p class="text-[11px] text-slate-500">
+                <%= mineBuy ? "Người bán" : "Người mua" %>: 
+                <a href="seller-profile?id=<%= mineBuy ? item.sellerId : item.buyerId %>" class="font-bold text-blue-600 hover:underline inline-flex items-center gap-1" title="Xem hồ sơ và đánh giá">
+                  <span><%= h(partnerName) %></span>
+                  <svg class="w-3 h-3 text-blue-500 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                </a>
+                <% String partnerPhone = mineBuy ? item.sellerPhone : item.buyerPhone; %>
+                <% if (partnerPhone != null && !partnerPhone.isEmpty()) { %>
+                  (<%= h(partnerPhone) %>)
+                <% } %>
               </p>
-              <div class="mt-2 flex flex-wrap gap-2 text-[11px]">
+              <div class="flex flex-wrap gap-2 text-[11px] pt-1">
                 <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700">Giá gốc: <%= moneyFormat.format(Math.round(item.productPrice)) %> đ</span>
-                <span class="px-2 py-0.5 rounded bg-green-50 text-green-700 border border-green-200">Giá chốt: <%= moneyFormat.format(Math.round(item.agreedPrice)) %> đ</span>
+                <span class="px-2 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 font-semibold">Giá chốt: <%= moneyFormat.format(Math.round(item.agreedPrice)) %> đ</span>
               </div>
             </div>
           </div>
 
-          <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1 w-full md:w-72">
+          <!-- BOX TIỀN CỌC & THANH TOÁN -->
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1 w-full md:w-72 shrink-0">
             <div class="flex justify-between">
-              <span class="text-slate-500">Tiền cọc sàn giữ:</span>
+              <span class="text-slate-500">Tiền cọc sàn giữ (VNPay):</span>
               <span class="font-bold text-amber-700"><%= moneyFormat.format(Math.round(item.depositAmount)) %> đ</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-slate-500">Còn lại:</span>
+              <span class="text-slate-500"><%= isDirect ? "Tiền mặt thu tại chỗ:" : "Tiền thu hộ COD (GHN):" %></span>
               <span class="font-bold text-slate-900"><%= moneyFormat.format(Math.round(remain)) %> đ</span>
             </div>
             <div class="text-[11px] text-slate-500 pt-1 border-t border-slate-200">
-              Dữ liệu lấy theo tài khoản đang đăng nhập.
+              <% if (isCompleted) { %>
+                <span class="text-green-700 font-bold">Tiền cọc đã giải ngân cho Người bán.</span>
+              <% } else { %>
+                <span class="text-slate-600">Sàn đang bảo chứng tiền cọc 100%.</span>
+              <% } %>
             </div>
           </div>
         </div>
 
-        <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
-          <a href="04-chat-tra-gia-vietqr.jsp" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-xs text-center">
-            Mở chat giao dịch
-          </a>
-          <a href="product-detail?id=<%= item.productId %>" class="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-lg transition shadow-xs text-center">
-            Xem sản phẩm
-          </a>
+        <!-- THÔNG TIN VẬN CHUYỂN / ĐIỂM HẸN THEO PHƯƠNG THỨC -->
+        <% if (isDirect) { %>
+          <!-- KÊNH 1: HẸN GẶP TRỰC TIẾP -->
+          <div class="p-3 bg-amber-50/60 border border-amber-200 rounded-lg text-xs space-y-1">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
+              <div>
+                <span class="font-bold text-amber-900">Điểm hẹn xem & nhận đồ:</span>
+                <span class="text-amber-800"><%= item.productAddress != null ? h(item.productAddress) : "Trao đổi điểm hẹn trong khung chat" %></span>
+              </div>
+              <div class="text-amber-700 font-medium">
+                Hình thức: Gặp trực tiếp • Kiểm tra máy rồi mới giao tiền
+              </div>
+            </div>
+          </div>
+        <% } else { %>
+          <!-- KÊNH 2: GIAO TẬN NHÀ QUA GHN EXPRESS DEMO -->
+          <div class="p-3.5 bg-orange-50/70 border border-orange-200 rounded-lg text-xs space-y-2">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 bg-orange-600 text-white font-bold rounded text-[10px]">GHN Express</span>
+                <span class="text-slate-500 text-[11px]">Mã vận đơn:</span>
+                <% if (hasGhnTracking) { %>
+                  <span class="font-mono font-bold text-orange-600 text-sm"><%= item.trackingCode %></span>
+                <% } else { %>
+                  <span class="font-medium text-amber-700 italic">Chưa tạo vận đơn GHN</span>
+                <% } %>
+              </div>
+              <div>
+                <% if (hasGhnTracking) { %>
+                  <% String ghnStatusTxt = "Chờ bưu tá lấy hàng";
+                     if ("DANG_GIAO".equalsIgnoreCase(item.shippingStatus)) ghnStatusTxt = "Shipper đang giao hàng tới người mua";
+                     else if ("DA_GIAO".equalsIgnoreCase(item.shippingStatus)) ghnStatusTxt = "Bưu tá đã giao hàng thành công";
+                  %>
+                  <span class="font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 text-[11px]">
+                    <%= ghnStatusTxt %>
+                  </span>
+                <% } else { %>
+                  <span class="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    Chờ Người bán tạo đơn vận chuyển
+                  </span>
+                <% } %>
+              </div>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-600 gap-1 pt-1 border-t border-orange-200/60">
+              <div>
+                Địa chỉ giao hàng: <strong><%= item.buyerAddress != null ? h(item.buyerAddress) : "Chưa cập nhật địa chỉ" %></strong>
+              </div>
+              <div class="text-orange-700 font-medium">
+                Khách được kiểm tra hàng trước khi thanh toán COD
+              </div>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- ======================================================== -->
+        <!-- KHỐI NÚT HÀNH ĐỘNG CẬP NHẬT TRẠNG THÁI (CORE ACTIONS)    -->
+        <!-- ======================================================== -->
+        <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- NÚT CHUNG CHO MỌI ĐƠN -->
+            <a href="04-chat-tra-gia-vietqr.jsp" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-xs text-center">
+              Mở chat giao dịch
+            </a>
+            <a href="product-detail?id=<%= item.productId %>" class="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-lg transition shadow-xs text-center">
+              Xem sản phẩm
+            </a>
+          </div>
+
+          <!-- NÚT RIÊNG THEO HÌNH THỨC VÀ THEO VAI TRÒ (NGƯỜI BÁN / NGƯỜI MUA) -->
+          <div class="flex flex-wrap items-center gap-2">
+            <% if (isDirect) { %>
+              <!-- ================= NHÁNH 1: GIAO TRỰC TIẾP ================= -->
+              <% if (!isCompleted) { %>
+                <% if (!mineBuy) { %>
+                  <!-- TÔI LÀ NGƯỜI BÁN -->
+                  <% if (item.sellerConfirmed) { %>
+                    <span class="px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs rounded-lg flex items-center gap-1.5">
+                      <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                      <span>Bạn đã xác nhận giao hàng (Chờ Người Mua)</span>
+                    </span>
+                  <% } else { %>
+                    <form action="order-action" method="POST" onsubmit="return confirm('Bạn xác nhận đã gặp mặt và bàn giao sản phẩm trực tiếp cho người mua?');">
+                      <input type="hidden" name="action" value="confirm_delivery">
+                      <input type="hidden" name="orderId" value="<%= item.id %>">
+                      <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5">
+                        <span>Xác Nhận Đã Giao Hàng</span>
+                      </button>
+                    </form>
+                  <% } %>
+                <% } else { %>
+                  <!-- TÔI LÀ NGƯỜI MUA -->
+                  <% if (item.buyerConfirmed) { %>
+                    <span class="px-3 py-2 bg-green-50 text-green-700 border border-green-200 font-bold text-xs rounded-lg flex items-center gap-1.5">
+                      <span>✓ Bạn đã xác nhận nhận hàng</span>
+                    </span>
+                  <% } else if (!item.sellerConfirmed) { %>
+                    <!-- NGƯỜI BÁN CHƯA BẤM GIAO HÀNG -> NGƯỜI MUA CHƯA ĐƯỢC BẤM NHẬN HÀNG -->
+                    <span class="px-3.5 py-2 bg-slate-100 text-slate-500 border border-slate-200 font-semibold text-xs rounded-lg flex items-center gap-1.5 cursor-not-allowed select-none" title="Vui lòng gặp người bán tại điểm hẹn. Khi người bán bấm 'Xác nhận đã giao hàng', bạn mới bấm xác nhận nhận hàng.">
+                      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      <span>Chờ người bán bấm xác nhận đã giao</span>
+                    </span>
+                  <% } else { %>
+                    <!-- NGƯỜI BÁN ĐÃ BẤM GIAO HÀNG -> NGƯỜI MUA ĐƯỢC PHÉP BẤM XÁC NHẬN ĐÃ NHẬN HÀNG -->
+                    <form action="order-action" method="POST" onsubmit="return confirm('Người bán đã xác nhận giao hàng. Bạn xác nhận đã kiểm tra và nhận được món đồ này?');">
+                      <input type="hidden" name="action" value="confirm_receipt">
+                      <input type="hidden" name="orderId" value="<%= item.id %>">
+                      <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5 ring-2 ring-green-300">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Xác Nhận Đã Nhận Hàng</span>
+                      </button>
+                    </form>
+                  <% } %>
+                <% } %>
+              <% } else { %>
+                <!-- ĐƠN ĐÃ COMPLETED -->
+                <span class="px-3 py-1.5 bg-green-100 text-green-800 font-bold text-xs rounded-lg border border-green-300 flex items-center gap-1">
+                  <span>Giao Dịch Đã Hoàn Tất</span>
+                </span>
+                <% if (mineBuy) { %>
+                  <% boolean hasReviewed = reviewDAO.hasReviewedOrder(item.id); %>
+                  <% if (hasReviewed) { %>
+                    <span class="px-3 py-1.5 bg-amber-50 text-amber-800 font-bold text-xs rounded-lg border border-amber-200 flex items-center gap-1">
+                      <span>★</span> Đã Đánh Giá Người Bán
+                    </span>
+                  <% } else { %>
+                    <button type="button" onclick="openOrderReviewModal(<%= item.id %>, '<%= h(item.sellerName) %>', '<%= h(item.productTitle) %>')" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1">
+                      <span>★</span> Đánh Giá Người Bán
+                    </button>
+                  <% } %>
+                <% } %>
+              <% } %>
+
+            <% } else { %>
+              <!-- ================= NHÁNH 2: GIAO QUA GHN EXPRESS ================= -->
+              <% if (!isCompleted) { %>
+                <% if (!mineBuy) { %>
+                  <!-- TÔI LÀ NGƯỜI BÁN -->
+                  <% if (!hasGhnTracking) { %>
+                    <a href="ghn-simulator?orderId=<%= item.id %>" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5">
+                      <span>Tạo Đơn Vận Chuyển GHN (Demo)</span>
+                    </a>
+                  <% } else { %>
+                    <a href="ghn-simulator?orderId=<%= item.id %>" class="px-4 py-2 bg-orange-50 border border-orange-300 hover:bg-orange-100 text-orange-800 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5">
+                      <span>Xem & Cập Nhật Lộ Trình GHN</span>
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                  <% } %>
+                <% } else { %>
+                  <!-- TÔI LÀ NGƯỜI MUA -->
+                  <% if (hasGhnTracking) { %>
+                    <a href="ghn-simulator?orderId=<%= item.id %>" class="px-3.5 py-2 bg-orange-50 border border-orange-300 hover:bg-orange-100 text-orange-800 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5">
+                      <span>Xem Lộ Trình GHN</span>
+                    </a>
+                  <% } %>
+
+                  <% boolean isGhnDelivered = "DA_GIAO".equalsIgnoreCase(item.shippingStatus); %>
+                  <% if (!isGhnDelivered) { %>
+                    <!-- CHƯA GIAO THÀNH CÔNG -> CHƯA ĐƯỢC BẤM XÁC NHẬN NHẬN HÀNG -->
+                    <span class="px-3.5 py-2 bg-slate-100 text-slate-500 border border-slate-200 font-semibold text-xs rounded-lg flex items-center gap-1.5 cursor-not-allowed select-none" title="Bạn chỉ có thể bấm xác nhận sau khi bưu tá GHN đã giao hàng thành công đến địa chỉ của bạn.">
+                      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                      <span><%= !hasGhnTracking ? "Chờ người bán gửi hàng GHN" : ("DANG_GIAO".equalsIgnoreCase(item.shippingStatus) ? "Bưu tá đang đi giao hàng" : "Chờ bưu tá lấy hàng") %></span>
+                    </span>
+                  <% } else { %>
+                    <!-- BƯU TÁ ĐÃ GIAO THÀNH CÔNG -> ĐƯỢC PHÉP BẤM XÁC NHẬN NHẬN HÀNG -->
+                    <form action="order-action" method="POST" onsubmit="return confirm('Bưu tá GHN đã giao hàng thành công. Bạn xác nhận đã kiểm tra và đồng ý nhận món đồ này?');">
+                      <input type="hidden" name="action" value="confirm_receipt">
+                      <input type="hidden" name="orderId" value="<%= item.id %>">
+                      <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5 ring-2 ring-green-300">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Xác Nhận Đã Nhận Hàng</span>
+                      </button>
+                    </form>
+                  <% } %>
+                <% } %>
+              <% } else { %>
+                <!-- ĐƠN GHN ĐÃ COMPLETED -->
+                <span class="px-3 py-1.5 bg-green-100 text-green-800 font-bold text-xs rounded-lg border border-green-300 flex items-center gap-1">
+                  <span>Giao Hàng GHN Thành Công</span>
+                </span>
+                <% if (mineBuy) { %>
+                  <% boolean hasReviewed = reviewDAO.hasReviewedOrder(item.id); %>
+                  <% if (hasReviewed) { %>
+                    <span class="px-3 py-1.5 bg-amber-50 text-amber-800 font-bold text-xs rounded-lg border border-amber-200 flex items-center gap-1">
+                      <span>★</span> Đã Đánh Giá Người Bán
+                    </span>
+                  <% } else { %>
+                    <button type="button" onclick="openOrderReviewModal(<%= item.id %>, '<%= h(item.sellerName) %>', '<%= h(item.productTitle) %>')" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1">
+                      <span>★</span> Đánh Giá Người Bán
+                    </button>
+                  <% } %>
+                <% } %>
+                <% if (hasGhnTracking) { %>
+                  <a href="ghn-simulator?orderId=<%= item.id %>" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition">
+                    Lịch sử GHN
+                  </a>
+                <% } %>
+              <% } %>
+            <% } %>
+          </div>
+
         </div>
+
       </div>
         <% } %>
       <% } %>
     <% } else { %>
+
 
       <!-- ========================================== -->
       <!-- ĐƠN 1: GIAO TẬN NHÀ (TÔI LÀ NGƯỜI MUA) - IPHONE 13 PRO MAX -->
@@ -822,10 +1075,55 @@
       </div>
     </div>
 
-    <!-- TOAST THÔNG BÁO TỨC THÌ -->
-    <div id="toastNotification" class="fixed bottom-6 right-6 bg-slate-900 text-white text-xs px-4 py-3 rounded-lg shadow-lg border border-slate-700 hidden z-50 flex items-center gap-3">
-      <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
-      <span id="toastMsg" class="font-medium">Thông báo</span>
+    <!-- MODAL ĐÁNH GIÁ NGƯỜI BÁN THẬT (1 - 5 SAO & NHẬN XÉT CHỮ) -->
+    <div id="orderReviewModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 text-left">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 uppercase">Đánh Giá Người Bán</h3>
+            <p id="reviewModalSubtitle" class="text-xs text-slate-500 mt-0.5">Sản phẩm: ...</p>
+          </div>
+          <button type="button" onclick="closeOrderReviewModal()" class="text-slate-400 hover:text-slate-600 font-bold p-1">✕</button>
+        </div>
+
+        <form action="submit-review" method="POST" class="space-y-4">
+          <input type="hidden" name="orderId" id="reviewModalOrderId" value="0">
+          <input type="hidden" name="rating" id="reviewModalRating" value="5">
+
+          <!-- CHỌN SỐ SAO -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Mức độ hài lòng:</label>
+            <div class="flex items-center gap-2">
+              <div id="modalStarContainer" class="flex items-center gap-1.5 text-2xl text-amber-400 cursor-pointer">
+                <span onclick="setOrderRating(1)">★</span>
+                <span onclick="setOrderRating(2)">★</span>
+                <span onclick="setOrderRating(3)">★</span>
+                <span onclick="setOrderRating(4)">★</span>
+                <span onclick="setOrderRating(5)">★</span>
+              </div>
+              <span id="modalRatingText" class="text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">5/5 - Rất hài lòng</span>
+            </div>
+          </div>
+
+          <!-- NHẬN XÉT CHỮ -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Nhận xét chi tiết về người bán:</label>
+            <textarea name="comment" rows="3" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Chia sẻ trải nghiệm của bạn (Người bán nhiệt tình, đúng giờ hẹn, hàng đúng như mô tả...)..."></textarea>
+            <p class="text-[10px] text-slate-400 mt-1">
+              Đánh giá của bạn sẽ hiển thị công khai trên trang cá nhân của người bán để hỗ trợ cộng đồng.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+            <button type="button" onclick="closeOrderReviewModal()" class="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">
+              Hủy bỏ
+            </button>
+            <button type="submit" class="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold transition shadow-sm">
+              Gửi Đánh Giá Ngay
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
   </main>
@@ -1124,12 +1422,75 @@
 
     function showToast(msg) {
       const toast = document.getElementById('toastNotification');
+      if (!toast) return;
       document.getElementById('toastMsg').textContent = msg;
       toast.classList.remove('hidden');
       setTimeout(() => {
         toast.classList.add('hidden');
       }, 3500);
     }
+
+    // === XỬ LÝ ĐÁNH GIÁ NGƯỜI BÁN THẬT (1 - 5 SAO) ===
+    let selectedOrderRating = 5;
+    const ratingLabels = {
+      1: '1/5 - Rất tệ',
+      2: '2/5 - Không hài lòng',
+      3: '3/5 - Bình thường',
+      4: '4/5 - Hài lòng',
+      5: '5/5 - Rất hài lòng'
+    };
+
+    function openOrderReviewModal(orderId, sellerName, productTitle) {
+      document.getElementById('reviewModalOrderId').value = orderId;
+      document.getElementById('reviewModalSubtitle').innerText = 'Người bán: ' + sellerName + ' • ' + productTitle;
+      setOrderRating(5);
+      document.getElementById('orderReviewModal').classList.remove('hidden');
+    }
+
+    function closeOrderReviewModal() {
+      document.getElementById('orderReviewModal').classList.add('hidden');
+    }
+
+    function setOrderRating(rating) {
+      selectedOrderRating = rating;
+      document.getElementById('reviewModalRating').value = rating;
+      document.getElementById('modalRatingText').innerText = ratingLabels[rating] || (rating + '/5');
+      const spans = document.querySelectorAll('#modalStarContainer span');
+      spans.forEach((span, index) => {
+        if (index < rating) {
+          span.className = 'text-amber-400 font-bold';
+        } else {
+          span.className = 'text-slate-300';
+        }
+      });
+    }
+
+    // Tự động cuộn đến đơn hàng và làm nổi bật khi truy cập từ thông báo (?orderId=...)
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetOrderId = urlParams.get('orderId') || (window.location.hash ? window.location.hash.replace('#order-card-db-', '').replace('#', '') : null);
+      if (targetOrderId) {
+        const card = document.getElementById('order-card-db-' + targetOrderId);
+        if (card) {
+          // Hiện tất cả đơn để đảm bảo không bị ẩn bởi filter
+          if (typeof filterOrders === 'function') {
+            filterOrders('all');
+          }
+          card.classList.remove('hidden');
+          card.style.display = '';
+
+          // Cuộn mượt mà đến đúng vị trí thẻ đơn hàng
+          setTimeout(() => {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Hiệu ứng viền phát sáng nổi bật
+            card.classList.add('ring-4', 'ring-blue-500', 'ring-offset-2', 'bg-blue-50/40', 'transition-all', 'duration-500');
+            setTimeout(() => {
+              card.classList.remove('ring-4', 'ring-blue-500', 'ring-offset-2', 'bg-blue-50/40');
+            }, 3500);
+          }, 300);
+        }
+      }
+    });
   </script>
 
 </body>
