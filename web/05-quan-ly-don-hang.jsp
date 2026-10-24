@@ -92,13 +92,27 @@
     
     <!-- THÔNG BÁO FLASH MESSAGE (KHI XÁC NHẬN / TẠO GHN THÀNH CÔNG) -->
     <% if (flashMsg != null) { %>
-    <div class="p-4 rounded-xl <%= Boolean.TRUE.equals(flashSuccess) ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800" %> flex items-center justify-between shadow-xs">
+    <div id="flash-alert-banner" class="p-4 rounded-xl <%= Boolean.TRUE.equals(flashSuccess) ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800" %> flex items-center justify-between shadow-xs transition-all duration-500 ease-in-out">
       <div class="flex items-center gap-2.5 text-xs font-semibold">
         <span><%= Boolean.TRUE.equals(flashSuccess) ? "✓" : "✕" %></span>
         <span><%= h(flashMsg) %></span>
       </div>
-      <button onclick="this.parentElement.remove()" class="text-xs font-bold text-slate-400 hover:text-slate-600">✕</button>
+      <button onclick="dismissFlashAlert()" class="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer p-1">✕</button>
     </div>
+    <script>
+      function dismissFlashAlert() {
+        var el = document.getElementById('flash-alert-banner');
+        if (el) {
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(-8px)';
+          setTimeout(function() {
+            if (el && el.parentNode) el.parentNode.removeChild(el);
+          }, 500);
+        }
+      }
+      // Tự động biến mất sau 5 giây mà không cần người dùng tự tắt
+      setTimeout(dismissFlashAlert, 5000);
+    </script>
     <% } %>
 
     <!-- TIÊU ĐỀ TRANG VÀ GIẢI THÍCH MÔ HÌNH BẢO CHỨNG -->
@@ -180,8 +194,9 @@
           boolean isDirect = item.deliveryMethod != 2;
           boolean isCompleted = "COMPLETED".equalsIgnoreCase(item.status);
           boolean hasGhnTracking = item.trackingCode != null && !item.trackingCode.trim().isEmpty();
+          boolean isOrderCancelled = "CANCELLED".equalsIgnoreCase(item.status) || "CANCELLED".equalsIgnoreCase(item.shippingStatus) || "CANCELED".equalsIgnoreCase(item.status);
         %>
-      <div id="order-card-db-<%= item.id %>" data-channel="<%= channel %>" data-type="<%= type %>" class="order-card bg-white rounded-xl border <%= isDirect ? "border-amber-200" : "border-orange-200" %> shadow-sm p-5 sm:p-6 space-y-4">
+      <div id="order-card-db-<%= item.id %>" data-channel="<%= channel %>" data-type="<%= type %>" data-ghn-active="<%= (!isDirect && hasGhnTracking && !isOrderCancelled && !isCompleted) %>" data-order-id="<%= item.id %>" class="order-card bg-white rounded-xl border <%= isDirect ? "border-amber-200" : "border-orange-200" %> shadow-sm p-5 sm:p-6 space-y-4">
         
         <!-- HEADER ĐƠN HÀNG -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
@@ -282,11 +297,13 @@
               </div>
               <div>
                 <% if (hasGhnTracking) { %>
-                  <% String ghnStatusTxt = "Chờ bưu tá lấy hàng";
-                     if ("DANG_GIAO".equalsIgnoreCase(item.shippingStatus)) ghnStatusTxt = "Shipper đang giao hàng tới người mua";
+                  <% boolean isCancelled = "CANCELLED".equalsIgnoreCase(item.shippingStatus) || "CANCELLED".equalsIgnoreCase(item.status) || "CANCELED".equalsIgnoreCase(item.status);
+                     String ghnStatusTxt = "Chờ bưu tá lấy hàng";
+                     if (isCancelled) ghnStatusTxt = "Vận đơn đã hủy";
+                     else if ("DANG_GIAO".equalsIgnoreCase(item.shippingStatus)) ghnStatusTxt = "Shipper đang giao hàng tới người mua";
                      else if ("DA_GIAO".equalsIgnoreCase(item.shippingStatus)) ghnStatusTxt = "Bưu tá đã giao hàng thành công";
                   %>
-                  <span class="font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 text-[11px]">
+                  <span class="font-bold <%= isCancelled ? "text-red-700 bg-red-50 border-red-200" : "text-blue-700 bg-blue-50 border-blue-200" %> px-2.5 py-0.5 rounded-full border text-[11px]">
                     <%= ghnStatusTxt %>
                   </span>
                 <% } else { %>
@@ -306,6 +323,7 @@
             </div>
           </div>
         <% } %>
+
 
         <!-- ======================================================== -->
         <!-- KHỐI NÚT HÀNH ĐỘNG CẬP NHẬT TRẠNG THÁI (CORE ACTIONS)    -->
@@ -388,7 +406,9 @@
 
             <% } else { %>
               <!-- ================= NHÁNH 2: GIAO QUA GHN EXPRESS ================= -->
-              <% if (!isCompleted) { %>
+              <% if (isOrderCancelled) { %>
+                <!-- Đơn hàng đã hủy: Không hiển thị nút thao tác nào bên phải cho cả người mua và người bán -->
+              <% } else if (!isCompleted) { %>
                 <% if (!mineBuy) { %>
                   <!-- TÔI LÀ NGƯỜI BÁN -->
                   <% if (!hasGhnTracking) { %>
@@ -455,6 +475,13 @@
           </div>
 
         </div>
+
+        <% if (isOrderCancelled) { %>
+          <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs flex items-center gap-2 text-red-800">
+            <svg class="w-4 h-4 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <span><strong>Thông báo:</strong> Đơn hàng này đã bị hủy trên hệ thống GHN. <strong>Lý do:</strong> <%= (item.shippingNote != null && !item.shippingNote.trim().isEmpty()) ? h(item.shippingNote) : "Người bán đã thao tác hủy vận đơn trên cổng GHN." %></span>
+          </div>
+        <% } %>
 
       </div>
         <% } %>
@@ -1493,5 +1520,54 @@
     });
   </script>
 
+  <!-- TỰ ĐỘNG ĐỒNG BỘ TRẠNG THÁI GHN NGẦM (KHÔNG CẦN BẤM NÚT) -->
+  <script>
+    (function() {
+      let isCheckingGhn = false;
+
+      async function autoSyncActiveGhnOrders() {
+        if (isCheckingGhn) return;
+        const activeOrders = document.querySelectorAll('.order-card[data-ghn-active="true"]');
+        if (!activeOrders || activeOrders.length === 0) return;
+
+        isCheckingGhn = true;
+        try {
+          for (const card of activeOrders) {
+            const orderId = card.dataset.orderId;
+            if (!orderId) continue;
+
+            const response = await fetch('order-action?action=ghn_sync_status&ajax=true&orderId=' + encodeURIComponent(orderId), {
+              method: 'POST',
+              headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              if (data && data.statusChanged) {
+                // Trạng thái đã thay đổi trên GHN (ví dụ: đã hủy hoặc đã giao) -> Tự động reload trang ngay lập tức!
+                window.location.reload();
+                return;
+              }
+            }
+          }
+        } catch (err) {
+          // Bỏ qua lỗi ngầm
+        } finally {
+          isCheckingGhn = false;
+        }
+      }
+
+      // 1. Tự động kiểm tra ngay sau khi mở trang 1 giây
+      setTimeout(autoSyncActiveGhnOrders, 1000);
+
+      // 2. Tự động kiểm tra ngay khi chuyển từ tab GHN quay lại tab web này!
+      window.addEventListener('focus', () => {
+        setTimeout(autoSyncActiveGhnOrders, 500);
+      });
+
+      // 3. Thăm dò định kỳ mỗi 6 giây một lần
+      setInterval(autoSyncActiveGhnOrders, 6000);
+    })();
+  </script>
 </body>
 </html>
