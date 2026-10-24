@@ -303,7 +303,7 @@
                      else if ("DANG_GIAO".equalsIgnoreCase(item.shippingStatus)) ghnStatusTxt = "Shipper đang giao hàng tới người mua";
                      else if ("DA_GIAO".equalsIgnoreCase(item.shippingStatus)) ghnStatusTxt = "Bưu tá đã giao hàng thành công";
                   %>
-                  <span class="font-bold <%= isCancelled ? "text-red-700 bg-red-50 border-red-200" : "text-blue-700 bg-blue-50 border-blue-200" %> px-2.5 py-0.5 rounded-full border text-[11px]">
+                  <span class="font-bold <%= isCancelled ? "text-red-700 bg-red-50 border-red-200" : ("DA_GIAO".equalsIgnoreCase(item.shippingStatus) ? "text-emerald-700 bg-emerald-50 border-emerald-200" : ("DANG_GIAO".equalsIgnoreCase(item.shippingStatus) ? "text-orange-700 bg-orange-50 border-orange-200" : "text-blue-700 bg-blue-50 border-blue-200")) %> px-2.5 py-0.5 rounded-full border text-[11px]">
                     <%= ghnStatusTxt %>
                   </span>
                 <% } else { %>
@@ -416,9 +416,76 @@
                       <span>Tạo Đơn Vận Chuyển GHN (Demo)</span>
                     </a>
                   <% } else { %>
-                    <a href="ghn-simulator?orderId=<%= item.id %>" class="px-4 py-2 bg-orange-50 border border-orange-300 hover:bg-orange-100 text-orange-800 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5">
-                      <span>Xem & Cập Nhật Lộ Trình GHN</span>
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <!-- Nút thao tác cập nhật trạng thái nhanh trực tiếp cho Người Bán -->
+<%--                    <% if ("CHO_LAY_HANG".equalsIgnoreCase(item.shippingStatus) || item.shippingStatus == null) { %>--%>
+<%--                      <form action="order-action" method="POST" class="inline">--%>
+<%--                        <input type="hidden" name="action" value="ghn_update_status">--%>
+<%--                        <input type="hidden" name="orderId" value="<%= item.id %>">--%>
+<%--                        <input type="hidden" name="shippingStatus" value="DANG_GIAO">--%>
+<%--                        <input type="hidden" name="redirectUrl" value="05-quan-ly-don-hang.jsp?orderId=<%= item.id %>">--%>
+<%--                        <button type="submit" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5" title="Cập nhật: Bưu tá GHN đã lấy hàng và đang đi giao tới khách mua">--%>
+<%--                          <span>🚚 Bưu Tá Đi Giao</span>--%>
+<%--                        </button>--%>
+<%--                      </form>--%>
+<%--                    <% } else if ("DANG_GIAO".equalsIgnoreCase(item.shippingStatus)) { %>--%>
+<%--                      <form action="order-action" method="POST" class="inline" onsubmit="return confirm('Bạn xác nhận bưu tá GHN đã giao kiện hàng đến người nhận?');">--%>
+<%--                        <input type="hidden" name="action" value="ghn_update_status">--%>
+<%--                        <input type="hidden" name="orderId" value="<%= item.id %>">--%>
+<%--                        <input type="hidden" name="shippingStatus" value="DA_GIAO">--%>
+<%--                        <input type="hidden" name="redirectUrl" value="05-quan-ly-don-hang.jsp?orderId=<%= item.id %>">--%>
+<%--                        <button type="submit" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5" title="Cập nhật: Bưu tá GHN đã giao hàng thành công đến khách mua">--%>
+<%--                          <span>✓ Đã Giao Thành Công</span>--%>
+<%--                        </button>--%>
+<%--                      </form>--%>
+<%--                    <% } else if ("DA_GIAO".equalsIgnoreCase(item.shippingStatus)) { %>--%>
+<%--                      <span class="px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-xs rounded-lg flex items-center gap-1.5" title="Bưu tá đã giao hàng thành công. Khách mua có thể bấm xác nhận nhận hàng.">--%>
+<%--                        <span>✓ Bưu tá đã giao (Chờ khách nhận)</span>--%>
+<%--                      </span>--%>
+<%--                    <% } %>--%>
+
+                    <!-- Menu tùy chọn đổi trạng thái bất kỳ lúc nào -->
+                    <div class="relative inline-block text-left dropdown-status-container" id="dropdown-status-<%= item.id %>">
+                      <button type="button" onclick="toggleStatusDropdown(<%= item.id %>)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1" title="Tùy chọn đổi trạng thái vận chuyển">
+                        <span>Đổi trạng thái</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                      </button>
+                      <div id="status-menu-<%= item.id %>" class="hidden absolute right-0 mt-1 w-52 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-20 text-xs">
+                        <form action="order-action" method="POST">
+                          <input type="hidden" name="action" value="ghn_update_status">
+                          <input type="hidden" name="orderId" value="<%= item.id %>">
+                          <input type="hidden" name="shippingStatus" value="CHO_LAY_HANG">
+                          <input type="hidden" name="redirectUrl" value="05-quan-ly-don-hang.jsp?orderId=<%= item.id %>">
+                          <button type="submit" class="w-full text-left px-3.5 py-2 hover:bg-amber-50 text-slate-700 flex items-center justify-between <%= "CHO_LAY_HANG".equalsIgnoreCase(item.shippingStatus) ? "font-bold text-amber-700 bg-amber-50/50" : "" %>">
+                            <span>1. Chờ bưu tá lấy hàng</span>
+                            <%= "CHO_LAY_HANG".equalsIgnoreCase(item.shippingStatus) ? "✓" : "" %>
+                          </button>
+                        </form>
+                        <form action="order-action" method="POST">
+                          <input type="hidden" name="action" value="ghn_update_status">
+                          <input type="hidden" name="orderId" value="<%= item.id %>">
+                          <input type="hidden" name="shippingStatus" value="DANG_GIAO">
+                          <input type="hidden" name="redirectUrl" value="05-quan-ly-don-hang.jsp?orderId=<%= item.id %>">
+                          <button type="submit" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 text-slate-700 flex items-center justify-between <%= "DANG_GIAO".equalsIgnoreCase(item.shippingStatus) ? "font-bold text-blue-700 bg-blue-50/50" : "" %>">
+                            <span>2. Bưu tá đang đi giao</span>
+                            <%= "DANG_GIAO".equalsIgnoreCase(item.shippingStatus) ? "✓" : "" %>
+                          </button>
+                        </form>
+                        <form action="order-action" method="POST">
+                          <input type="hidden" name="action" value="ghn_update_status">
+                          <input type="hidden" name="orderId" value="<%= item.id %>">
+                          <input type="hidden" name="shippingStatus" value="DA_GIAO">
+                          <input type="hidden" name="redirectUrl" value="05-quan-ly-don-hang.jsp?orderId=<%= item.id %>">
+                          <button type="submit" class="w-full text-left px-3.5 py-2 hover:bg-emerald-50 text-slate-700 flex items-center justify-between <%= "DA_GIAO".equalsIgnoreCase(item.shippingStatus) ? "font-bold text-emerald-700 bg-emerald-50/50" : "" %>">
+                            <span>3. Đã giao hàng thành công</span>
+                            <%= "DA_GIAO".equalsIgnoreCase(item.shippingStatus) ? "✓" : "" %>
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+
+                    <a href="ghn-simulator?orderId=<%= item.id %>" class="px-3.5 py-2 bg-orange-50 border border-orange-300 hover:bg-orange-100 text-orange-800 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5" title="Mở trang chi tiết mô phỏng lộ trình GHN Express">
+                      <span>Lộ trình GHN</span>
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </a>
                   <% } %>
                 <% } else { %>
@@ -1516,6 +1583,25 @@
             }, 3500);
           }, 300);
         }
+      }
+    });
+  </script>
+
+  <!-- ĐIỀU KHIỂN DROPDOWN ĐỔI TRẠNG THÁI GIAO HÀNG -->
+  <script>
+    function toggleStatusDropdown(orderId) {
+      const menu = document.getElementById('status-menu-' + orderId);
+      if (menu) {
+        const isHidden = menu.classList.contains('hidden');
+        document.querySelectorAll('[id^="status-menu-"]').forEach(el => el.classList.add('hidden'));
+        if (isHidden) {
+          menu.classList.remove('hidden');
+        }
+      }
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.dropdown-status-container')) {
+        document.querySelectorAll('[id^="status-menu-"]').forEach(el => el.classList.add('hidden'));
       }
     });
   </script>

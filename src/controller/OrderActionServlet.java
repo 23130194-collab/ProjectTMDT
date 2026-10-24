@@ -161,31 +161,61 @@ public class OrderActionServlet extends HttpServlet {
                 sendResponse(request, response, false, "Chưa cấu hình GHN API Token. Vui lòng kiểm tra GhnApiService.", "ghn-simulator?orderId=" + orderId);
                 return;
             }
+
+            String redirectUrl = request.getParameter("redirectUrl");
+            if (redirectUrl == null || redirectUrl.trim().isEmpty()) {
+                redirectUrl = "05-quan-ly-don-hang.jsp?orderId=" + orderId;
+            }
+            boolean isAjax = "true".equalsIgnoreCase(request.getParameter("ajax")) ||
+                    "XMLHttpRequest".equalsIgnoreCase(request.getHeader("X-Requested-With"));
+
             try {
                 GhnApiService.GhnDetailResult detail = ghnApiService.queryOrderShippingStatus(order.trackingCode);
                 if (detail.success && detail.internalStatus != null) {
-                    boolean statusChanged = !detail.internalStatus.equalsIgnoreCase(order.shippingStatus) ||
-                            ("CANCELLED".equalsIgnoreCase(detail.internalStatus) && !"CANCELLED".equalsIgnoreCase(order.status));
-                    boolean ok = orderDAO.updateGhnShippingStatus(orderId, detail.internalStatus, detail.cancelReason);
-                    if (ok) {
-                        String flashMsg = "CANCELLED".equalsIgnoreCase(detail.internalStatus)
-                                ? "Đơn hàng #" + orderId + " đã bị HỦY trên GHN Express. Lý do: " + detail.cancelReason
-                                : "Đã đồng bộ trạng thái mới từ GHN Sandbox: " + detail.statusDescription;
-                        if ("true".equalsIgnoreCase(request.getParameter("ajax")) || "XMLHttpRequest".equalsIgnoreCase(request.getHeader("X-Requested-With"))) {
+                    boolean isGhnCancelled = "CANCELLED".equalsIgnoreCase(detail.internalStatus);
+                    int currentRank = getShippingStatusRank(order.shippingStatus);
+                    int ghnRank = getShippingStatusRank(detail.internalStatus);
+
+                    // CHỈ cập nhật vào database khi:
+                    // 1. GHN Sandbox thông báo hủy (và đơn hàng chưa hoàn tất / chưa giao thành công)
+                    // 2. HOẶC trạng thái từ GHN Sandbox tiến triển cao hơn trạng thái hiện tại (ghnRank > currentRank)
+                    // Tuyệt đối không hạ lùi trạng thái về CHO_LAY_HANG khi người bán đã cập nhật tiến độ giao hàng!
+                    boolean shouldUpdate = (isGhnCancelled && !"COMPLETED".equalsIgnoreCase(order.status) && !"DA_GIAO".equalsIgnoreCase(order.shippingStatus))
+                            || (ghnRank > currentRank);
+
+                    if (shouldUpdate) {
+                        boolean ok = orderDAO.updateGhnShippingStatus(orderId, detail.internalStatus, detail.cancelReason);
+                        if (ok) {
+                            String flashMsg = isGhnCancelled
+                                    ? "Đơn hàng #" + orderId + " đã bị HỦY trên GHN Express. Lý do: " + detail.cancelReason
+                                    : "Đã đồng bộ trạng thái mới từ GHN Sandbox: " + detail.statusDescription;
+                            if (isAjax) {
+                                response.setContentType("application/json;charset=UTF-8");
+                                response.getWriter().write("{\"success\":true,\"statusChanged\":true,\"newStatus\":\"" + detail.internalStatus + "\",\"message\":\"" + escapeJson(flashMsg) + "\"}");
+                                return;
+                            }
+                            sendResponse(request, response, true, flashMsg, redirectUrl);
+                        } else {
+                            sendResponse(request, response, false, "Không thể cập nhật database với trạng thái GHN mới.", redirectUrl);
+                        }
+                    } else {
+                        // Trạng thái GHN Sandbox không tiến triển hơn (hoặc Sandbox vẫn đang ở CHO_LAY_HANG) -> Giữ nguyên trạng thái hiện tại
+                        String flashMsg = (ghnRank <= currentRank && currentRank > 1)
+                                ? "Tiến trình giao hàng hiện tại (" + order.shippingStatus + ") đang cao hơn GHN Sandbox (" + detail.rawGhnStatus + "). Đã bảo lưu trạng thái mới nhất."
+                                : "Trạng thái đơn hàng trên GHN Sandbox (" + detail.statusDescription + ") đã đồng bộ với hệ thống.";
+                        if (isAjax) {
                             response.setContentType("application/json;charset=UTF-8");
-                            response.getWriter().write("{\"success\":true,\"statusChanged\":" + statusChanged + ",\"newStatus\":\"" + detail.internalStatus + "\",\"message\":\"" + escapeJson(flashMsg) + "\"}");
+                            response.getWriter().write("{\"success\":true,\"statusChanged\":false,\"newStatus\":\"" + (order.shippingStatus != null ? order.shippingStatus : "") + "\",\"message\":\"" + escapeJson(flashMsg) + "\"}");
                             return;
                         }
-                        sendResponse(request, response, true, flashMsg, "05-quan-ly-don-hang.jsp?orderId=" + orderId);
-                    } else {
-                        sendResponse(request, response, false, "Không thể cập nhật database với trạng thái GHN mới.", null);
+                        sendResponse(request, response, true, flashMsg, redirectUrl);
                     }
                 } else {
-                    sendResponse(request, response, false, "Lỗi tra cứu từ GHN Sandbox: " + (detail.errorMessage != null ? detail.errorMessage : "Không xác định"), null);
+                    sendResponse(request, response, false, "Lỗi tra cứu từ GHN Sandbox: " + (detail.errorMessage != null ? detail.errorMessage : "Không xác định"), redirectUrl);
                 }
             } catch (Exception e) {
                 getServletContext().log("Lỗi đồng bộ GHN Sandbox API: " + e.getMessage(), e);
-                sendResponse(request, response, false, "Lỗi kết nối GHN Sandbox: " + e.getMessage(), null);
+                sendResponse(request, response, false, "Lỗi kết nối GHN Sandbox: " + e.getMessage(), redirectUrl);
             }
         } else if ("ghn_update_status".equalsIgnoreCase(action)) {
             // Cập nhật trạng thái GHN (Sandbox test) - Người mua không được phép tự cập nhật
@@ -204,10 +234,22 @@ public class OrderActionServlet extends HttpServlet {
             }
             boolean ok = orderDAO.updateGhnShippingStatus(orderId, newStatus, cancelReason);
             if (ok) {
-                String flashMsg = "CANCELLED".equalsIgnoreCase(newStatus)
-                        ? "Đã hủy đơn vận chuyển GHN thành công!"
-                        : "Đã cập nhật trạng thái vận đơn GHN thành công!";
-                sendResponse(request, response, true, flashMsg, "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                String flashMsg;
+                if ("CANCELLED".equalsIgnoreCase(newStatus)) {
+                    flashMsg = "Đã hủy đơn vận chuyển GHN thành công!";
+                } else if ("DA_GIAO".equalsIgnoreCase(newStatus)) {
+                    flashMsg = "Đã cập nhật trạng thái: Bưu tá GHN đã giao hàng thành công! Người mua có thể bấm xác nhận nhận hàng.";
+                } else if ("DANG_GIAO".equalsIgnoreCase(newStatus)) {
+                    flashMsg = "Đã cập nhật trạng thái: Bưu tá GHN đang đi giao hàng đến người mua.";
+                } else {
+                    flashMsg = "Đã cập nhật trạng thái: Chờ bưu tá GHN đến lấy hàng.";
+                }
+
+                String redirectUrl = request.getParameter("redirectUrl");
+                if (redirectUrl == null || redirectUrl.trim().isEmpty()) {
+                    redirectUrl = "05-quan-ly-don-hang.jsp?orderId=" + orderId;
+                }
+                sendResponse(request, response, true, flashMsg, redirectUrl);
             } else {
                 sendResponse(request, response, false, "Không thể cập nhật trạng thái GHN.", null);
             }
@@ -231,12 +273,20 @@ public class OrderActionServlet extends HttpServlet {
         }
 
         // Tự động kiểm tra và đồng bộ trạng thái mới nhất từ GHN Sandbox nếu đã có mã vận đơn
+        // CHỈ cập nhật nếu GHN Sandbox có trạng thái hủy hoặc tiến triển cao hơn trạng thái hiện tại
         if (order.trackingCode != null && !order.trackingCode.trim().isEmpty() && ghnApiService.isConfigured()) {
             try {
                 GhnApiService.GhnDetailResult detail = ghnApiService.queryOrderShippingStatus(order.trackingCode);
-                if (detail.success && detail.internalStatus != null && !detail.internalStatus.equalsIgnoreCase(order.shippingStatus)) {
-                    orderDAO.updateGhnShippingStatus(order.id, detail.internalStatus, detail.cancelReason);
-                    order = orderDAO.getOrderSummaryById(order.id);
+                if (detail.success && detail.internalStatus != null) {
+                    boolean isGhnCancelled = "CANCELLED".equalsIgnoreCase(detail.internalStatus);
+                    int currentRank = getShippingStatusRank(order.shippingStatus);
+                    int ghnRank = getShippingStatusRank(detail.internalStatus);
+                    boolean shouldUpdate = (isGhnCancelled && !"COMPLETED".equalsIgnoreCase(order.status) && !"DA_GIAO".equalsIgnoreCase(order.shippingStatus))
+                            || (ghnRank > currentRank);
+                    if (shouldUpdate) {
+                        orderDAO.updateGhnShippingStatus(order.id, detail.internalStatus, detail.cancelReason);
+                        order = orderDAO.getOrderSummaryById(order.id);
+                    }
                 }
             } catch (Exception e) {
                 getServletContext().log("Không thể tự động đồng bộ GHN khi xem lộ trình: " + e.getMessage());
@@ -247,6 +297,16 @@ public class OrderActionServlet extends HttpServlet {
         request.setAttribute("currentUser", currentUser);
         request.setAttribute("suggestedTrackingCode", generateGhnTrackingCode());
         request.getRequestDispatcher("/ghn-simulator.jsp").forward(request, response);
+    }
+
+    private int getShippingStatusRank(String status) {
+        if (status == null) return 0;
+        switch (status.toUpperCase().trim()) {
+            case "CHO_LAY_HANG": return 1;
+            case "DANG_GIAO": return 2;
+            case "DA_GIAO": return 3;
+            default: return 0;
+        }
     }
 
     private String generateGhnTrackingCode() {
