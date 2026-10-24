@@ -346,13 +346,21 @@ public class OrderDAO {
     }
 
     /**
-     * Cập nhật trạng thái GHN (Sandbox Simulator)
-     * newStatus: 'CHO_LAY_HANG', 'DANG_GIAO', 'DA_GIAO'
+     * Cập nhật trạng thái GHN (Sandbox Simulator / Sync API)
+     * newStatus: 'CHO_LAY_HANG', 'DANG_GIAO', 'DA_GIAO', 'CANCELLED'
      */
     public boolean updateGhnShippingStatus(int orderId, String newStatus) {
+        return updateGhnShippingStatus(orderId, newStatus, null);
+    }
+
+    public boolean updateGhnShippingStatus(int orderId, String newStatus, String cancelReason) {
         String selectSql = "SELECT o.buyer_id, o.seller_id, o.product_id, o.tracking_code, p.title " +
                 "FROM orders o JOIN products p ON o.product_id = p.id WHERE o.id = ?";
-        String updateSql = "UPDATE orders SET shipping_status = ? WHERE id = ?";
+        
+        boolean isCancel = "CANCELLED".equalsIgnoreCase(newStatus) || "CANCEL".equalsIgnoreCase(newStatus);
+        String updateSql = isCancel
+                ? "UPDATE orders SET shipping_status = 'CANCELLED', status = 'CANCELLED', shipping_note = COALESCE(?, shipping_note) WHERE id = ?"
+                : "UPDATE orders SET shipping_status = ? WHERE id = ?";
 
         try (Connection conn = DBContext.getConnection()) {
             int buyerId = 0;
@@ -374,15 +382,31 @@ public class OrderDAO {
             }
 
             try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
-                ps.setString(1, newStatus);
-                ps.setInt(2, orderId);
+                if (isCancel) {
+                    String reasonText = (cancelReason != null && !cancelReason.trim().isEmpty())
+                            ? cancelReason.trim()
+                            : "Người bán đã thao tác hủy vận đơn trên cổng GHN Express.";
+                    ps.setString(1, reasonText);
+                    ps.setInt(2, orderId);
+                } else {
+                    ps.setString(1, newStatus);
+                    ps.setInt(2, orderId);
+                }
+
                 int rows = ps.executeUpdate();
                 if (rows > 0) {
                     String statusDesc = "Đang vận chuyển";
                     String notifTitle = "Cập nhật đơn hàng GHN #" + orderId;
                     String notifMsg = "";
 
-                    if ("CHO_LAY_HANG".equalsIgnoreCase(newStatus)) {
+                    if (isCancel) {
+                        String reasonText = (cancelReason != null && !cancelReason.trim().isEmpty())
+                                ? cancelReason.trim()
+                                : "Người bán đã thao tác hủy vận đơn trên cổng GHN Express.";
+                        statusDesc = "Đã bị hủy trên hệ thống GHN";
+                        notifTitle = "Đơn hàng #" + orderId + " đã bị hủy trên GHN";
+                        notifMsg = "Đơn hàng \"" + productTitle + "\" (vận đơn " + trackingCode + ") đã bị hủy. Lý do: " + reasonText;
+                    } else if ("CHO_LAY_HANG".equalsIgnoreCase(newStatus)) {
                         statusDesc = "Chờ bưu tá GHN đến lấy hàng";
                         notifTitle = "GHN tiếp nhận đơn hàng #" + orderId;
                         notifMsg = "Đơn hàng \"" + productTitle + "\" (vận đơn " + trackingCode + ") đang chờ bưu tá GHN đến lấy hàng.";
@@ -399,10 +423,10 @@ public class OrderDAO {
                     String msg = "Cập nhật vận đơn GHN (" + trackingCode + "): " + statusDesc + " (Sản phẩm: " + productTitle + ").";
                     sendSystemMessage(conn, productId, buyerId, sellerId, msg);
 
-                    // Gửi thông báo cho Người Mua
+                    // Gửi thông báo cho Người Mua (Người bán thao tác hủy trên GHN nên người mua là bên nhận thông báo)
                     NotificationDAO notifDAO = new NotificationDAO();
                     notifDAO.createNotification(conn, buyerId, notifTitle, notifMsg,
-                            "ORDER_SHIPPING", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                            isCancel ? "ORDER_CANCELLED" : "ORDER_SHIPPING", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
 
                     return true;
                 }

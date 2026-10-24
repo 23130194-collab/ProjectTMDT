@@ -3,6 +3,7 @@ package controller;
 import dao.OrderDAO;
 import model.OrderSummary;
 import model.User;
+import service.GhnApiService;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -18,6 +19,7 @@ import java.util.Random;
 @WebServlet(name = "OrderActionServlet", urlPatterns = {"/order-action", "/ghn-simulator"})
 public class OrderActionServlet extends HttpServlet {
     private final OrderDAO orderDAO = new OrderDAO();
+    private final GhnApiService ghnApiService = new GhnApiService();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -109,13 +111,38 @@ public class OrderActionServlet extends HttpServlet {
                 sendResponse(request, response, false, "Chỉ Người Bán mới có thể tạo vận đơn GHN.", null);
                 return;
             }
-            String trackingCode = request.getParameter("trackingCode");
-            if (trackingCode == null || trackingCode.trim().isEmpty()) {
-                trackingCode = generateGhnTrackingCode();
-            }
             String note = request.getParameter("shippingNote");
             if (note == null || note.trim().isEmpty()) {
                 note = "Cho xem hàng, không cho thử";
+            }
+
+            String trackingCode = request.getParameter("trackingCode");
+            String createMode = request.getParameter("createMode"); // "sandbox_api" hoặc "simulator"
+
+            // Nếu người dùng chọn gọi Sandbox API hoặc đã cấu hình Token
+            if ("sandbox_api".equalsIgnoreCase(createMode) || (ghnApiService.isConfigured() && !"simulator".equalsIgnoreCase(createMode))) {
+                try {
+                    double codAmount = Math.max(0, order.agreedPrice - order.depositAmount);
+                    trackingCode = ghnApiService.createOrder(
+                            order.sellerName,
+                            order.sellerPhone,
+                            order.sellerAddress,
+                            order.buyerName,
+                            order.buyerPhone,
+                            order.buyerAddress,
+                            order.productTitle,
+                            codAmount,
+                            note
+                    );
+                } catch (Exception e) {
+                    getServletContext().log("Lỗi gọi API GHN Sandbox: " + e.getMessage(), e);
+                    sendResponse(request, response, false, "Lỗi tạo đơn qua GHN Sandbox API: " + e.getMessage(), "ghn-simulator?orderId=" + orderId);
+                    return;
+                }
+            } else {
+                if (trackingCode == null || trackingCode.trim().isEmpty()) {
+                    trackingCode = generateGhnTrackingCode();
+                }
             }
 
             boolean ok = orderDAO.createGhnShipment(orderId, currentUser.getId(), trackingCode, note);
@@ -123,6 +150,42 @@ public class OrderActionServlet extends HttpServlet {
                 sendResponse(request, response, true, "Tạo đơn vận chuyển GHN thành công! Mã vận đơn: " + trackingCode, "05-quan-ly-don-hang.jsp?orderId=" + orderId);
             } else {
                 sendResponse(request, response, false, "Không thể tạo vận đơn GHN. Vui lòng thử lại.", null);
+            }
+        } else if ("ghn_sync_status".equalsIgnoreCase(action)) {
+            // Đồng bộ trạng thái đơn hàng trực tiếp từ GHN Sandbox API
+            if (order.trackingCode == null || order.trackingCode.trim().isEmpty()) {
+                sendResponse(request, response, false, "Đơn hàng này chưa có mã vận đơn GHN để đồng bộ.", null);
+                return;
+            }
+            if (!ghnApiService.isConfigured()) {
+                sendResponse(request, response, false, "Chưa cấu hình GHN API Token. Vui lòng kiểm tra GhnApiService.", "ghn-simulator?orderId=" + orderId);
+                return;
+            }
+            try {
+                GhnApiService.GhnDetailResult detail = ghnApiService.queryOrderShippingStatus(order.trackingCode);
+                if (detail.success && detail.internalStatus != null) {
+                    boolean statusChanged = !detail.internalStatus.equalsIgnoreCase(order.shippingStatus) ||
+                            ("CANCELLED".equalsIgnoreCase(detail.internalStatus) && !"CANCELLED".equalsIgnoreCase(order.status));
+                    boolean ok = orderDAO.updateGhnShippingStatus(orderId, detail.internalStatus, detail.cancelReason);
+                    if (ok) {
+                        String flashMsg = "CANCELLED".equalsIgnoreCase(detail.internalStatus)
+                                ? "Đơn hàng #" + orderId + " đã bị HỦY trên GHN Express. Lý do: " + detail.cancelReason
+                                : "Đã đồng bộ trạng thái mới từ GHN Sandbox: " + detail.statusDescription;
+                        if ("true".equalsIgnoreCase(request.getParameter("ajax")) || "XMLHttpRequest".equalsIgnoreCase(request.getHeader("X-Requested-With"))) {
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write("{\"success\":true,\"statusChanged\":" + statusChanged + ",\"newStatus\":\"" + detail.internalStatus + "\",\"message\":\"" + escapeJson(flashMsg) + "\"}");
+                            return;
+                        }
+                        sendResponse(request, response, true, flashMsg, "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                    } else {
+                        sendResponse(request, response, false, "Không thể cập nhật database với trạng thái GHN mới.", null);
+                    }
+                } else {
+                    sendResponse(request, response, false, "Lỗi tra cứu từ GHN Sandbox: " + (detail.errorMessage != null ? detail.errorMessage : "Không xác định"), null);
+                }
+            } catch (Exception e) {
+                getServletContext().log("Lỗi đồng bộ GHN Sandbox API: " + e.getMessage(), e);
+                sendResponse(request, response, false, "Lỗi kết nối GHN Sandbox: " + e.getMessage(), null);
             }
         } else if ("ghn_update_status".equalsIgnoreCase(action)) {
             // Cập nhật trạng thái GHN (Sandbox test) - Người mua không được phép tự cập nhật
@@ -135,9 +198,16 @@ public class OrderActionServlet extends HttpServlet {
                 sendResponse(request, response, false, "Trạng thái vận chuyển không hợp lệ.", null);
                 return;
             }
-            boolean ok = orderDAO.updateGhnShippingStatus(orderId, newStatus);
+            String cancelReason = request.getParameter("cancelReason");
+            if ("CANCELLED".equalsIgnoreCase(newStatus) && (cancelReason == null || cancelReason.trim().isEmpty())) {
+                cancelReason = "Người bán đã chủ động hủy vận đơn giao hàng.";
+            }
+            boolean ok = orderDAO.updateGhnShippingStatus(orderId, newStatus, cancelReason);
             if (ok) {
-                sendResponse(request, response, true, "Đã cập nhật trạng thái vận đơn GHN thành công!", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                String flashMsg = "CANCELLED".equalsIgnoreCase(newStatus)
+                        ? "Đã hủy đơn vận chuyển GHN thành công!"
+                        : "Đã cập nhật trạng thái vận đơn GHN thành công!";
+                sendResponse(request, response, true, flashMsg, "05-quan-ly-don-hang.jsp?orderId=" + orderId);
             } else {
                 sendResponse(request, response, false, "Không thể cập nhật trạng thái GHN.", null);
             }
@@ -158,6 +228,19 @@ public class OrderActionServlet extends HttpServlet {
         if (order == null) {
             response.sendRedirect("05-quan-ly-don-hang.jsp");
             return;
+        }
+
+        // Tự động kiểm tra và đồng bộ trạng thái mới nhất từ GHN Sandbox nếu đã có mã vận đơn
+        if (order.trackingCode != null && !order.trackingCode.trim().isEmpty() && ghnApiService.isConfigured()) {
+            try {
+                GhnApiService.GhnDetailResult detail = ghnApiService.queryOrderShippingStatus(order.trackingCode);
+                if (detail.success && detail.internalStatus != null && !detail.internalStatus.equalsIgnoreCase(order.shippingStatus)) {
+                    orderDAO.updateGhnShippingStatus(order.id, detail.internalStatus, detail.cancelReason);
+                    order = orderDAO.getOrderSummaryById(order.id);
+                }
+            } catch (Exception e) {
+                getServletContext().log("Không thể tự động đồng bộ GHN khi xem lộ trình: " + e.getMessage());
+            }
         }
 
         request.setAttribute("order", order);
