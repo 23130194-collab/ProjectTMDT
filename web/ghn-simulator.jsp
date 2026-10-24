@@ -263,6 +263,7 @@
             <form action="order-action" method="POST" class="inline">
               <input type="hidden" name="action" value="ghn_sync_status">
               <input type="hidden" name="orderId" value="<%= order.id %>">
+              <input type="hidden" name="redirectUrl" value="ghn-simulator?orderId=<%= order.id %>">
               <button type="submit" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition shadow-xs flex items-center gap-1.5" title="Gọi API GHN Sandbox để kiểm tra trạng thái mới nhất từ hệ thống 5sao.ghn.dev">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 <span>Đồng Bộ Từ GHN Sandbox</span>
@@ -361,8 +362,12 @@
               <input type="hidden" name="action" value="ghn_update_status">
               <input type="hidden" name="orderId" value="<%= order.id %>">
               <input type="hidden" name="shippingStatus" value="CHO_LAY_HANG">
-              <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-amber-300 hover:bg-amber-100 text-slate-800 transition shadow-xs">
-                1. Mô phỏng: Bưu tá lấy hàng & nhập kho
+              <input type="hidden" name="redirectUrl" value="ghn-simulator?orderId=<%= order.id %>">
+              <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs flex items-center gap-1 <%= "CHO_LAY_HANG".equalsIgnoreCase(currentShippingStatus) ? "bg-amber-600 text-white font-bold ring-2 ring-amber-400" : "bg-white border border-amber-300 hover:bg-amber-100 text-slate-800" %>">
+                <span>1. Mô phỏng: Bưu tá lấy hàng & nhập kho</span>
+                <% if ("CHO_LAY_HANG".equalsIgnoreCase(currentShippingStatus)) { %>
+                  <span class="text-[10px] bg-amber-800/80 text-white px-1.5 py-0.2 rounded">Hiện tại</span>
+                <% } %>
               </button>
             </form>
 
@@ -370,8 +375,12 @@
               <input type="hidden" name="action" value="ghn_update_status">
               <input type="hidden" name="orderId" value="<%= order.id %>">
               <input type="hidden" name="shippingStatus" value="DANG_GIAO">
-              <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-amber-300 hover:bg-amber-100 text-slate-800 transition shadow-xs">
-                2. Mô phỏng: Shipper đang đi giao tới người nhận
+              <input type="hidden" name="redirectUrl" value="ghn-simulator?orderId=<%= order.id %>">
+              <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs flex items-center gap-1 <%= "DANG_GIAO".equalsIgnoreCase(currentShippingStatus) ? "bg-orange-600 text-white font-bold ring-2 ring-orange-400" : "bg-white border border-amber-300 hover:bg-amber-100 text-slate-800" %>">
+                <span>2. Mô phỏng: Shipper đang đi giao tới người nhận</span>
+                <% if ("DANG_GIAO".equalsIgnoreCase(currentShippingStatus)) { %>
+                  <span class="text-[10px] bg-orange-800/80 text-white px-1.5 py-0.2 rounded">Hiện tại</span>
+                <% } %>
               </button>
             </form>
 
@@ -379,8 +388,12 @@
               <input type="hidden" name="action" value="ghn_update_status">
               <input type="hidden" name="orderId" value="<%= order.id %>">
               <input type="hidden" name="shippingStatus" value="DA_GIAO">
-              <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-green-600 hover:bg-green-700 text-white transition shadow-xs">
-                3. Mô phỏng: Shipper đã giao thành công ✓
+              <input type="hidden" name="redirectUrl" value="ghn-simulator?orderId=<%= order.id %>">
+              <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs flex items-center gap-1 <%= "DA_GIAO".equalsIgnoreCase(currentShippingStatus) ? "bg-green-700 text-white font-bold ring-2 ring-green-400" : "bg-green-600 hover:bg-green-700 text-white" %>">
+                <span>3. Mô phỏng: Shipper đã giao thành công ✓</span>
+                <% if ("DA_GIAO".equalsIgnoreCase(currentShippingStatus)) { %>
+                  <span class="text-[10px] bg-green-900/80 text-white px-1.5 py-0.2 rounded">Hiện tại</span>
+                <% } %>
               </button>
             </form>
           </div>
