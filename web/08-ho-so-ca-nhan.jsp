@@ -795,6 +795,7 @@
   <!-- MODAL CHỈNH SỬA THÔNG TIN CÁ NHÂN -->
   <div id="editProfileModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
     <form id="profileForm" action="${pageContext.request.contextPath}/update-profile" method="post" novalidate class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 text-left my-auto">
+      <input type="hidden" id="profileReturnUrl" name="returnUrl" value="<%= profileFormValues.containsKey("returnUrl") ? h(profileFormValues.get("returnUrl")) : (request.getParameter("returnUrl") != null ? h(request.getParameter("returnUrl")) : "") %>">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 class="font-bold text-slate-900 text-sm uppercase">Chỉnh Sửa Hồ Sơ Cá Nhân</h3>
         <button type="button" onclick="closeModal('editProfileModal')" class="text-slate-400 hover:text-slate-600 font-bold text-lg px-2">✕</button>
@@ -1289,6 +1290,17 @@
         showToast('<%= h(profileMessage) %>');
         <% if (profileMessageError || !profileFieldErrors.isEmpty()) { %>openEditProfileModal();<% } %>
       <% } %>
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const returnUrl = urlParams.get('returnUrl');
+      if (returnUrl) {
+        const retInput = document.getElementById('profileReturnUrl');
+        if (retInput) retInput.value = returnUrl;
+      }
+      if (urlParams.get('openEdit') === '1' || urlParams.get('edit') === '1' || urlParams.get('updateAddress') === '1') {
+        openEditProfileModal();
+        showToast('Vui lòng cập nhật thông tin địa chỉ để hoàn tất đặt cọc đơn hàng GHN.');
+      }
     });
   </script>
 

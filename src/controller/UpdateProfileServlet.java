@@ -37,6 +37,7 @@ public class UpdateProfileServlet extends HttpServlet {
         String province = parameterOrCurrent(request, "province", current.getProvince());
         String ward = parameterOrCurrent(request, "ward", current.getWard());
         String addressDetail = trim(request.getParameter("addressDetail"));
+        String returnUrl = trim(request.getParameter("returnUrl"));
 
         Map<String, String> errors = validate(fullName, email, phone, province, ward, addressDetail);
         if (!errors.containsKey("email") && authService.isProfileEmailTaken(email, current.getId())) {
@@ -62,9 +63,16 @@ public class UpdateProfileServlet extends HttpServlet {
             values.put("province", province);
             values.put("ward", ward);
             values.put("addressDetail", addressDetail);
+            if (returnUrl != null && !returnUrl.isEmpty()) {
+                values.put("returnUrl", returnUrl);
+            }
             session.setAttribute("profileFieldErrors", errors);
             session.setAttribute("profileFormValues", values);
-            response.sendRedirect(request.getContextPath() + PROFILE_PAGE);
+            String redirectTarget = request.getContextPath() + PROFILE_PAGE;
+            if (returnUrl != null && !returnUrl.isEmpty()) {
+                redirectTarget += "?openEdit=1&returnUrl=" + java.net.URLEncoder.encode(returnUrl, java.nio.charset.StandardCharsets.UTF_8);
+            }
+            response.sendRedirect(redirectTarget);
             return;
         }
 
@@ -83,6 +91,10 @@ public class UpdateProfileServlet extends HttpServlet {
         session.removeAttribute("profileFormValues");
         session.setAttribute("profileMessage", "Đã cập nhật thông tin cá nhân.");
         session.removeAttribute("profileMessageError");
+        if (returnUrl != null && !returnUrl.isEmpty() && !returnUrl.contains("://") && !returnUrl.startsWith("//")) {
+            response.sendRedirect(request.getContextPath() + "/" + returnUrl.replaceAll("^/+", ""));
+            return;
+        }
         response.sendRedirect(request.getContextPath() + PROFILE_PAGE);
     }
 
