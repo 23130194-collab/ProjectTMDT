@@ -21,42 +21,40 @@
       background: #ffd3ea;
       border: 1px solid #ffc2df;
       box-shadow: 0 14px 34px rgba(244, 114, 182, 0.18);
-      padding-top: 42px;
+      padding-top: 32px;
     }
 
     .new-products-title-tab {
       position: absolute;
-      top: -14px;
+      top: 0;
       left: 50%;
       transform: translateX(-50%);
-      min-width: 260px;
-      padding: 10px 30px 12px;
+      min-width: 170px;
+      padding: 4px 18px 5px;
       text-align: center;
       color: #ffffff;
       font-weight: 800;
-      font-size: 18px;
-      line-height: 1;
+      font-size: 13.5px;
+      line-height: 1.1;
       background: linear-gradient(180deg, #ff1a13 0%, #e70000 100%);
-      border-radius: 0 0 42px 42px;
-      box-shadow: 0 8px 18px rgba(220, 38, 38, 0.22);
+      border-radius: 0 0 14px 14px;
+      box-shadow: 0 3px 8px rgba(220, 38, 38, 0.2);
     }
     .new-products-title-tab::before,
     .new-products-title-tab::after {
       content: "";
       position: absolute;
       top: 0;
-      width: 28px;
-      height: 28px;
-      background: #e70000;
+      width: 14px;
+      height: 14px;
+      background: #b90000;
     }
     .new-products-title-tab::before {
-      left: -28px;
-      border-top-left-radius: 14px;
+      left: -14px;
       clip-path: polygon(100% 0, 100% 100%, 0 0);
     }
     .new-products-title-tab::after {
-      right: -28px;
-      border-top-right-radius: 14px;
+      right: -14px;
       clip-path: polygon(0 0, 100% 0, 0 100%);
     }
     .new-products-wrap {
@@ -280,7 +278,7 @@
       Xem Thêm Tin Đăng Khác
     </button>
   </div>
-  <section class="new-products-shell rounded-2xl p-4 sm:p-5 mt-12">
+  <section class="new-products-shell rounded-2xl px-4 pb-4 pt-8 sm:px-5 sm:pb-5 sm:pt-8 mt-12">
     <div class="new-products-title-tab">Sản phẩm mới</div>
 
     <div class="new-products-wrap">

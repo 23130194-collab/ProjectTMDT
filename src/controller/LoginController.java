@@ -64,7 +64,7 @@ public class LoginController extends HttpServlet {
         if ("ADMIN".equalsIgnoreCase(user.getRole())) {
             response.sendRedirect(request.getContextPath() + "/06-quan-tri-admin.jsp");
         } else {
-            response.sendRedirect(request.getContextPath() + "/08-ho-so-ca-nhan.jsp");
+            response.sendRedirect(request.getContextPath() + "/my-posts");
         }
     }
 }

@@ -70,7 +70,7 @@
         Quản lý đơn hàng<%= chatLoggedIn ? " (" + chatOrderCount + ")" : "" %>
       </a>
       <a href="01-trang-chu.jsp" class="text-xs font-medium text-slate-500 hover:text-blue-600">Về trang chủ</a>
-      <a href="<%= chatLoggedIn ? "08-ho-so-ca-nhan.jsp" : "07-dang-nhap-xac-thuc.jsp" %>" title="<%= chatLoggedIn ? h(chatDisplayName) : "Đăng nhập" %>" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold overflow-hidden">
+      <a href="<%= chatLoggedIn ? "my-posts" : "07-dang-nhap-xac-thuc.jsp" %>" title="<%= chatLoggedIn ? h(chatDisplayName) : "Đăng nhập" %>" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold overflow-hidden">
         <% if (chatLoggedIn && !chatAvatarImage.isEmpty()) { %>
           <img src="<%= h(chatAvatarImage) %>" alt="Ảnh đại diện" class="w-full h-full rounded-full object-cover">
         <% } else { %>
@@ -369,7 +369,7 @@
             </div>
           </div>
           <div class="pt-1 flex flex-col gap-2">
-            <a id="btnGoToUpdateAddress" href="08-ho-so-ca-nhan.jsp?openEdit=1" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-sm flex items-center justify-center gap-1.5">
+            <a id="btnGoToUpdateAddress" href="my-posts?openEdit=1" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-sm flex items-center justify-center gap-1.5">
               <span>Cập nhật địa chỉ trong Hồ sơ</span>
               <span>&rarr;</span>
             </a>
@@ -634,7 +634,7 @@
         <a href="05-quan-ly-don-hang.jsp" class="hover:text-blue-600">05. Quản lý đơn hàng</a>
         <a href="06-quan-tri-admin.jsp" class="hover:text-blue-600">06. Quản trị Admin</a>
         <a href="07-dang-nhap-xac-thuc.jsp" class="hover:text-blue-600">07. Đăng nhập / Đăng ký</a>
-        <a href="08-ho-so-ca-nhan.jsp" class="hover:text-blue-600">08. Hồ sơ cá nhân</a>
+        <a href="my-posts" class="hover:text-blue-600">08. Hồ sơ cá nhân</a>
       </div>
     </div>
   </footer>
@@ -1283,7 +1283,7 @@
         } else if (c && c.id) {
           returnUrl += '?conversationId=' + encodeURIComponent(c.id);
         }
-        updateLink.href = '08-ho-so-ca-nhan.jsp?openEdit=1&returnUrl=' + encodeURIComponent(returnUrl);
+        updateLink.href = 'my-posts?openEdit=1&returnUrl=' + encodeURIComponent(returnUrl);
       }
       document.getElementById('requireAddressModal').classList.remove('hidden');
     }

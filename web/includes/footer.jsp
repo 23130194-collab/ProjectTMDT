@@ -13,7 +13,7 @@
         <a href="05-quan-ly-don-hang.jsp" class="hover:text-blue-600">05. Quản lý đơn hàng</a>
         <a href="06-quan-tri-admin.jsp" class="hover:text-blue-600">06. Quản trị Admin</a>
         <a href="07-dang-nhap-xac-thuc.jsp" class="hover:text-blue-600">07. Đăng nhập / Đăng ký</a>
-        <a href="08-ho-so-ca-nhan.jsp" class="hover:text-blue-600">08. Hồ sơ cá nhân</a>
+        <a href="my-posts" class="hover:text-blue-600">08. Hồ sơ cá nhân</a>
       </div>
     </div>
   </footer>
