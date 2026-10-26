@@ -1,6 +1,7 @@
 package controller;
 
 import dao.ChatDAO;
+import dao.UserDao;
 import dao.VnPayPaymentDAO;
 import model.ChatConversation;
 import model.Message;
@@ -62,6 +63,27 @@ public class VnPayPaymentServlet extends HttpServlet {
         if (conversation == null || conversation.getBuyerId() != buyer.getId()) {
             showResult(request, response, false, "Không tìm thấy hội thoại đặt cọc hợp lệ.");
             return;
+        }
+
+        // Bắt buộc phải có địa chỉ nhận hàng nếu đơn hàng giao qua GHN (deliveryMethod == 2)
+        if (conversation.getDeliveryMethod() == 2) {
+            try {
+                User freshBuyer = new UserDao().getUserById(buyer.getId());
+                if (freshBuyer != null) {
+                    buyer = freshBuyer;
+                    request.getSession().setAttribute("user", freshBuyer);
+                }
+            } catch (Exception ignored) {
+            }
+            boolean hasAddress = buyer.getProvince() != null && !buyer.getProvince().trim().isEmpty()
+                    && buyer.getWard() != null && !buyer.getWard().trim().isEmpty()
+                    && buyer.getAddressDetail() != null && !buyer.getAddressDetail().trim().isEmpty()
+                    && buyer.getPhone() != null && !buyer.getPhone().trim().isEmpty();
+            if (!hasAddress) {
+                showResult(request, response, false,
+                        "Đơn hàng giao qua Giao Hàng Nhanh (GHN) bắt buộc phải có địa chỉ nhận hàng và số điện thoại. Vui lòng cập nhật thông tin trong Hồ sơ cá nhân trước khi thanh toán đặt cọc.");
+                return;
+            }
         }
 
         OfferTerms terms = resolveOfferTerms(conversation, buyer.getId());
