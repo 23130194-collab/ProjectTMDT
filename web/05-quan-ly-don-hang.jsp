@@ -325,6 +325,55 @@
         <% } %>
 
 
+        <!-- THÔNG BÁO YÊU CẦU HỦY ĐƠN (KỊCH BẢN A) -->
+        <% if (item.cancelRequested && !isOrderCancelled && !isCompleted) { %>
+          <% if (mineBuy) { %>
+            <div class="p-3.5 bg-amber-50 border border-amber-300 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-amber-900">
+              <div class="flex items-start gap-2.5">
+                <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div>
+                  <div class="font-bold text-amber-950 flex items-center gap-1.5">
+                    <span>Bạn đã gửi yêu cầu hủy đơn hàng &amp; hoàn cọc</span>
+                    <span class="text-[10px] font-bold bg-amber-200/70 text-amber-800 px-2 py-0.5 rounded-full">Đang chờ Người Bán duyệt</span>
+                  </div>
+                  <div class="mt-0.5 text-slate-700">Lý do hủy: <em>"<%= (item.cancelReason != null && !item.cancelReason.trim().isEmpty()) ? h(item.cancelReason) : "Đổi ý không muốn mua nữa" %>"</em></div>
+                  <div class="mt-0.5 text-[11px] text-amber-700">Khi người bán bấm đồng ý, số tiền cọc <strong><%= moneyFormat.format(Math.round(item.depositAmount)) %> đ</strong> sẽ được hoàn lại cho bạn 100%.</div>
+                </div>
+              </div>
+            </div>
+          <% } else { %>
+            <div class="p-4 bg-amber-50 border-2 border-amber-400 rounded-xl text-xs space-y-2.5 text-slate-900 shadow-xs">
+              <div class="flex items-center justify-between border-b border-amber-200 pb-2">
+                <div class="flex items-center gap-2 font-bold text-amber-950 text-sm">
+                  <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  <span>Khách mua đã gửi Yêu Cầu Hủy Đơn Hàng</span>
+                </div>
+                <span class="text-[10px] font-bold bg-red-100 text-red-800 px-2.5 py-1 rounded-full uppercase tracking-wider">Cần Bạn Xử Lý</span>
+              </div>
+              <div class="text-xs text-slate-800">
+                Lý do từ người mua: <strong class="text-red-700">"<%= (item.cancelReason != null && !item.cancelReason.trim().isEmpty()) ? h(item.cancelReason) : "Đổi ý không muốn mua nữa" %>"</strong>
+              </div>
+              <div class="p-2.5 bg-white/80 border border-amber-200 rounded-lg text-[11px] text-slate-600 leading-relaxed">
+                ℹ️ <strong>Quy chế thỏa thuận:</strong> Nếu bạn đồng ý hủy, hệ thống sẽ hoàn 100% tiền cọc (<strong><%= moneyFormat.format(Math.round(item.depositAmount)) %> đ</strong>) lại cho khách mua, đồng thời <strong>tự động mở bán lại bài đăng</strong> để khách khác có thể mua ngay.
+              </div>
+              <div class="flex flex-wrap items-center gap-2.5 pt-1">
+                <form action="order-action" method="POST" onsubmit="return confirm('Bạn xác nhận ĐỒNG Ý hủy đơn hàng này?\n\n- Tiền cọc <%= moneyFormat.format(Math.round(item.depositAmount)) %> đ sẽ được hoàn lại cho người mua.\n- Tin đăng sản phẩm sẽ được mở bán lại tự động.');">
+                  <input type="hidden" name="action" value="seller_accept_cancel">
+                  <input type="hidden" name="orderId" value="<%= item.id %>">
+                  <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>Đồng Ý Hủy Đơn &amp; Hoàn Cọc</span>
+                  </button>
+                </form>
+                <button type="button" onclick="openRejectCancelModal(<%= item.id %>)" class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  <span>Từ Chối Hủy Đơn</span>
+                </button>
+              </div>
+            </div>
+          <% } %>
+        <% } %>
+
         <!-- ======================================================== -->
         <!-- KHỐI NÚT HÀNH ĐỘNG CẬP NHẬT TRẠNG THÁI (CORE ACTIONS)    -->
         <!-- ======================================================== -->
@@ -338,6 +387,16 @@
             <a href="product-detail?id=<%= item.productId %>" class="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-lg transition shadow-xs text-center">
               Xem sản phẩm
             </a>
+            <% 
+              boolean canBuyerCancel = mineBuy && !isCompleted && !isOrderCancelled && !item.cancelRequested
+                && ((isDirect && !item.sellerConfirmed) || (!isDirect && (!hasGhnTracking || "CHO_LAY_HANG".equalsIgnoreCase(item.shippingStatus))));
+            %>
+            <% if (canBuyerCancel) { %>
+              <button type="button" onclick="openRequestCancelModal(<%= item.id %>, '<%= h(item.productTitle) %>', <%= Math.round(item.depositAmount) %>)" class="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs rounded-lg transition shadow-xs text-center flex items-center gap-1" title="Gửi yêu cầu hủy đơn và hoàn cọc cho người bán">
+                <svg class="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                <span>Yêu Cầu Hủy Đơn</span>
+              </button>
+            <% } %>
           </div>
 
           <!-- NÚT RIÊNG THEO HÌNH THỨC VÀ THEO VAI TRÒ (NGƯỜI BÁN / NGƯỜI MUA) -->
@@ -546,7 +605,7 @@
         <% if (isOrderCancelled) { %>
           <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs flex items-center gap-2 text-red-800">
             <svg class="w-4 h-4 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            <span><strong>Thông báo:</strong> Đơn hàng này đã bị hủy trên hệ thống GHN. <strong>Lý do:</strong> <%= (item.shippingNote != null && !item.shippingNote.trim().isEmpty()) ? h(item.shippingNote) : "Người bán đã thao tác hủy vận đơn trên cổng GHN." %></span>
+            <span><strong>Thông báo:</strong> Đơn hàng này đã bị hủy. <strong>Lý do:</strong> <%= (item.shippingNote != null && !item.shippingNote.trim().isEmpty()) ? h(item.shippingNote) : ((item.cancelReason != null && !item.cancelReason.trim().isEmpty()) ? h(item.cancelReason) : "Đơn hàng đã được thỏa thuận hủy thành công.") %></span>
           </div>
         <% } %>
 
@@ -849,6 +908,97 @@
       </div>
     <% } %>
 
+    </div>
+
+    <!-- MODAL YÊU CẦU HỦY ĐƠN HÀNG (DÀNH CHO NGƯỜI MUA) -->
+    <div id="requestCancelModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 my-auto">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2 text-red-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <h3 class="font-bold text-slate-900 text-sm uppercase">Yêu Cầu Hủy Đơn Hàng</h3>
+          </div>
+          <button type="button" onclick="closeRequestCancelModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg px-2">✕</button>
+        </div>
+
+        <form action="order-action" method="POST" class="space-y-3.5 text-xs">
+          <input type="hidden" name="action" value="buyer_request_cancel">
+          <input type="hidden" name="orderId" id="cancelModalOrderId" value="0">
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Sản phẩm:</label>
+            <div id="cancelModalProductTitle" class="p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-slate-800"></div>
+          </div>
+
+          <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900">
+            <div class="flex items-center justify-between">
+              <span>Số tiền cọc dự kiến hoàn lại:</span>
+              <strong id="cancelModalDeposit" class="text-sm text-emerald-700">0 đ</strong>
+            </div>
+            <div class="mt-1 text-[11px] text-slate-600 leading-relaxed">
+              Tiền cọc sẽ được hoàn lại <strong>100%</strong> cho bạn ngay khi Người Bán bấm đồng ý yêu cầu hủy.
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Chọn lý do hủy:</label>
+            <select id="cancelReasonPreset" onchange="onCancelReasonSelect(this.value)" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+              <option value="Đổi ý, không còn nhu cầu mua sản phẩm này nữa">1. Đổi ý, không còn nhu cầu mua sản phẩm này nữa</option>
+              <option value="Đã tìm thấy sản phẩm khác phù hợp hơn">2. Đã tìm thấy sản phẩm khác phù hợp hơn</option>
+              <option value="Đã thương lượng riêng với người bán để hủy đơn">3. Đã thương lượng riêng với người bán để hủy đơn</option>
+              <option value="Người bán chậm phản hồi / không hẹn giao hàng">4. Người bán chậm phản hồi / không hẹn giao hàng</option>
+              <option value="custom">5. Lý do khác (tự nhập)...</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="cancelReasonInput" class="block font-bold text-slate-700 mb-1">Chi tiết lý do gửi Người Bán:</label>
+            <textarea id="cancelReasonInput" name="cancelReason" rows="3" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500" placeholder="Nhập lý do gửi đến người bán...">Đổi ý, không còn nhu cầu mua sản phẩm này nữa</textarea>
+          </div>
+
+          <div class="pt-2 flex gap-2">
+            <button type="button" onclick="closeRequestCancelModal()" class="flex-1 py-2.5 border border-slate-300 hover:bg-slate-100 font-semibold text-slate-700 rounded-lg transition">
+              Quay Lại
+            </button>
+            <button type="submit" class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition shadow-xs">
+              Gửi Yêu Cầu Hủy
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL TỪ CHỐI YÊU CẦU HỦY ĐƠN (DÀNH CHO NGƯỜI BÁN) -->
+    <div id="rejectCancelModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 my-auto">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="font-bold text-slate-900 text-sm uppercase">Từ Chối Yêu Cầu Hủy Đơn</h3>
+          <button type="button" onclick="closeRejectCancelModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg px-2">✕</button>
+        </div>
+
+        <form action="order-action" method="POST" class="space-y-3.5 text-xs">
+          <input type="hidden" name="action" value="seller_reject_cancel">
+          <input type="hidden" name="orderId" id="rejectModalOrderId" value="0">
+
+          <p class="text-slate-600 leading-relaxed">
+            Bạn đang từ chối yêu cầu hủy đơn hàng. Đơn hàng sẽ tiếp tục được tiến hành theo quy trình đã hẹn.
+          </p>
+
+          <div>
+            <label for="rejectReasonInput" class="block font-bold text-slate-700 mb-1">Lý do từ chối (gửi tới người mua):</label>
+            <textarea id="rejectReasonInput" name="rejectReason" rows="3" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500" placeholder="Nhập lý do từ chối...">Tôi đã chuẩn bị hàng sẵn sàng để giao, vui lòng tiếp tục đơn hàng theo thỏa thuận.</textarea>
+          </div>
+
+          <div class="pt-2 flex gap-2">
+            <button type="button" onclick="closeRejectCancelModal()" class="flex-1 py-2 border border-slate-300 hover:bg-slate-100 font-semibold text-slate-700 rounded-lg transition">
+              Đóng
+            </button>
+            <button type="submit" class="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition shadow-xs">
+              Xác Nhận Từ Chối
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- MODAL KHIẾU NẠI TRẢ HÀNG 48H -->
@@ -1227,6 +1377,42 @@
 
   <!-- SCRIPT XỬ LÝ TOÀN BỘ LOGIC FLOW ĐƠN HÀNG, KHIẾU NẠI VÀ DUAL HANDSHAKE -->
   <script>
+    function openRequestCancelModal(orderId, productTitle, depositAmount) {
+      document.getElementById('cancelModalOrderId').value = orderId;
+      document.getElementById('cancelModalProductTitle').textContent = productTitle;
+      document.getElementById('cancelModalDeposit').textContent = new Intl.NumberFormat('vi-VN').format(depositAmount) + ' đ';
+      const select = document.getElementById('cancelReasonPreset');
+      if (select) {
+        select.selectedIndex = 0;
+        document.getElementById('cancelReasonInput').value = select.value;
+      }
+      document.getElementById('requestCancelModal').classList.remove('hidden');
+    }
+
+    function closeRequestCancelModal() {
+      document.getElementById('requestCancelModal').classList.add('hidden');
+    }
+
+    function onCancelReasonSelect(val) {
+      const input = document.getElementById('cancelReasonInput');
+      if (val === 'custom') {
+        input.value = '';
+        input.placeholder = 'Vui lòng nhập lý do cụ thể gửi tới người bán...';
+        input.focus();
+      } else {
+        input.value = val;
+      }
+    }
+
+    function openRejectCancelModal(orderId) {
+      document.getElementById('rejectModalOrderId').value = orderId;
+      document.getElementById('rejectCancelModal').classList.remove('hidden');
+    }
+
+    function closeRejectCancelModal() {
+      document.getElementById('rejectCancelModal').classList.add('hidden');
+    }
+
     function filterOrders(type) {
       const cards = document.querySelectorAll('.order-card');
       const btnAll = document.getElementById('btnFilterAll');

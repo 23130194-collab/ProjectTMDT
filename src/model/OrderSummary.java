@@ -22,6 +22,10 @@ public class OrderSummary {
     public String shippingStatus;
     public String shippingNote;
 
+    public boolean cancelRequested;
+    public String cancelReason;
+    public Timestamp cancelRequestedAt;
+
     public String productTitle;
     public double productPrice;
     public String productImage;
@@ -270,5 +274,29 @@ public class OrderSummary {
 
     public void setSellerAddress(String sellerAddress) {
         this.sellerAddress = sellerAddress;
+    }
+
+    public boolean isCancelRequested() {
+        return cancelRequested;
+    }
+
+    public void setCancelRequested(boolean cancelRequested) {
+        this.cancelRequested = cancelRequested;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
+    }
+
+    public Timestamp getCancelRequestedAt() {
+        return cancelRequestedAt;
+    }
+
+    public void setCancelRequestedAt(Timestamp cancelRequestedAt) {
+        this.cancelRequestedAt = cancelRequestedAt;
     }
 }
