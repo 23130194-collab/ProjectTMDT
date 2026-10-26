@@ -347,6 +347,38 @@
         </div>
       </div>
 
+      <!-- CỬA SỔ BẬT LÊN (MODAL): YÊU CẦU CẬP NHẬT ĐỊA CHỈ CHO ĐƠN GIAO QUA GHN -->
+      <div id="requireAddressModal" class="hidden absolute inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-sm w-full p-5 space-y-4 text-center transform transition-all scale-100">
+          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 uppercase">Cần Cập Nhật Địa Chỉ Nhận Hàng</h3>
+            <p class="mt-2 text-xs text-slate-600 leading-relaxed text-left">
+              Đơn hàng này được người bán đăng ký <strong>Giao hàng qua bưu điện / shipper (GHN Express)</strong>. 
+              Bạn cần có đầy đủ <strong>địa chỉ nhận hàng (Tỉnh/Thành phố, Phường/Xã, Số nhà - Tên đường)</strong> thì mới có thể tính phí vận chuyển và tạo đơn giao hàng.
+            </p>
+            <div class="mt-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-left text-[11px] text-amber-900">
+              <p class="font-semibold">⚠️ Tài khoản của bạn chưa có thông tin địa chỉ đầy đủ.</p>
+              <p class="mt-0.5 text-slate-600">Vui lòng cập nhật thông tin trong <strong>Hồ sơ cá nhân</strong> trước khi tiến hành thanh toán đặt cọc.</p>
+            </div>
+          </div>
+          <div class="pt-1 flex flex-col gap-2">
+            <a id="btnGoToUpdateAddress" href="08-ho-so-ca-nhan.jsp?openEdit=1" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-sm flex items-center justify-center gap-1.5">
+              <span>Cập nhật địa chỉ trong Hồ sơ</span>
+              <span>&rarr;</span>
+            </a>
+            <button type="button" onclick="closeRequireAddressModal()" class="w-full py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-lg transition">
+              Để sau
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- MODAL TRẢ GIÁ (OFFER MODAL) -->
       <div id="offerModal" class="hidden absolute inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-sm w-full p-5 space-y-3.5 text-left">
@@ -1156,10 +1188,25 @@
         bar.classList.add('hidden');
         return;
       }
+      bar.classList.remove('hidden');
+
+      const isGhn = Number(c.deliveryMethod) === 2;
+      const u = chatState.currentUser;
+      const needsAddress = isGhn && (!u || !u.hasShippingAddress);
+
+      let deliveryNote = '';
+      if (isGhn) {
+        if (needsAddress) {
+          deliveryNote = '<span class="inline-flex items-center gap-1 font-semibold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded text-[10px] ml-1.5">⚠️ Đơn giao GHN: Cần cập nhật địa chỉ trước khi cọc</span>';
+        } else {
+          deliveryNote = '<span class="inline-flex items-center gap-1 font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] ml-1.5">🚚 Giao tận nơi qua GHN</span>';
+        }
+      }
+
       bar.className = 'px-4 py-2 bg-amber-50 border-t border-amber-200 flex items-center justify-between text-xs shrink-0';
-      bar.innerHTML = '<div class="min-w-0"><span class="block text-amber-900 font-medium text-[11px]">Giá đã chốt: ' + escapeHtml(formatMoney(dealPrice)) + '. Đặt cọc ' + getDepositRateLabel(dealPrice) + ' (' + escapeHtml(formatMoney(depositAmount)) + ') qua VNPay để giữ sản phẩm.</span>' +
+      bar.innerHTML = '<div class="min-w-0"><span class="block text-amber-900 font-medium text-[11px]">Giá đã chốt: ' + escapeHtml(formatMoney(dealPrice)) + '. Đặt cọc ' + getDepositRateLabel(dealPrice) + ' (' + escapeHtml(formatMoney(depositAmount)) + ') qua VNPay để giữ sản phẩm.' + deliveryNote + '</span>' +
         '<span class="block mt-1 text-[10px] text-amber-800">Đối với đơn hàng trên 100.000đ thì cọc mặc định là 10%, đơn từ 100.000đ trở xuống buộc cọc 50% và đối với đơn từ 10.000đ đến 50.000đ bắt buộc phải cọc 100%.</span></div>' +
-        '<button onclick="openQrModal()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-md shadow-sm transition shrink-0">Thanh toán cọc VNPay</button>';
+        '<button onclick="openQrModal()" class="px-3 py-1.5 ' + (needsAddress ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700') + ' text-white font-bold text-xs rounded-md shadow-sm transition shrink-0">' + (needsAddress ? 'Cập nhật địa chỉ & cọc' : 'Thanh toán cọc VNPay') + '</button>';
     }
 
     function getDepositPrice(conversation) {
@@ -1219,6 +1266,25 @@
         '<div class="h-full flex items-center justify-center text-center text-xs text-slate-500 p-6">' + escapeHtml(message) + '</div>';
     }
 
+    // Modal Yêu Cầu Cập Nhật Địa Chỉ (cho đơn GHN)
+    function openRequireAddressModal() {
+      const c = chatState.selectedConversation;
+      const updateLink = document.getElementById('btnGoToUpdateAddress');
+      if (updateLink) {
+        let returnUrl = '04-chat-tra-gia-vietqr.jsp';
+        if (c && c.productId) {
+          returnUrl += '?productId=' + encodeURIComponent(c.productId);
+        } else if (c && c.id) {
+          returnUrl += '?conversationId=' + encodeURIComponent(c.id);
+        }
+        updateLink.href = '08-ho-so-ca-nhan.jsp?openEdit=1&returnUrl=' + encodeURIComponent(returnUrl);
+      }
+      document.getElementById('requireAddressModal').classList.remove('hidden');
+    }
+    function closeRequireAddressModal() {
+      document.getElementById('requireAddressModal').classList.add('hidden');
+    }
+
     // Modal QR
     function openQrModal() {
       const c = chatState.selectedConversation;
@@ -1239,6 +1305,17 @@
         alert('Đặt cọc có thể thực hiện sau khi người bán chấp nhận mức giá đề xuất.');
         return;
       }
+
+      // KIỂM TRA ĐỊA CHỈ NẾU ĐƠN HÀNG LÀ GIAO QUA GHN (deliveryMethod === 2)
+      if (Number(c.deliveryMethod) === 2) {
+        const u = chatState.currentUser;
+        const hasAddress = u && u.hasShippingAddress;
+        if (!hasAddress) {
+          openRequireAddressModal();
+          return;
+        }
+      }
+
       const amount = calculateDepositAmount(depositPrice);
       const reference = 'Được tạo tự động khi chuyển sang VNPay';
       document.getElementById('qrDepositAmount').textContent = formatMoney(amount);
@@ -1579,6 +1656,21 @@
     });
     document.addEventListener('DOMContentLoaded', () => {
       depositDeadlineTimer = setInterval(updateDepositExpiryDisplay, 1000);
+      const vnpayForm = document.getElementById('vnpayPaymentForm');
+      if (vnpayForm) {
+        vnpayForm.addEventListener('submit', function (e) {
+          const c = chatState.selectedConversation;
+          if (c && Number(c.deliveryMethod) === 2) {
+            const u = chatState.currentUser;
+            if (!u || !u.hasShippingAddress) {
+              e.preventDefault();
+              closeQrModal();
+              openRequireAddressModal();
+              return false;
+            }
+          }
+        });
+      }
       if (CHAT_LOGGED_IN) {
         loadChat('buyer');
         refreshTimer = setInterval(() => loadChat(currentRole, currentConversationId, true), 5000);
