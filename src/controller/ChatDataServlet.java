@@ -87,6 +87,9 @@ public class ChatDataServlet extends HttpServlet {
         }
 
         ChatConversation selected = selectedId > 0 ? chatDAO.getConversation(selectedId, currentUser.getId()) : null;
+        if (selected != null) {
+            chatDAO.markConversationMessagesRead(selected.getId(), currentUser.getId());
+        }
         List<Message> messages = selected != null ? chatDAO.getMessages(selected.getId(), currentUser.getId()) : java.util.Collections.emptyList();
 
         StringBuilder json = new StringBuilder();
