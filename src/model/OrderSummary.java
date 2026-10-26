@@ -9,6 +9,11 @@ public class OrderSummary {
     public int sellerId;
     public double agreedPrice;
     public double depositAmount;
+    public double totalPaid;
+    public String balancePaymentMethod;
+    public String paymentStatus;
+    public Timestamp balanceExpiresAt;
+    public Timestamp balancePaidAt;
     public String status;
     public Timestamp createdAt;
 

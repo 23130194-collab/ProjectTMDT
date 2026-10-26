@@ -20,6 +20,7 @@ public class VnPayPaymentDAO {
                 "product_id INT NOT NULL," +
                 "agreed_price DECIMAL(15,2) NOT NULL," +
                 "deposit_amount DECIMAL(15,2) NOT NULL," +
+                "payment_type VARCHAR(20) NOT NULL DEFAULT 'DEPOSIT'," +
                 "status VARCHAR(20) NOT NULL DEFAULT 'PENDING'," +
                 "vnp_transaction_no VARCHAR(100) NULL," +
                 "response_code VARCHAR(10) NULL," +
@@ -32,6 +33,13 @@ public class VnPayPaymentDAO {
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
         try (Connection conn = DBContext.getConnection(); Statement st = conn.createStatement()) {
             st.execute(sql);
+            try { st.executeUpdate("ALTER TABLE vnpay_payments ADD COLUMN payment_type VARCHAR(20) NOT NULL DEFAULT 'DEPOSIT' AFTER deposit_amount"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("ALTER TABLE vnpay_payments ADD COLUMN order_id INT NULL"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("ALTER TABLE orders ADD COLUMN balance_payment_method VARCHAR(20) NOT NULL DEFAULT 'PENDING'"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("ALTER TABLE orders ADD COLUMN payment_status VARCHAR(20) NOT NULL DEFAULT 'UNPAID'"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("ALTER TABLE orders ADD COLUMN balance_expires_at TIMESTAMP NULL"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("ALTER TABLE orders ADD COLUMN balance_paid_at TIMESTAMP NULL"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("ALTER TABLE orders ADD COLUMN total_paid DECIMAL(15,2) NOT NULL DEFAULT 0"); } catch (SQLException ignored) {}
         } catch (SQLException e) {
             throw new IllegalStateException("Không thể tạo bảng lưu giao dịch VNPay.", e);
         }
@@ -39,6 +47,33 @@ public class VnPayPaymentDAO {
 
     public void createPending(String txnRef, int conversationId, int buyerId, int sellerId, int productId,
                               double agreedPrice, double depositAmount, Timestamp expiresAt) throws SQLException {
+        createPending(txnRef, conversationId, buyerId, sellerId, productId, agreedPrice, depositAmount, expiresAt, "DEPOSIT");
+    }
+
+    public void createPendingBalance(String txnRef, int orderId, int buyerId, Timestamp expiresAt) throws SQLException {
+        ensureTable();
+        String sql = "INSERT INTO vnpay_payments (txn_ref, conversation_id, buyer_id, seller_id, product_id, agreed_price, deposit_amount, payment_type, status, order_id, expires_at) " +
+                "SELECT ?, c.id, o.buyer_id, o.seller_id, o.product_id, o.agreed_price, o.agreed_price - o.deposit_amount, 'BALANCE', 'PENDING', o.id, ? " +
+                "FROM orders o JOIN conversations c ON c.product_id=o.product_id AND c.buyer_id=o.buyer_id AND c.seller_id=o.seller_id " +
+                "WHERE o.id=? AND o.buyer_id=? AND o.status IN ('DEPOSITED','SHIPPING') AND o.balance_payment_method='TRANSFER' AND o.balance_expires_at>CURRENT_TIMESTAMP AND o.total_paid<o.agreed_price ORDER BY c.id DESC LIMIT 1";
+        try (Connection c = DBContext.getConnection()) {
+            c.setAutoCommit(false);
+            try {
+                try (PreparedStatement cancelOld = c.prepareStatement("UPDATE vnpay_payments SET status='CANCELLED' WHERE order_id=? AND payment_type='BALANCE' AND status='PENDING'")) {
+                    cancelOld.setInt(1, orderId); cancelOld.executeUpdate();
+                }
+                try (PreparedStatement ps = c.prepareStatement(sql)) {
+                    ps.setString(1, txnRef); ps.setTimestamp(2, expiresAt); ps.setInt(3, orderId); ps.setInt(4, buyerId);
+                    if (ps.executeUpdate() != 1) throw new SQLException("Đơn hàng không còn trong thời hạn thanh toán chuyển khoản.");
+                }
+                c.commit();
+            } catch (SQLException e) { c.rollback(); throw e; }
+            finally { c.setAutoCommit(true); }
+        }
+    }
+
+    public void createPending(String txnRef, int conversationId, int buyerId, int sellerId, int productId,
+                              double agreedPrice, double depositAmount, Timestamp expiresAt, String paymentType) throws SQLException {
         ensureTable();
         String activePaymentSql = "SELECT COUNT(*) FROM vnpay_payments WHERE conversation_id = ? " +
                 "AND (status = 'PAID' OR (status = 'PENDING' AND expires_at > CURRENT_TIMESTAMP))";
@@ -46,8 +81,8 @@ public class VnPayPaymentDAO {
                 "AND o.status IN ('DEPOSITED', 'SHIPPING', 'COMPLETED')) AS is_available FROM products p WHERE p.id = ? FOR UPDATE";
         String lockSql = "SELECT id FROM conversations WHERE id = ? FOR UPDATE";
         String insertSql = "INSERT INTO vnpay_payments " +
-                "(txn_ref, conversation_id, buyer_id, seller_id, product_id, agreed_price, deposit_amount, status, expires_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)";
+                "(txn_ref, conversation_id, buyer_id, seller_id, product_id, agreed_price, deposit_amount, payment_type, status, expires_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)";
         try (Connection conn = DBContext.getConnection()) {
             conn.setAutoCommit(false);
             try {
@@ -81,7 +116,8 @@ public class VnPayPaymentDAO {
                     ps.setInt(5, productId);
                     ps.setDouble(6, agreedPrice);
                     ps.setDouble(7, depositAmount);
-                    ps.setTimestamp(8, expiresAt);
+                    ps.setString(8, paymentType);
+                    ps.setTimestamp(9, expiresAt);
                     ps.executeUpdate();
                 }
                 conn.commit();
@@ -100,7 +136,7 @@ public class VnPayPaymentDAO {
         String lookupProductSql = "SELECT product_id FROM vnpay_payments WHERE txn_ref = ?";
         String lockProductSql = "SELECT p.status, NOT EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.id " +
                 "AND o.status IN ('DEPOSITED', 'SHIPPING', 'COMPLETED')) AS is_available FROM products p WHERE p.id = ? FOR UPDATE";
-        String selectSql = "SELECT id, conversation_id, product_id, buyer_id, seller_id, agreed_price, deposit_amount, status, expires_at " +
+        String selectSql = "SELECT id, conversation_id, product_id, buyer_id, seller_id, agreed_price, deposit_amount, payment_type, order_id, status, expires_at " +
                 "FROM vnpay_payments WHERE txn_ref = ? FOR UPDATE";
         try (Connection conn = DBContext.getConnection()) {
             conn.setAutoCommit(false);
@@ -134,7 +170,10 @@ public class VnPayPaymentDAO {
                 int sellerId;
                 double agreedPrice;
                 double depositAmount;
+                String paymentType;
+                int existingOrderId;
                 String status;
+                Timestamp paymentExpiresAt;
                 try (PreparedStatement select = conn.prepareStatement(selectSql)) {
                     select.setString(1, txnRef);
                     try (ResultSet rs = select.executeQuery()) {
@@ -149,7 +188,10 @@ public class VnPayPaymentDAO {
                         sellerId = rs.getInt("seller_id");
                         agreedPrice = rs.getDouble("agreed_price");
                         depositAmount = rs.getDouble("deposit_amount");
+                        paymentType = rs.getString("payment_type");
+                        existingOrderId = rs.getInt("order_id");
                         status = rs.getString("status");
+                        paymentExpiresAt = rs.getTimestamp("expires_at");
                     }
                 }
                 if (productId != lockedProductId) {
@@ -157,13 +199,14 @@ public class VnPayPaymentDAO {
                     return new CallbackResult(false, "Thông tin sản phẩm của giao dịch không hợp lệ.");
                 }
 
-                if (paidAmount != Math.round(depositAmount * 100)) {
+                double expectedAmount = "FULL".equalsIgnoreCase(paymentType) ? agreedPrice : depositAmount;
+                if (paidAmount != Math.round(expectedAmount * 100)) {
                     conn.rollback();
                     return new CallbackResult(false, "Số tiền giao dịch không hợp lệ.");
                 }
                 if ("PAID".equals(status)) {
                     conn.commit();
-                    return new CallbackResult(true, "Giao dịch đã được ghi nhận trước đó.");
+                    return new CallbackResult(true, "Giao dịch đã được ghi nhận trước đó.", existingOrderId, paymentType);
                 }
                 if ("REFUND_REQUIRED".equals(status)) {
                     conn.commit();
@@ -185,6 +228,33 @@ public class VnPayPaymentDAO {
                     conn.commit();
                     return new CallbackResult(false, "Thanh toán chưa thành công.");
                 }
+                if (paymentExpiresAt == null || paymentExpiresAt.getTime() <= System.currentTimeMillis()) {
+                    updatePayment(conn, paymentId, "REFUND_REQUIRED", transactionNo, responseCode, existingOrderId > 0 ? existingOrderId : null);
+                    conn.commit();
+                    return new CallbackResult(false, "Thanh toán đến sau thời hạn. Khoản tiền cần được hoàn trả; vui lòng liên hệ quản trị viên.");
+                }
+
+                if ("BALANCE".equalsIgnoreCase(paymentType)) {
+                    try (PreparedStatement settle = conn.prepareStatement(
+                            "UPDATE orders SET total_paid = agreed_price, payment_status='PAID', balance_paid_at = CURRENT_TIMESTAMP, status = 'DEPOSITED' " +
+                                    "WHERE id = ? AND buyer_id = ? AND balance_payment_method = 'TRANSFER' AND balance_expires_at > CURRENT_TIMESTAMP AND status IN ('DEPOSITED','SHIPPING')")) {
+                        settle.setInt(1, existingOrderId);
+                        settle.setInt(2, buyerId);
+                        if (settle.executeUpdate() != 1) {
+                            updatePayment(conn, paymentId, "REFUND_REQUIRED", transactionNo, responseCode, existingOrderId);
+                            conn.commit();
+                            return new CallbackResult(false, "Đơn hàng đã hết hạn hoặc không còn đủ điều kiện thanh toán; khoản tiền cần được hoàn trả.");
+                        }
+                    }
+                    updatePayment(conn, paymentId, "PAID", transactionNo, responseCode, existingOrderId);
+                    try (PreparedStatement cancelDuplicates = conn.prepareStatement("UPDATE vnpay_payments SET status='CANCELLED' WHERE order_id=? AND id<>? AND payment_type='BALANCE' AND status='PENDING'")) {
+                        cancelDuplicates.setInt(1, existingOrderId);
+                        cancelDuplicates.setLong(2, paymentId);
+                        cancelDuplicates.executeUpdate();
+                    }
+                    conn.commit();
+                    return new CallbackResult(true, "Thanh toán phần còn lại thành công.", existingOrderId, paymentType);
+                }
 
                 if ("DELETE".equalsIgnoreCase(lockedProductStatus) || "SOLD".equalsIgnoreCase(lockedProductStatus) || !lockedProductAvailable) {
                     updatePayment(conn, paymentId, "REFUND_REQUIRED", transactionNo, responseCode, null);
@@ -193,7 +263,9 @@ public class VnPayPaymentDAO {
                     return new CallbackResult(false, "Sản phẩm đã được người khác đặt cọc. Khoản thanh toán này cần được hoàn trả; vui lòng liên hệ người bán hoặc quản trị viên.");
                 }
 
-                int orderId = createDepositedOrder(conn, productId, buyerId, sellerId, agreedPrice, depositAmount);
+                int orderId = createDepositedOrder(conn, productId, buyerId, sellerId, agreedPrice,
+                        "FULL".equalsIgnoreCase(paymentType) ? 0 : depositAmount,
+                        "FULL".equalsIgnoreCase(paymentType));
                 try (PreparedStatement markSold = conn.prepareStatement("UPDATE products SET status = 'SOLD' WHERE id = ? AND status NOT IN ('DELETE', 'SOLD')")) {
                     markSold.setInt(1, productId);
                     if (markSold.executeUpdate() != 1) {
@@ -202,10 +274,11 @@ public class VnPayPaymentDAO {
                 }
                 cancelOtherPendingPayments(conn, productId, paymentId);
                 updatePayment(conn, paymentId, "PAID", transactionNo, responseCode, orderId);
-                addPaymentSystemMessage(conn, conversationId, buyerId, depositAmount);
-                sendOrderPlacedNotifications(conn, orderId, productId, buyerId, sellerId, depositAmount);
+                boolean paidInFull = "FULL".equalsIgnoreCase(paymentType);
+                addPaymentSystemMessage(conn, conversationId, buyerId, paidInFull ? agreedPrice : depositAmount, paidInFull);
+                sendOrderPlacedNotifications(conn, orderId, productId, buyerId, sellerId, paidInFull ? agreedPrice : depositAmount);
                 conn.commit();
-                return new CallbackResult(true, "Thanh toán đặt cọc thành công.");
+                return new CallbackResult(true, "FULL".equalsIgnoreCase(paymentType) ? "Thanh toán toàn bộ thành công." : "Thanh toán đặt cọc thành công.", orderId, paymentType);
             } catch (SQLException e) {
                 conn.rollback();
                 throw e;
@@ -215,17 +288,42 @@ public class VnPayPaymentDAO {
         }
     }
 
+    public void expireUnpaidBalanceOrders() {
+        ensureTable();
+        String sql = "UPDATE orders SET status='CANCELLED' WHERE status IN ('DEPOSITED','SHIPPING') AND balance_payment_method='TRANSFER' AND total_paid<agreed_price AND balance_expires_at<=CURRENT_TIMESTAMP";
+        String cancelPending = "UPDATE vnpay_payments vp JOIN orders o ON o.id=vp.order_id SET vp.status='CANCELLED' WHERE vp.payment_type='BALANCE' AND vp.status='PENDING' AND o.status='CANCELLED' AND o.balance_expires_at<=CURRENT_TIMESTAMP";
+        String reopen = "UPDATE products p JOIN orders o ON o.product_id=p.id SET p.status='ACTIVE' WHERE o.status='CANCELLED' AND o.balance_payment_method='TRANSFER' AND o.balance_expires_at<=CURRENT_TIMESTAMP AND p.status='SOLD' AND NOT EXISTS (SELECT 1 FROM orders active_o WHERE active_o.product_id=p.id AND active_o.id<>o.id AND active_o.status IN ('DEPOSITED','SHIPPING','COMPLETED'))";
+        try (Connection c=DBContext.getConnection(); Statement st=c.createStatement()) {
+            c.setAutoCommit(false);
+            java.util.List<int[]> expired = new java.util.ArrayList<>();
+            try (PreparedStatement find=c.prepareStatement("SELECT id,buyer_id FROM orders WHERE status IN ('DEPOSITED','SHIPPING') AND balance_payment_method='TRANSFER' AND total_paid<agreed_price AND balance_expires_at<=CURRENT_TIMESTAMP"); ResultSet rs=find.executeQuery()) {
+                while (rs.next()) expired.add(new int[]{rs.getInt("id"), rs.getInt("buyer_id")});
+            }
+            st.executeUpdate(sql); st.executeUpdate(cancelPending); st.executeUpdate(reopen);
+            NotificationDAO notifications = new NotificationDAO();
+            for (int[] order : expired) {
+                notifications.createNotification(c, order[1], "Đơn hàng đã tự hủy do quá hạn thanh toán",
+                        "Đơn hàng #" + order[0] + " đã bị hủy vì quá 24 giờ chưa thanh toán phần còn lại. Khoản tiền cọc không được hoàn lại.",
+                        "ORDER_CANCELLED", "05-quan-ly-don-hang.jsp?orderId=" + order[0]);
+            }
+            c.commit();
+        } catch (SQLException | IllegalStateException e) { e.printStackTrace(); }
+    }
+
     private int createDepositedOrder(Connection conn, int productId, int buyerId, int sellerId,
-                                     double agreedPrice, double depositAmount) throws SQLException {
-        String sql = "INSERT INTO orders (product_id, buyer_id, seller_id, agreed_price, deposit_amount, delivery_method, status) " +
-                "SELECT ?, ?, ?, ?, ?, COALESCE(delivery_method, 1), 'DEPOSITED' FROM products WHERE id = ?";
+                                     double agreedPrice, double depositAmount, boolean paidInFull) throws SQLException {
+        String sql = "INSERT INTO orders (product_id, buyer_id, seller_id, agreed_price, deposit_amount, total_paid, balance_payment_method, payment_status, delivery_method, status) " +
+                "SELECT ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(delivery_method, 1), 'DEPOSITED' FROM products WHERE id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, productId);
             ps.setInt(2, buyerId);
             ps.setInt(3, sellerId);
             ps.setDouble(4, agreedPrice);
             ps.setDouble(5, depositAmount);
-            ps.setInt(6, productId);
+            ps.setDouble(6, paidInFull ? agreedPrice : depositAmount);
+            ps.setString(7, paidInFull ? "PAID" : "PENDING");
+            ps.setString(8, paidInFull ? "PAID" : "PARTIALLY_PAID");
+            ps.setInt(9, productId);
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) return keys.getInt(1);
@@ -234,12 +332,12 @@ public class VnPayPaymentDAO {
         throw new SQLException("Không tạo được đơn hàng sau khi thanh toán thành công.");
     }
 
-    private void addPaymentSystemMessage(Connection conn, int conversationId, int buyerId, double depositAmount)
+    private void addPaymentSystemMessage(Connection conn, int conversationId, int buyerId, double depositAmount, boolean paidInFull)
             throws SQLException {
         String sql = "INSERT INTO messages (conversation_id, sender_id, content, message_type) VALUES (?, ?, ?, 'SYSTEM')";
-        String content = "VNPay đã xác nhận thanh toán đặt cọc " +
+        String content = "VNPay đã xác nhận thanh toán " + (paidInFull ? "toàn bộ " : "đặt cọc ") +
                 java.text.NumberFormat.getIntegerInstance(new java.util.Locale("vi", "VN")).format(Math.round(depositAmount)) +
-                " đ. Đơn hàng đã chuyển sang trạng thái ĐÃ ĐẶT CỌC.";
+                " đ. Đơn hàng đã chuyển sang trạng thái " + (paidInFull ? "ĐÃ THANH TOÁN." : "ĐÃ ĐẶT CỌC.");
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, conversationId);
             ps.setInt(2, buyerId);
@@ -277,15 +375,15 @@ public class VnPayPaymentDAO {
             NotificationDAO notifDAO = new NotificationDAO();
             // 1. Thông báo cho Người Mua
             notifDAO.createNotification(conn, buyerId,
-                    "Đặt cọc thành công đơn hàng #" + orderId,
-                    "Bạn đã đặt cọc thành công " + formattedDeposit + " cho sản phẩm \"" + productTitle + "\". Đơn hàng đã chuyển sang trạng thái Đã Đặt Cọc.",
+                    "Thanh toán thành công đơn hàng #" + orderId,
+                    "Bạn đã thanh toán " + formattedDeposit + " cho sản phẩm \"" + productTitle + "\". Đơn hàng đã được tạo.",
                     "ORDER_PLACED",
                     targetUrl);
 
             // 2. Thông báo cho Người Bán
             notifDAO.createNotification(conn, sellerId,
                     "Đơn hàng mới #" + orderId,
-                    buyerName + " đã đặt cọc " + formattedDeposit + " cho sản phẩm \"" + productTitle + "\". Vui lòng chuẩn bị và giao hàng cho người mua.",
+                    buyerName + " đã thanh toán " + formattedDeposit + " cho sản phẩm \"" + productTitle + "\". Vui lòng chuẩn bị và giao hàng cho người mua.",
                     "NEW_ORDER",
                     targetUrl);
         } catch (Exception e) {
@@ -333,10 +431,18 @@ public class VnPayPaymentDAO {
     public static class CallbackResult {
         public final boolean successful;
         public final String message;
+        public final int orderId;
+        public final String paymentType;
 
         public CallbackResult(boolean successful, String message) {
+            this(successful, message, 0, null);
+        }
+
+        public CallbackResult(boolean successful, String message, int orderId, String paymentType) {
             this.successful = successful;
             this.message = message;
+            this.orderId = orderId;
+            this.paymentType = paymentType;
         }
     }
 }

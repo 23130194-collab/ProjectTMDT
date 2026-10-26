@@ -190,7 +190,7 @@
           String type = mineBuy ? "buy" : "sell";
           String channel = item.deliveryMethod == 2 ? "channel2" : "channel1";
           String partnerName = mineBuy ? item.sellerName : item.buyerName;
-          double remain = Math.max(0, item.agreedPrice - item.depositAmount);
+          double remain = Math.max(0, item.agreedPrice - Math.max(item.depositAmount, item.totalPaid));
           boolean isDirect = item.deliveryMethod != 2;
           boolean isCompleted = "COMPLETED".equalsIgnoreCase(item.status);
           boolean hasGhnTracking = item.trackingCode != null && !item.trackingCode.trim().isEmpty();
@@ -219,8 +219,13 @@
               <span class="text-[11px] text-slate-400">• <%= orderDateFormat.format(item.createdAt) %></span>
             <% } %>
           </div>
-          <div class="<%= orderBadgeClass(item.status) %>">
-            Trạng thái: <%= h(orderStatusText(item.status)) %>
+          <div class="flex items-center gap-2">
+            <div class="<%= orderBadgeClass(item.status) %>">Đơn hàng: <%= h(orderStatusText(item.status)) %></div>
+            <% if ("PAID".equalsIgnoreCase(item.paymentStatus)) { %>
+              <div class="text-xs text-emerald-700 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">Thanh toán: Đã thanh toán</div>
+            <% } else if ("PARTIALLY_PAID".equalsIgnoreCase(item.paymentStatus)) { %>
+              <div class="text-xs text-amber-700 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200">Thanh toán: Đã đặt cọc</div>
+            <% } %>
           </div>
         </div>
 
@@ -254,6 +259,9 @@
               <span class="text-slate-500">Tiền cọc sàn giữ (VNPay):</span>
               <span class="font-bold text-amber-700"><%= moneyFormat.format(Math.round(item.depositAmount)) %> đ</span>
             </div>
+            <% if (item.totalPaid > item.depositAmount) { %>
+            <div class="flex justify-between"><span class="text-slate-500">Đã thanh toán tổng cộng:</span><span class="font-bold text-emerald-700"><%= moneyFormat.format(Math.round(item.totalPaid)) %> đ</span></div>
+            <% } %>
             <div class="flex justify-between">
               <span class="text-slate-500"><%= isDirect ? "Tiền mặt thu tại chỗ:" : "Tiền thu hộ COD (GHN):" %></span>
               <span class="font-bold text-slate-900"><%= moneyFormat.format(Math.round(remain)) %> đ</span>
@@ -267,6 +275,31 @@
             </div>
           </div>
         </div>
+
+        <% if (mineBuy && "DEPOSITED".equalsIgnoreCase(item.status) && item.totalPaid < item.agreedPrice && item.balancePaidAt == null) { %>
+          <div class="p-4 rounded-xl border border-blue-200 bg-blue-50 space-y-2">
+            <div class="font-bold text-sm text-blue-900">Chọn cách thanh toán phần còn lại: <%= moneyFormat.format(Math.round(Math.max(0, item.agreedPrice - item.depositAmount))) %> đ</div>
+            <% if ("TRANSFER".equalsIgnoreCase(item.balancePaymentMethod) && item.balanceExpiresAt != null) { %>
+              <p class="text-xs text-amber-800">Đã chọn chuyển khoản. Hoàn tất thanh toán trước <strong><%= orderDateFormat.format(item.balanceExpiresAt) %></strong>; quá hạn đơn sẽ tự hủy và tiền cọc không được hoàn lại.</p>
+              <form method="get" action="vnpay-create" class="inline">
+                <input type="hidden" name="paymentType" value="BALANCE"><input type="hidden" name="orderId" value="<%= item.id %>">
+                <button class="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold">Thanh toán phần còn lại</button>
+              </form>
+            <% } else if (!"COD".equalsIgnoreCase(item.balancePaymentMethod)) { %>
+              <p class="text-xs text-slate-600">Sau khi chọn chuyển khoản, bạn có 24 giờ để thanh toán. Quá hạn, đơn tự hủy và tiền cọc bị mất.</p>
+              <form method="post" action="order-action" class="inline">
+                <input type="hidden" name="action" value="choose_balance_payment"><input type="hidden" name="orderId" value="<%= item.id %>"><input type="hidden" name="paymentMethod" value="TRANSFER">
+                <button class="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold">Chuyển khoản trong 24 giờ</button>
+              </form>
+              <form method="post" action="order-action" class="inline ml-2">
+                <input type="hidden" name="action" value="choose_balance_payment"><input type="hidden" name="orderId" value="<%= item.id %>"><input type="hidden" name="paymentMethod" value="COD">
+                <button class="px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-bold">Thanh toán khi nhận hàng</button>
+              </form>
+            <% } else { %>
+              <p class="text-xs text-emerald-800 font-semibold">Bạn đã chọn thanh toán phần còn lại khi nhận hàng.</p>
+            <% } %>
+          </div>
+        <% } %>
 
         <!-- THÔNG TIN VẬN CHUYỂN / ĐIỂM HẸN THEO PHƯƠNG THỨC -->
         <% if (isDirect) { %>
