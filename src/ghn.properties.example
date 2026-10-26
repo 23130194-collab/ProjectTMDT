@@ -1,0 +1,6 @@
+# ============================================================
+# CẤU HÌNH MẪU GHN SANDBOX (https://5sao.ghn.dev)
+# Copy file này thành src/ghn.properties và điền thông tin của bạn
+# ============================================================
+ghn.sandbox.token=YOUR_GHN_SANDBOX_TOKEN_HERE
+ghn.sandbox.shop_id=YOUR_GHN_SHOP_ID_HERE

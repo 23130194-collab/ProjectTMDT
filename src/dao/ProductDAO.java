@@ -211,10 +211,12 @@ public class ProductDAO {
     // Lấy chi tiết 1 sản phẩm theo ID (dùng cho trang detail, admin, owner)
     // Controller sẽ kiểm tra quyền xem nếu status != ACTIVE
     public Product getProductById(int id) {
-        String sql = "SELECT p.*, CASE WHEN p.status NOT IN ('DELETE', 'SOLD') AND EXISTS " +
+        String sql = "SELECT p.*, pi.image_url, CASE WHEN p.status NOT IN ('DELETE', 'SOLD') AND EXISTS " +
                      "(SELECT 1 FROM orders o WHERE o.product_id = p.id " +
                      "AND o.status IN ('DEPOSITED', 'SHIPPING', 'COMPLETED')) THEN 'SOLD' ELSE p.status END AS current_status " +
-                     "FROM products p WHERE p.id = ? AND p.status <> 'DELETE'";
+                     "FROM products p " +
+                     "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
+                     "WHERE p.id = ? AND p.status <> 'DELETE'";
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
@@ -238,6 +240,7 @@ public class ProductDAO {
                     p.setNewProduct(isNewProduct(p.getCreatedAt()));
                     p.setDeliveryMethod(rs.getInt("delivery_method"));
                     p.setSpecifications(rs.getString("specifications"));
+                    p.setPrimaryImage(rs.getString("image_url"));
                     return p;
                 }
             }

@@ -92,13 +92,27 @@
     
     <!-- THÔNG BÁO FLASH MESSAGE (KHI XÁC NHẬN / TẠO GHN THÀNH CÔNG) -->
     <% if (flashMsg != null) { %>
-    <div class="p-4 rounded-xl <%= Boolean.TRUE.equals(flashSuccess) ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800" %> flex items-center justify-between shadow-xs">
+    <div id="flash-alert-banner" class="p-4 rounded-xl <%= Boolean.TRUE.equals(flashSuccess) ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800" %> flex items-center justify-between shadow-xs transition-all duration-500 ease-in-out">
       <div class="flex items-center gap-2.5 text-xs font-semibold">
         <span><%= Boolean.TRUE.equals(flashSuccess) ? "✓" : "✕" %></span>
         <span><%= h(flashMsg) %></span>
       </div>
-      <button onclick="this.parentElement.remove()" class="text-xs font-bold text-slate-400 hover:text-slate-600">✕</button>
+      <button onclick="dismissFlashAlert()" class="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer p-1">✕</button>
     </div>
+    <script>
+      function dismissFlashAlert() {
+        var el = document.getElementById('flash-alert-banner');
+        if (el) {
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(-8px)';
+          setTimeout(function() {
+            if (el && el.parentNode) el.parentNode.removeChild(el);
+          }, 500);
+        }
+      }
+      // Tự động biến mất sau 5 giây mà không cần người dùng tự tắt
+      setTimeout(dismissFlashAlert, 5000);
+    </script>
     <% } %>
 
     <!-- TIÊU ĐỀ TRANG VÀ GIẢI THÍCH MÔ HÌNH BẢO CHỨNG -->
@@ -180,8 +194,9 @@
           boolean isDirect = item.deliveryMethod != 2;
           boolean isCompleted = "COMPLETED".equalsIgnoreCase(item.status);
           boolean hasGhnTracking = item.trackingCode != null && !item.trackingCode.trim().isEmpty();
+          boolean isOrderCancelled = "CANCELLED".equalsIgnoreCase(item.status) || "CANCELLED".equalsIgnoreCase(item.shippingStatus) || "CANCELED".equalsIgnoreCase(item.status);
         %>
-      <div id="order-card-db-<%= item.id %>" data-channel="<%= channel %>" data-type="<%= type %>" class="order-card bg-white rounded-xl border <%= isDirect ? "border-amber-200" : "border-orange-200" %> shadow-sm p-5 sm:p-6 space-y-4">
+      <div id="order-card-db-<%= item.id %>" data-channel="<%= channel %>" data-type="<%= type %>" data-ghn-active="<%= (!isDirect && hasGhnTracking && !isOrderCancelled && !isCompleted) %>" data-order-id="<%= item.id %>" class="order-card bg-white rounded-xl border <%= isDirect ? "border-amber-200" : "border-orange-200" %> shadow-sm p-5 sm:p-6 space-y-4">
         
         <!-- HEADER ĐƠN HÀNG -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
@@ -282,11 +297,13 @@
               </div>
               <div>
                 <% if (hasGhnTracking) { %>
-                  <% String ghnStatusTxt = "Chờ bưu tá lấy hàng";
-                     if ("DANG_GIAO".equalsIgnoreCase(item.shippingStatus)) ghnStatusTxt = "Shipper đang giao hàng tới người mua";
+                  <% boolean isCancelled = "CANCELLED".equalsIgnoreCase(item.shippingStatus) || "CANCELLED".equalsIgnoreCase(item.status) || "CANCELED".equalsIgnoreCase(item.status);
+                     String ghnStatusTxt = "Chờ bưu tá lấy hàng";
+                     if (isCancelled) ghnStatusTxt = "Vận đơn đã hủy";
+                     else if ("DANG_GIAO".equalsIgnoreCase(item.shippingStatus)) ghnStatusTxt = "Shipper đang giao hàng tới người mua";
                      else if ("DA_GIAO".equalsIgnoreCase(item.shippingStatus)) ghnStatusTxt = "Bưu tá đã giao hàng thành công";
                   %>
-                  <span class="font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 text-[11px]">
+                  <span class="font-bold <%= isCancelled ? "text-red-700 bg-red-50 border-red-200" : ("DA_GIAO".equalsIgnoreCase(item.shippingStatus) ? "text-emerald-700 bg-emerald-50 border-emerald-200" : ("DANG_GIAO".equalsIgnoreCase(item.shippingStatus) ? "text-orange-700 bg-orange-50 border-orange-200" : "text-blue-700 bg-blue-50 border-blue-200")) %> px-2.5 py-0.5 rounded-full border text-[11px]">
                     <%= ghnStatusTxt %>
                   </span>
                 <% } else { %>
@@ -306,6 +323,7 @@
             </div>
           </div>
         <% } %>
+
 
         <!-- ======================================================== -->
         <!-- KHỐI NÚT HÀNH ĐỘNG CẬP NHẬT TRẠNG THÁI (CORE ACTIONS)    -->
@@ -388,7 +406,9 @@
 
             <% } else { %>
               <!-- ================= NHÁNH 2: GIAO QUA GHN EXPRESS ================= -->
-              <% if (!isCompleted) { %>
+              <% if (isOrderCancelled) { %>
+                <!-- Đơn hàng đã hủy: Không hiển thị nút thao tác nào bên phải cho cả người mua và người bán -->
+              <% } else if (!isCompleted) { %>
                 <% if (!mineBuy) { %>
                   <!-- TÔI LÀ NGƯỜI BÁN -->
                   <% if (!hasGhnTracking) { %>
@@ -396,9 +416,76 @@
                       <span>Tạo Đơn Vận Chuyển GHN (Demo)</span>
                     </a>
                   <% } else { %>
-                    <a href="ghn-simulator?orderId=<%= item.id %>" class="px-4 py-2 bg-orange-50 border border-orange-300 hover:bg-orange-100 text-orange-800 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5">
-                      <span>Xem & Cập Nhật Lộ Trình GHN</span>
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <!-- Nút thao tác cập nhật trạng thái nhanh trực tiếp cho Người Bán -->
+<%--                    <% if ("CHO_LAY_HANG".equalsIgnoreCase(item.shippingStatus) || item.shippingStatus == null) { %>--%>
+<%--                      <form action="order-action" method="POST" class="inline">--%>
+<%--                        <input type="hidden" name="action" value="ghn_update_status">--%>
+<%--                        <input type="hidden" name="orderId" value="<%= item.id %>">--%>
+<%--                        <input type="hidden" name="shippingStatus" value="DANG_GIAO">--%>
+<%--                        <input type="hidden" name="redirectUrl" value="05-quan-ly-don-hang.jsp?orderId=<%= item.id %>">--%>
+<%--                        <button type="submit" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5" title="Cập nhật: Bưu tá GHN đã lấy hàng và đang đi giao tới khách mua">--%>
+<%--                          <span>🚚 Bưu Tá Đi Giao</span>--%>
+<%--                        </button>--%>
+<%--                      </form>--%>
+<%--                    <% } else if ("DANG_GIAO".equalsIgnoreCase(item.shippingStatus)) { %>--%>
+<%--                      <form action="order-action" method="POST" class="inline" onsubmit="return confirm('Bạn xác nhận bưu tá GHN đã giao kiện hàng đến người nhận?');">--%>
+<%--                        <input type="hidden" name="action" value="ghn_update_status">--%>
+<%--                        <input type="hidden" name="orderId" value="<%= item.id %>">--%>
+<%--                        <input type="hidden" name="shippingStatus" value="DA_GIAO">--%>
+<%--                        <input type="hidden" name="redirectUrl" value="05-quan-ly-don-hang.jsp?orderId=<%= item.id %>">--%>
+<%--                        <button type="submit" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5" title="Cập nhật: Bưu tá GHN đã giao hàng thành công đến khách mua">--%>
+<%--                          <span>✓ Đã Giao Thành Công</span>--%>
+<%--                        </button>--%>
+<%--                      </form>--%>
+<%--                    <% } else if ("DA_GIAO".equalsIgnoreCase(item.shippingStatus)) { %>--%>
+<%--                      <span class="px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-xs rounded-lg flex items-center gap-1.5" title="Bưu tá đã giao hàng thành công. Khách mua có thể bấm xác nhận nhận hàng.">--%>
+<%--                        <span>✓ Bưu tá đã giao (Chờ khách nhận)</span>--%>
+<%--                      </span>--%>
+<%--                    <% } %>--%>
+
+                    <!-- Menu tùy chọn đổi trạng thái bất kỳ lúc nào -->
+                    <div class="relative inline-block text-left dropdown-status-container" id="dropdown-status-<%= item.id %>">
+                      <button type="button" onclick="toggleStatusDropdown(<%= item.id %>)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1" title="Tùy chọn đổi trạng thái vận chuyển">
+                        <span>Đổi trạng thái</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                      </button>
+                      <div id="status-menu-<%= item.id %>" class="hidden absolute right-0 mt-1 w-52 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-20 text-xs">
+                        <form action="order-action" method="POST">
+                          <input type="hidden" name="action" value="ghn_update_status">
+                          <input type="hidden" name="orderId" value="<%= item.id %>">
+                          <input type="hidden" name="shippingStatus" value="CHO_LAY_HANG">
+                          <input type="hidden" name="redirectUrl" value="05-quan-ly-don-hang.jsp?orderId=<%= item.id %>">
+                          <button type="submit" class="w-full text-left px-3.5 py-2 hover:bg-amber-50 text-slate-700 flex items-center justify-between <%= "CHO_LAY_HANG".equalsIgnoreCase(item.shippingStatus) ? "font-bold text-amber-700 bg-amber-50/50" : "" %>">
+                            <span>1. Chờ bưu tá lấy hàng</span>
+                            <%= "CHO_LAY_HANG".equalsIgnoreCase(item.shippingStatus) ? "✓" : "" %>
+                          </button>
+                        </form>
+                        <form action="order-action" method="POST">
+                          <input type="hidden" name="action" value="ghn_update_status">
+                          <input type="hidden" name="orderId" value="<%= item.id %>">
+                          <input type="hidden" name="shippingStatus" value="DANG_GIAO">
+                          <input type="hidden" name="redirectUrl" value="05-quan-ly-don-hang.jsp?orderId=<%= item.id %>">
+                          <button type="submit" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 text-slate-700 flex items-center justify-between <%= "DANG_GIAO".equalsIgnoreCase(item.shippingStatus) ? "font-bold text-blue-700 bg-blue-50/50" : "" %>">
+                            <span>2. Bưu tá đang đi giao</span>
+                            <%= "DANG_GIAO".equalsIgnoreCase(item.shippingStatus) ? "✓" : "" %>
+                          </button>
+                        </form>
+                        <form action="order-action" method="POST">
+                          <input type="hidden" name="action" value="ghn_update_status">
+                          <input type="hidden" name="orderId" value="<%= item.id %>">
+                          <input type="hidden" name="shippingStatus" value="DA_GIAO">
+                          <input type="hidden" name="redirectUrl" value="05-quan-ly-don-hang.jsp?orderId=<%= item.id %>">
+                          <button type="submit" class="w-full text-left px-3.5 py-2 hover:bg-emerald-50 text-slate-700 flex items-center justify-between <%= "DA_GIAO".equalsIgnoreCase(item.shippingStatus) ? "font-bold text-emerald-700 bg-emerald-50/50" : "" %>">
+                            <span>3. Đã giao hàng thành công</span>
+                            <%= "DA_GIAO".equalsIgnoreCase(item.shippingStatus) ? "✓" : "" %>
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+
+                    <a href="ghn-simulator?orderId=<%= item.id %>" class="px-3.5 py-2 bg-orange-50 border border-orange-300 hover:bg-orange-100 text-orange-800 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5" title="Mở trang chi tiết mô phỏng lộ trình GHN Express">
+                      <span>Lộ trình GHN</span>
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </a>
                   <% } %>
                 <% } else { %>
@@ -455,6 +542,13 @@
           </div>
 
         </div>
+
+        <% if (isOrderCancelled) { %>
+          <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs flex items-center gap-2 text-red-800">
+            <svg class="w-4 h-4 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <span><strong>Thông báo:</strong> Đơn hàng này đã bị hủy trên hệ thống GHN. <strong>Lý do:</strong> <%= (item.shippingNote != null && !item.shippingNote.trim().isEmpty()) ? h(item.shippingNote) : "Người bán đã thao tác hủy vận đơn trên cổng GHN." %></span>
+          </div>
+        <% } %>
 
       </div>
         <% } %>
@@ -1493,5 +1587,73 @@
     });
   </script>
 
+  <!-- ĐIỀU KHIỂN DROPDOWN ĐỔI TRẠNG THÁI GIAO HÀNG -->
+  <script>
+    function toggleStatusDropdown(orderId) {
+      const menu = document.getElementById('status-menu-' + orderId);
+      if (menu) {
+        const isHidden = menu.classList.contains('hidden');
+        document.querySelectorAll('[id^="status-menu-"]').forEach(el => el.classList.add('hidden'));
+        if (isHidden) {
+          menu.classList.remove('hidden');
+        }
+      }
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.dropdown-status-container')) {
+        document.querySelectorAll('[id^="status-menu-"]').forEach(el => el.classList.add('hidden'));
+      }
+    });
+  </script>
+
+  <!-- TỰ ĐỘNG ĐỒNG BỘ TRẠNG THÁI GHN NGẦM (KHÔNG CẦN BẤM NÚT) -->
+  <script>
+    (function() {
+      let isCheckingGhn = false;
+
+      async function autoSyncActiveGhnOrders() {
+        if (isCheckingGhn) return;
+        const activeOrders = document.querySelectorAll('.order-card[data-ghn-active="true"]');
+        if (!activeOrders || activeOrders.length === 0) return;
+
+        isCheckingGhn = true;
+        try {
+          for (const card of activeOrders) {
+            const orderId = card.dataset.orderId;
+            if (!orderId) continue;
+
+            const response = await fetch('order-action?action=ghn_sync_status&ajax=true&orderId=' + encodeURIComponent(orderId), {
+              method: 'POST',
+              headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              if (data && data.statusChanged) {
+                // Trạng thái đã thay đổi trên GHN (ví dụ: đã hủy hoặc đã giao) -> Tự động reload trang ngay lập tức!
+                window.location.reload();
+                return;
+              }
+            }
+          }
+        } catch (err) {
+          // Bỏ qua lỗi ngầm
+        } finally {
+          isCheckingGhn = false;
+        }
+      }
+
+      // 1. Tự động kiểm tra ngay sau khi mở trang 1 giây
+      setTimeout(autoSyncActiveGhnOrders, 1000);
+
+      // 2. Tự động kiểm tra ngay khi chuyển từ tab GHN quay lại tab web này!
+      window.addEventListener('focus', () => {
+        setTimeout(autoSyncActiveGhnOrders, 500);
+      });
+
+      // 3. Thăm dò định kỳ mỗi 6 giây một lần
+      setInterval(autoSyncActiveGhnOrders, 6000);
+    })();
+  </script>
 </body>
 </html>
