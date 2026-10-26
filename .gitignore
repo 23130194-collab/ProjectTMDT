@@ -23,3 +23,11 @@ src/google-oauth.properties
 # GHN Sandbox credentials - KHONG commit file nay len Git!
 src/ghn.properties
 web/WEB-INF/ghn.properties
+
+# Python AI Service & Virtual Environment
+venv/
+**/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
