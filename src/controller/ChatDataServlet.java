@@ -1,6 +1,7 @@
 package controller;
 
 import dao.ChatDAO;
+import dao.UserDao;
 import model.ChatConversation;
 import model.Message;
 import model.User;
@@ -33,6 +34,7 @@ import java.util.UUID;
 )
 public class ChatDataServlet extends HttpServlet {
     private final ChatDAO chatDAO = new ChatDAO();
+    private final UserDao userDao = new UserDao();
     private final NumberFormat moneyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
     private final ZoneId vietnamZone = ZoneId.of("Asia/Ho_Chi_Minh");
 
@@ -50,17 +52,26 @@ public class ChatDataServlet extends HttpServlet {
         String role = normalizeRole(request.getParameter("role"));
         int selectedId = parseInt(request.getParameter("conversationId"), 0);
         int productId = parseInt(request.getParameter("productId"), 0);
-        if (selectedId <= 0 && productId > 0) {
-            selectedId = chatDAO.findOrCreateConversationForProduct(productId, currentUser.getId());
-            if (selectedId > 0) {
-                role = "buyer";
+        boolean openedFromProduct = selectedId <= 0 && productId > 0;
+        if (openedFromProduct) {
+            int productOwnerId = chatDAO.getProductOwnerId(productId);
+            if (productOwnerId == currentUser.getId()) {
+                // Chủ tin mở chat ở vai người bán, lấy hội thoại của chính tin này.
+                // Không để ID 0 rơi xuống logic mặc định chọn nhầm chat người mua khác.
+                role = "seller";
+                selectedId = chatDAO.findLatestSellerConversationForProduct(productId, currentUser.getId());
+            } else if (productOwnerId > 0) {
+                selectedId = chatDAO.findOrCreateConversationForProduct(productId, currentUser.getId());
+                if (selectedId > 0) {
+                    role = "buyer";
+                }
             }
         }
 
         List<ChatConversation> buyerConversations = chatDAO.getConversations(currentUser.getId(), "buyer");
         List<ChatConversation> sellerConversations = chatDAO.getConversations(currentUser.getId(), "seller");
 
-        if (selectedId <= 0) {
+        if (selectedId <= 0 && !openedFromProduct) {
             List<ChatConversation> selectedList = "seller".equals(role) ? sellerConversations : buyerConversations;
             if (selectedList.isEmpty() && "seller".equals(role)) {
                 role = "buyer";
@@ -188,7 +199,16 @@ public class ChatDataServlet extends HttpServlet {
     private User resolveCurrentUser(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (session != null && session.getAttribute("user") instanceof User) {
-            return (User) session.getAttribute("user");
+            User sessionUser = (User) session.getAttribute("user");
+            try {
+                User freshUser = userDao.getUserById(sessionUser.getId());
+                if (freshUser != null) {
+                    session.setAttribute("user", freshUser);
+                    return freshUser;
+                }
+            } catch (Exception ignored) {
+            }
+            return sessionUser;
         }
         return null;
     }
@@ -272,10 +292,21 @@ public class ChatDataServlet extends HttpServlet {
 
     private String userJson(User user) {
         StringBuilder json = new StringBuilder();
+        String province = user.getProvince() != null ? user.getProvince().trim() : "";
+        String ward = user.getWard() != null ? user.getWard().trim() : "";
+        String addressDetail = user.getAddressDetail() != null ? user.getAddressDetail().trim() : "";
+        String phone = user.getPhone() != null ? user.getPhone().trim() : "";
+        boolean hasShippingAddress = !province.isEmpty() && !ward.isEmpty() && !addressDetail.isEmpty() && !phone.isEmpty();
+
         json.append("{");
         appendField(json, "id", user.getId()).append(",");
         appendField(json, "fullName", user.getFullName()).append(",");
-        appendField(json, "initials", initials(user.getFullName()));
+        appendField(json, "initials", initials(user.getFullName())).append(",");
+        appendField(json, "phone", phone).append(",");
+        appendField(json, "province", province).append(",");
+        appendField(json, "ward", ward).append(",");
+        appendField(json, "addressDetail", addressDetail).append(",");
+        appendField(json, "hasShippingAddress", hasShippingAddress);
         json.append("}");
         return json.toString();
     }

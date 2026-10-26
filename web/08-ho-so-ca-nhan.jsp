@@ -207,9 +207,10 @@
     <!-- TABS ĐIỀU HƯỚNG NỘI DUNG TRANG CÁ NHÂN -->
     <c:set var="isStatsTab" value="${param.tab == 'stats'}" />
     <c:set var="isOrdersTab" value="${param.tab == 'orders'}" />
+    <c:set var="isSavedTab" value="${param.tab == 'saved'}" />
     <c:set var="isReviewsTab" value="${param.tab == 'reviews'}" />
     <div class="flex border-b border-slate-200 gap-1 text-xs font-semibold overflow-x-auto">
-      <button id="profileTabPosts" onclick="switchProfileSection('posts')" class="${!isStatsTab && !isOrdersTab && !isReviewsTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
+      <button id="profileTabPosts" onclick="switchProfileSection('posts')" class="${!isStatsTab && !isOrdersTab && !isReviewsTab && !isSavedTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
         Tin Tôi Đang Đăng Bán (<c:choose><c:when test="${not empty myPosts}">${myPosts.size()}</c:when><c:otherwise>0</c:otherwise></c:choose>)
       </button>
       <button id="profileTabOrders" onclick="switchProfileSection('orders')" class="${isOrdersTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
@@ -218,8 +219,8 @@
       <button id="profileTabStats" onclick="switchProfileSection('stats')" class="${isStatsTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
         Thống Kê Doanh Thu &amp; Đơn Bán
       </button>
-      <button id="profileTabSaved" onclick="switchProfileSection('saved')" class="pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap">
-        Tin Đã Lưu Yêu Thích
+      <button id="profileTabSaved" onclick="switchProfileSection('saved')" class="${isSavedTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
+        Tin Đã Lưu Yêu Thích (<c:out value="${savedFavorites.size()}"/>)
       </button>
       <button id="profileTabReviews" onclick="switchProfileSection('reviews')" class="${isReviewsTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
         Đánh Giá Từ Khách Hàng (<%= customerReviews.size() %>)
@@ -227,7 +228,7 @@
     </div>
 
     <!-- PHẦN 1: QUẢN LÝ BÀI ĐĂNG CỦA TÔI -->
-    <section id="sectionPosts" class="space-y-3 ${isStatsTab || isOrdersTab || isReviewsTab ? 'hidden' : ''}">
+    <section id="sectionPosts" class="space-y-3 ${isStatsTab || isOrdersTab || isReviewsTab || isSavedTab ? 'hidden' : ''}">
       
       <!-- BỘ LỌC TRẠNG THÁI BÀI ĐĂNG -->
       <div class="flex items-center justify-between text-xs">
@@ -641,31 +642,39 @@
 
     <!-- PHẦN 3: TIN ĐÃ LƯU YÊU THÍCH (WISHLIST) -->
 
-    <section id="sectionSaved" class="space-y-4 hidden">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex gap-3.5">
-          <img src="assets/images/products/honda-vision-2021.jpg" alt="Vision" class="w-20 h-20 rounded-lg object-cover shrink-0 border border-slate-200">
-          <div class="space-y-1">
-            <span class="font-bold text-slate-900 text-xs block line-clamp-1">Honda Vision bản Cá Tính 2021 màu xám xi măng</span>
-            <span class="text-green-600 font-extrabold text-sm block">26.500.000 đ</span>
-            <div class="flex items-center gap-2 pt-1">
-              <a href="02-chi-tiet-san-pham.jsp" class="text-xs text-blue-600 font-bold hover:underline">Xem ngay</a>
-              <button onclick="removeSaved(this)" class="text-xs text-slate-400 hover:text-red-600">Bỏ lưu</button>
-            </div>
-          </div>
-        </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex gap-3.5">
-          <img src="assets/images/products/tu-lanh-panasonic.jpg" alt="Tủ lạnh" class="w-20 h-20 rounded-lg object-cover shrink-0 border border-slate-200">
-          <div class="space-y-1">
-            <span class="font-bold text-slate-900 text-xs block line-clamp-1">Tủ lạnh Aqua 90 lít làm lạnh nhanh</span>
-            <span class="text-green-600 font-extrabold text-sm block">1.350.000 đ</span>
-            <div class="flex items-center gap-2 pt-1">
-              <a href="02-chi-tiet-san-pham.jsp" class="text-xs text-blue-600 font-bold hover:underline">Xem ngay</a>
-              <button onclick="removeSaved(this)" class="text-xs text-slate-400 hover:text-red-600">Bỏ lưu</button>
-            </div>
-          </div>
-        </div>
+    <section id="sectionSaved" class="space-y-4 ${isSavedTab ? '' : 'hidden'}">
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-xs text-slate-500">Các tin bạn đã lưu từ trang chi tiết sản phẩm.</p>
+        <button id="clearSavedSold" type="button" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">Xóa sản phẩm đã hết</button>
       </div>
+      <c:choose>
+        <c:when test="${not empty savedFavorites}">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <c:forEach var="savedProduct" items="${savedFavorites}">
+              <article class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex gap-3.5 items-center" data-saved-product="${savedProduct.id}">
+                <a href="${pageContext.request.contextPath}/product-detail?id=${savedProduct.id}" class="shrink-0">
+                  <c:choose><c:when test="${not empty savedProduct.primaryImage}"><img src="<c:out value='${savedProduct.primaryImage}'/>" alt="<c:out value='${savedProduct.title}'/>" class="w-20 h-20 rounded-lg object-cover border border-slate-200"></c:when><c:otherwise><div class="w-20 h-20 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-400">Không có ảnh</div></c:otherwise></c:choose>
+                </a>
+                <div class="min-w-0 flex-1 space-y-1">
+                  <a href="${pageContext.request.contextPath}/product-detail?id=${savedProduct.id}" class="font-bold text-slate-900 text-xs block line-clamp-2 hover:text-blue-600"><c:out value="${savedProduct.title}"/></a>
+                  <span class="<c:out value='${savedProduct.status eq "SOLD" ? "text-slate-400" : "text-green-600"}'/> font-extrabold text-sm block"><fmt:formatNumber value="${savedProduct.price}" pattern="#,###"/> đ</span>
+                  <c:if test="${savedProduct.status eq 'SOLD'}"><span class="text-[10px] text-red-600 font-semibold">Sản phẩm đã hết</span></c:if>
+                  <div class="flex items-center gap-3 pt-1">
+                    <a href="${pageContext.request.contextPath}/product-detail?id=${savedProduct.id}" class="text-xs text-blue-600 font-bold hover:underline">Xem ngay</a>
+                    <button type="button" data-remove-saved="${savedProduct.id}" class="text-xs text-slate-400 hover:text-red-600">Bỏ lưu</button>
+                  </div>
+                </div>
+              </article>
+            </c:forEach>
+          </div>
+        </c:when>
+        <c:otherwise>
+          <div class="bg-white rounded-xl border border-slate-200 p-10 text-center">
+            <p class="text-sm text-slate-500">Bạn chưa lưu tin yêu thích nào.</p>
+            <a href="${pageContext.request.contextPath}/home" class="inline-block mt-3 text-xs font-semibold text-blue-600 hover:underline">Khám phá tin đăng</a>
+          </div>
+        </c:otherwise>
+      </c:choose>
     </section>
 
     <!-- PHẦN 3: ĐÁNH GIÁ TỪ KHÁCH HÀNG -->
@@ -795,6 +804,7 @@
   <!-- MODAL CHỈNH SỬA THÔNG TIN CÁ NHÂN -->
   <div id="editProfileModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
     <form id="profileForm" action="${pageContext.request.contextPath}/update-profile" method="post" novalidate class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 text-left my-auto">
+      <input type="hidden" id="profileReturnUrl" name="returnUrl" value="<%= profileFormValues.containsKey("returnUrl") ? h(profileFormValues.get("returnUrl")) : (request.getParameter("returnUrl") != null ? h(request.getParameter("returnUrl")) : "") %>">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 class="font-bold text-slate-900 text-sm uppercase">Chỉnh Sửa Hồ Sơ Cá Nhân</h3>
         <button type="button" onclick="closeModal('editProfileModal')" class="text-slate-400 hover:text-slate-600 font-bold text-lg px-2">✕</button>
@@ -1001,6 +1011,32 @@
   <jsp:include page="includes/footer.jsp" />
 
   <script>
+    const savedFavoritesEndpoint = '${pageContext.request.contextPath}/favorites';
+    async function savedFavoritesAction(action, productId) {
+      const data = new URLSearchParams({ action });
+      if (productId) data.set('productId', productId);
+      const response = await fetch(savedFavoritesEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: data });
+      return response.json();
+    }
+    document.querySelectorAll('[data-remove-saved]').forEach(button => button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        const result = await savedFavoritesAction('remove', button.dataset.removeSaved);
+        if (result.success) window.location.href = '${pageContext.request.contextPath}/my-posts?tab=saved';
+        else alert('Không thể bỏ lưu tin này.');
+      } catch (e) { alert('Không thể kết nối tới máy chủ.'); }
+      finally { button.disabled = false; }
+    }));
+    const clearSavedSoldButton = document.getElementById('clearSavedSold');
+    if (clearSavedSoldButton) clearSavedSoldButton.addEventListener('click', async () => {
+      if (!confirm('Xóa tất cả sản phẩm đã hết khỏi danh sách yêu thích?')) return;
+      try {
+        const result = await savedFavoritesAction('clearSold');
+        if (result.success) window.location.href = '${pageContext.request.contextPath}/my-posts?tab=saved';
+        else alert('Không thể xóa sản phẩm đã hết.');
+      } catch (e) { alert('Không thể kết nối tới máy chủ.'); }
+    });
+
     function switchProfileSection(sec, updateUrl) {
       if (typeof updateUrl === 'undefined') updateUrl = true;
       ['sectionPosts','sectionOrders','sectionStats','sectionSaved','sectionReviews'].forEach(id => {
@@ -1111,11 +1147,6 @@
       btn.disabled = true;
       btn.className = 'px-3 py-1.5 bg-slate-200 text-slate-400 rounded-lg text-xs font-semibold cursor-not-allowed';
       showToast('Đã chuyển trạng thái món đồ sang Đã bán.');
-    }
-
-    function removeSaved(btn) {
-      btn.closest('.bg-white').remove();
-      showToast('Đã xóa món đồ khỏi danh sách yêu thích.');
     }
 
     function boostPostModal(title) {
@@ -1289,6 +1320,17 @@
         showToast('<%= h(profileMessage) %>');
         <% if (profileMessageError || !profileFieldErrors.isEmpty()) { %>openEditProfileModal();<% } %>
       <% } %>
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const returnUrl = urlParams.get('returnUrl');
+      if (returnUrl) {
+        const retInput = document.getElementById('profileReturnUrl');
+        if (retInput) retInput.value = returnUrl;
+      }
+      if (urlParams.get('openEdit') === '1' || urlParams.get('edit') === '1' || urlParams.get('updateAddress') === '1') {
+        openEditProfileModal();
+        showToast('Vui lòng cập nhật thông tin địa chỉ để hoàn tất đặt cọc đơn hàng GHN.');
+      }
     });
   </script>
 

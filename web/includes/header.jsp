@@ -107,6 +107,8 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
         Đơn hàng<% if (currentUser != null && orderCount > 0) { %> <span class="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold bg-blue-600 text-white rounded-full"><%= orderCount %></span><% } %>
       </a>
+      <% if (currentUser != null) { %>
+      <% } %>
 
       <a href="04-chat-tra-gia-vietqr.jsp" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition relative">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
@@ -164,14 +166,29 @@
                   class="notif-item p-3.5 transition cursor-pointer flex gap-3 items-start <%= isUnread ? "bg-blue-50/80 border-l-4 border-l-blue-600 text-slate-900 font-medium" : "bg-white hover:bg-slate-50 border-l-4 border-l-transparent text-slate-500" %>">
                   
                   <!-- ICON THEO LOẠI THÔNG BÁO -->
-                  <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 <%= "ORDER_SHIPPING".equals(n.getType()) ? "bg-amber-100 text-amber-700" : ("REVIEW_RECEIVED".equals(n.getType()) ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700") %>">
-                    <% if ("ORDER_SHIPPING".equals(n.getType())) { %>
-                      📦
-                    <% } else if ("REVIEW_RECEIVED".equals(n.getType())) { %>
-                      ⭐
-                    <% } else { %>
-                      🔔
-                    <% } %>
+                  <%
+                    String badgeBg = "bg-blue-100 text-blue-700";
+                    String notifIcon = "🔔";
+                    String nType = n.getType() != null ? n.getType() : "";
+                    if ("ORDER_PLACED".equals(nType) || "NEW_ORDER".equals(nType)) {
+                      badgeBg = "bg-emerald-100 text-emerald-700";
+                      notifIcon = "🛒";
+                    } else if ("ORDER_CANCEL_REQUEST".equals(nType)) {
+                      badgeBg = "bg-orange-100 text-orange-700";
+                      notifIcon = "⏳";
+                    } else if ("ORDER_CANCELLED".equals(nType)) {
+                      badgeBg = "bg-rose-100 text-rose-700";
+                      notifIcon = "❌";
+                    } else if ("ORDER_SHIPPING".equals(nType)) {
+                      badgeBg = "bg-amber-100 text-amber-700";
+                      notifIcon = "📦";
+                    } else if ("REVIEW_RECEIVED".equals(nType)) {
+                      badgeBg = "bg-yellow-100 text-yellow-700";
+                      notifIcon = "⭐";
+                    }
+                  %>
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 <%= badgeBg %>">
+                    <%= notifIcon %>
                   </div>
 
                   <!-- NỘI DUNG THÔNG BÁO -->
