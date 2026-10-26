@@ -52,17 +52,26 @@ public class ChatDataServlet extends HttpServlet {
         String role = normalizeRole(request.getParameter("role"));
         int selectedId = parseInt(request.getParameter("conversationId"), 0);
         int productId = parseInt(request.getParameter("productId"), 0);
-        if (selectedId <= 0 && productId > 0) {
-            selectedId = chatDAO.findOrCreateConversationForProduct(productId, currentUser.getId());
-            if (selectedId > 0) {
-                role = "buyer";
+        boolean openedFromProduct = selectedId <= 0 && productId > 0;
+        if (openedFromProduct) {
+            int productOwnerId = chatDAO.getProductOwnerId(productId);
+            if (productOwnerId == currentUser.getId()) {
+                // Chủ tin mở chat ở vai người bán, lấy hội thoại của chính tin này.
+                // Không để ID 0 rơi xuống logic mặc định chọn nhầm chat người mua khác.
+                role = "seller";
+                selectedId = chatDAO.findLatestSellerConversationForProduct(productId, currentUser.getId());
+            } else if (productOwnerId > 0) {
+                selectedId = chatDAO.findOrCreateConversationForProduct(productId, currentUser.getId());
+                if (selectedId > 0) {
+                    role = "buyer";
+                }
             }
         }
 
         List<ChatConversation> buyerConversations = chatDAO.getConversations(currentUser.getId(), "buyer");
         List<ChatConversation> sellerConversations = chatDAO.getConversations(currentUser.getId(), "seller");
 
-        if (selectedId <= 0) {
+        if (selectedId <= 0 && !openedFromProduct) {
             List<ChatConversation> selectedList = "seller".equals(role) ? sellerConversations : buyerConversations;
             if (selectedList.isEmpty() && "seller".equals(role)) {
                 role = "buyer";

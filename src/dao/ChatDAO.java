@@ -58,6 +58,36 @@ public class ChatDAO {
         return 0;
     }
 
+    public int getProductOwnerId(int productId) {
+        String sql = "SELECT user_id FROM products WHERE id = ? LIMIT 1";
+        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt("user_id") : 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    public int findLatestSellerConversationForProduct(int productId, int sellerId) {
+        String sql = "SELECT c.id FROM conversations c " +
+                "LEFT JOIN messages lm ON lm.id = (SELECT m.id FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC, m.id DESC LIMIT 1) " +
+                "WHERE c.product_id = ? AND c.seller_id = ? " +
+                "ORDER BY COALESCE(lm.created_at, c.created_at) DESC, c.id DESC LIMIT 1";
+        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, productId);
+            ps.setInt(2, sellerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt("id") : 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
     public int findOrCreateConversationForProduct(int productId, int buyerId) {
         String productSql = "SELECT p.user_id, p.status, NOT EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.id " +
                 "AND o.status IN ('DEPOSITED', 'SHIPPING', 'COMPLETED')) AS is_available FROM products p WHERE p.id = ? LIMIT 1";

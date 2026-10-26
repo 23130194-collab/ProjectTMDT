@@ -1,6 +1,7 @@
 package controller;
 
 import dao.ProductDAO;
+import dao.FavoriteDAO;
 import dao.ProductImageDAO;
 import dao.UserDao;
 import model.Product;
@@ -26,6 +27,7 @@ public class ProductDetailController extends HttpServlet {
     private ProductDAO productDAO = new ProductDAO();
     private ProductImageDAO productImageDAO = new ProductImageDAO();
     private UserDao userDao = new UserDao();
+    private FavoriteDAO favoriteDAO = new FavoriteDAO();
 
     // Thứ tự chuẩn của specs theo từng danh mục (phải khớp với key lưu trong PostAdController)
     private static final Map<Integer, List<String>> SPEC_ORDER = new LinkedHashMap<>();
@@ -100,9 +102,11 @@ public class ProductDetailController extends HttpServlet {
                     }
 
                     req.setAttribute("product", product);
+                    req.setAttribute("isProductOwner", isOwner);
                     req.setAttribute("images", images);
                     req.setAttribute("productSpecs", specsList);
                     req.setAttribute("seller", seller);
+                    req.setAttribute("isFavorited", currentUser != null && favoriteDAO.contains(currentUser.getId(), id));
                     req.getRequestDispatcher("02-chi-tiet-san-pham.jsp").forward(req, resp);
                     return;
                 }
