@@ -19,7 +19,7 @@
     <p class="mt-3 text-xs text-slate-500">Thanh toán thử nghiệm qua VNPay Sandbox.</p>
     <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
       <c:if test="${!paymentSuccessful}">
-        <a href="08-ho-so-ca-nhan.jsp?openEdit=1" class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">Cập nhật địa chỉ trong Hồ sơ</a>
+        <a href="my-posts?openEdit=1" class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">Cập nhật địa chỉ trong Hồ sơ</a>
       </c:if>
       <a href="04-chat-tra-gia-vietqr.jsp" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Quay lại chat</a>
       <a href="05-quan-ly-don-hang.jsp" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Quản lý đơn hàng</a>

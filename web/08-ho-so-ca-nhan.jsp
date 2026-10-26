@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="model.User" %>
 <%@ page import="model.OrderSummary" %>
+<%@ page import="model.Product" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.List" %>
@@ -8,6 +9,10 @@
 <%@ page import="dao.ReviewDAO" %>
 <%@ page import="dao.ReviewDAO.ReviewDetail" %>
 <%@ page import="dao.ReviewDAO.SellerRatingSummary" %>
+<%@ page import="dao.ProductDAO" %>
+<%@ page import="dao.OrderDAO" %>
+<%@ page import="dao.FavoriteDAO" %>
+<%@ page import="dao.UserDao" %>
 <%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="jakarta.tags.fmt" prefix="fmt" %>
 <%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
@@ -70,6 +75,44 @@
   if (currentUser == null) {
     response.sendRedirect(request.getContextPath() + "/07-dang-nhap-xac-thuc.jsp");
     return;
+  }
+
+  // Tự động tải dữ liệu nếu chưa được nạp từ Controller (khi truy cập trực tiếp hoặc đăng nhập vào thẳng JSP)
+  if (request.getAttribute("myPosts") == null) {
+    ProductDAO _pDAO = new ProductDAO();
+    OrderDAO _oDAO = new OrderDAO();
+    FavoriteDAO _fDAO = new FavoriteDAO();
+    ReviewDAO _rDAO = new ReviewDAO();
+    UserDao _uDAO = new UserDao();
+
+    final int currentUserId = currentUser.getId();
+    currentUser.setBumpCredits(_uDAO.getUserBumpCredits(currentUserId));
+    session.setAttribute("user", currentUser);
+
+    List<Product> _myPosts = _pDAO.getProductsByUserId(currentUserId);
+    request.setAttribute("myPosts", _myPosts);
+    request.setAttribute("savedFavorites", _fDAO.list(currentUserId));
+
+    List<OrderSummary> _allOrders = _oDAO.getOrderSummariesForUser(currentUserId);
+    List<OrderSummary> _sellerOrders = _allOrders.stream()
+            .filter(o -> o.sellerId == currentUserId)
+            .collect(java.util.stream.Collectors.toList());
+    request.setAttribute("sellerOrders", _sellerOrders);
+
+    List<OrderSummary> _buyerOrders = _allOrders.stream()
+            .filter(o -> o.buyerId == currentUserId)
+            .collect(java.util.stream.Collectors.toList());
+    request.setAttribute("buyerOrders", _buyerOrders);
+
+    int _successfulOrdersCount = (int) _allOrders.stream()
+            .filter(o -> "COMPLETED".equalsIgnoreCase(o.status))
+            .count();
+    request.setAttribute("successfulOrdersCount", _successfulOrdersCount);
+
+    List<ReviewDetail> _customerReviews = _rDAO.getReviewsForSeller(currentUserId);
+    SellerRatingSummary _sellerRatingSummary = _rDAO.getSellerRatingSummary(currentUserId);
+    request.setAttribute("customerReviews", _customerReviews);
+    request.setAttribute("sellerRatingSummary", _sellerRatingSummary);
   }
 
   String displayName = currentUser.getFullName() != null && !currentUser.getFullName().trim().isEmpty()
@@ -222,9 +265,8 @@
         </div>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <button type="button" onclick="openBumpWalletModal()" class="px-4 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-bold rounded-xl text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-          <span>+ Nạp Lượt Đẩy</span>
+        <button type="button" onclick="openBumpWalletModal()" class="px-4 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-bold rounded-xl text-xs shadow-sm transition flex items-center justify-center cursor-pointer">
+          <span>Nạp Lượt Đẩy</span>
         </button>
       </div>
     </div>
@@ -251,20 +293,20 @@
     <c:set var="isOrdersTab" value="${param.tab == 'orders'}" />
     <c:set var="isSavedTab" value="${param.tab == 'saved'}" />
     <c:set var="isReviewsTab" value="${param.tab == 'reviews'}" />
-    <div class="flex border-b border-slate-200 gap-1 text-xs font-semibold overflow-x-auto">
-      <button id="profileTabPosts" onclick="switchProfileSection('posts')" class="${!isStatsTab && !isOrdersTab && !isReviewsTab && !isSavedTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
+    <div class="flex border-b border-slate-200 text-xs font-semibold w-full overflow-x-auto">
+      <button id="profileTabPosts" onclick="switchProfileSection('posts')" class="flex-1 min-w-[130px] text-center pb-3 px-2 transition whitespace-nowrap ${!isStatsTab && !isOrdersTab && !isReviewsTab && !isSavedTab ? 'text-blue-600 border-b-2 border-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800 border-b-2 border-transparent'}">
         Tin Tôi Đang Đăng Bán (<c:choose><c:when test="${not empty myPosts}">${myPosts.size()}</c:when><c:otherwise>0</c:otherwise></c:choose>)
       </button>
-      <button id="profileTabOrders" onclick="switchProfileSection('orders')" class="${isOrdersTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
+      <button id="profileTabOrders" onclick="switchProfileSection('orders')" class="flex-1 min-w-[130px] text-center pb-3 px-2 transition whitespace-nowrap ${isOrdersTab ? 'text-blue-600 border-b-2 border-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800 border-b-2 border-transparent'}">
         Lịch Sử Mua Hàng (<c:choose><c:when test="${not empty buyerOrders}">${buyerOrders.size()}</c:when><c:otherwise>0</c:otherwise></c:choose>)
       </button>
-      <button id="profileTabStats" onclick="switchProfileSection('stats')" class="${isStatsTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
+      <button id="profileTabStats" onclick="switchProfileSection('stats')" class="flex-1 min-w-[130px] text-center pb-3 px-2 transition whitespace-nowrap ${isStatsTab ? 'text-blue-600 border-b-2 border-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800 border-b-2 border-transparent'}">
         Thống Kê Doanh Thu &amp; Đơn Bán
       </button>
-      <button id="profileTabSaved" onclick="switchProfileSection('saved')" class="${isSavedTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
+      <button id="profileTabSaved" onclick="switchProfileSection('saved')" class="flex-1 min-w-[130px] text-center pb-3 px-2 transition whitespace-nowrap ${isSavedTab ? 'text-blue-600 border-b-2 border-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800 border-b-2 border-transparent'}">
         Tin Đã Lưu Yêu Thích (<c:out value="${savedFavorites.size()}"/>)
       </button>
-      <button id="profileTabReviews" onclick="switchProfileSection('reviews')" class="${isReviewsTab ? 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap' : 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap'}">
+      <button id="profileTabReviews" onclick="switchProfileSection('reviews')" class="flex-1 min-w-[130px] text-center pb-3 px-2 transition whitespace-nowrap ${isReviewsTab ? 'text-blue-600 border-b-2 border-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800 border-b-2 border-transparent'}">
         Đánh Giá Từ Khách Hàng (<%= customerReviews.size() %>)
       </button>
     </div>
@@ -608,45 +650,119 @@
     %>
     <section id="sectionStats" class="space-y-4 ${isStatsTab ? '' : 'hidden'}">
 
-      <!-- 4 METRIC CARDS -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
-          <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">TỔNG DOANH THU ĐÃ BÁN</div>
-          <div class="text-2xl font-bold text-blue-600"><%= fmtRevenue %> đ</div>
-          <div class="text-[11px] text-slate-400 mt-1">Các đơn hàng hoàn tất bàn giao</div>
+      <!-- WIDGET TRUY VẤN GIAO DỊCH (THIẾT KẾ NHỎ GỌN, CÂN XỨNG VỚI CÁC THẺ THỐNG KÊ BÊN DƯỚI) -->
+      <div class="bg-white rounded-xl border border-slate-200 p-2.5 sm:p-3 shadow-2xs">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div class="flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+            <h3 class="text-[11px] font-bold text-slate-800 uppercase tracking-wider">Truy vấn giao dịch</h3>
+            <span id="activeRangeIndicator" class="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">20/10/2026 - 26/10/2026</span>
+          </div>
+          <!-- CÁC NÚT XEM NHANH GỌN GÀNG -->
+          <div class="flex items-center gap-1 text-[10px]">
+            <span class="text-slate-400 mr-0.5">Nhanh:</span>
+            <button type="button" onclick="setQuickRange(7)" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 hover:text-blue-600 font-semibold text-slate-600 transition cursor-pointer">7 ngày</button>
+            <button type="button" onclick="setQuickRange(30)" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 hover:text-blue-600 font-semibold text-slate-600 transition cursor-pointer">30 ngày</button>
+            <button type="button" onclick="setQuickRange('this_month')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 hover:text-blue-600 font-semibold text-slate-600 transition cursor-pointer">Tháng này</button>
+            <button type="button" onclick="setQuickRange('all')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 hover:text-blue-600 font-semibold text-slate-600 transition cursor-pointer">Tất cả</button>
+          </div>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
-          <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">TIỀN CỌC ĐÃ GIẢI NGÂN</div>
-          <div class="text-2xl font-bold text-blue-600"><%= fmtDeposit %> đ</div>
-          <div class="text-[11px] text-slate-400 mt-1">Đã chuyển về tài khoản người bán</div>
+
+        <!-- 3 Ô BỘ LỌC THỜI GIAN: THỐNG NHẤT 100% KIỂU CHỮ, CỠ CHỮ, CỠ SỐ VÀ CHIỀU CAO -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5">
+          <!-- Cột 1: Từ ngày -->
+          <div class="relative bg-slate-50 hover:bg-blue-50/40 border border-slate-200 hover:border-blue-400 rounded-lg px-3 py-2 transition group cursor-pointer flex items-center justify-between h-[40px]">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-[11px] font-bold text-blue-600 uppercase tracking-wide shrink-0">Từ ngày:</span>
+              <span id="displayFromDate" class="text-xs font-bold text-slate-800 tabular-nums truncate">20/10/2026</span>
+            </div>
+            <svg class="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform shrink-0 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect x="3" y="4" width="18" height="18" rx="4" stroke-width="2"/>
+              <line x1="16" y1="2" x2="16" y2="6" stroke-width="2" stroke-linecap="round"/>
+              <line x1="8" y1="2" x2="8" y2="6" stroke-width="2" stroke-linecap="round"/>
+              <line x1="3" y1="10" x2="21" y2="10" stroke-width="2"/>
+            </svg>
+            <input type="date" id="inputFromDate" onclick="try{this.showPicker();}catch(e){}" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="updateDateDisplay('from', this.value); applyStatsFilter();">
+          </div>
+
+          <!-- Cột 2: Đến ngày -->
+          <div class="relative bg-slate-50 hover:bg-blue-50/40 border border-slate-200 hover:border-blue-400 rounded-lg px-3 py-2 transition group cursor-pointer flex items-center justify-between h-[40px]">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-[11px] font-bold text-blue-600 uppercase tracking-wide shrink-0">Đến ngày:</span>
+              <span id="displayToDate" class="text-xs font-bold text-slate-800 tabular-nums truncate">26/10/2026</span>
+            </div>
+            <svg class="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform shrink-0 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect x="3" y="4" width="18" height="18" rx="4" stroke-width="2"/>
+              <line x1="16" y1="2" x2="16" y2="6" stroke-width="2" stroke-linecap="round"/>
+              <line x1="8" y1="2" x2="8" y2="6" stroke-width="2" stroke-linecap="round"/>
+              <line x1="3" y1="10" x2="21" y2="10" stroke-width="2"/>
+            </svg>
+            <input type="date" id="inputToDate" onclick="try{this.showPicker();}catch(e){}" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="updateDateDisplay('to', this.value); applyStatsFilter();">
+          </div>
+
+          <!-- Cột 3: Loại biểu đồ -->
+          <div class="relative bg-slate-50 hover:bg-blue-50/40 border border-slate-200 hover:border-blue-400 rounded-lg px-3 py-2 transition group flex items-center justify-between h-[40px]">
+            <div class="flex items-center gap-1.5 min-w-0 flex-1">
+              <span class="text-[11px] font-bold text-blue-600 uppercase tracking-wide shrink-0">Thống kê theo:</span>
+              <select id="statsPeriodSelect" onchange="applyStatsFilter()"
+                class="text-xs font-bold text-slate-800 bg-transparent border-0 outline-none p-0 cursor-pointer focus:ring-0 font-sans w-full">
+                <option value="day" selected>Theo ngày</option>
+                <option value="week">Theo tuần</option>
+                <option value="month">Theo tháng</option>
+                <option value="year">Theo năm</option>
+              </select>
+            </div>
+          </div>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
-          <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">TIỀN CỌC XÁC NHẬN ĐANG GIỮ</div>
-          <div class="text-2xl font-bold text-amber-500"><%= fmtHolding %> đ</div>
-          <div class="text-[11px] text-slate-400 mt-1">Chỉ tính đơn đã được SePay xác nhận cọc</div>
+      </div>
+
+      <!-- 4 METRIC CARDS (KÍCH THƯỚC NHỎ GỌN, CHỮ CÂN XỨNG, BADGE THỜI GIAN THEO BIỂU ĐỒ) -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
+        <div class="bg-white rounded-xl border border-slate-200 p-3 hover:border-blue-200 transition">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] font-bold uppercase tracking-wide text-slate-400">TỔNG DOANH THU ĐÃ BÁN</span>
+            <span class="statActiveRangeBadge text-[9px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">20/10 - 26/10</span>
+          </div>
+          <div id="statTotalRevenue" class="text-base sm:text-lg font-bold text-blue-600"><%= fmtRevenue %> đ</div>
+          <div class="text-[10px] text-slate-400 mt-0.5 truncate">Các đơn hoàn tất bàn giao</div>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
-          <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">ĐƠN HÀNG THÀNH CÔNG</div>
-          <div class="text-2xl font-bold text-slate-800"><%= completedOrders %> / <%= totalOrders %> đơn</div>
-          <% if (totalOrders == 0) { %>
-            <div class="text-[11px] text-blue-600 mt-1 font-medium">Chưa có đơn hàng để tính tỷ lệ</div>
-          <% } else { %>
-            <div class="text-[11px] text-teal-600 mt-1 font-medium"><%= Math.round(100.0 * completedOrders / totalOrders) %>% hoàn tất</div>
-          <% } %>
+        <div class="bg-white rounded-xl border border-slate-200 p-3 hover:border-blue-200 transition">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] font-bold uppercase tracking-wide text-slate-400">TIỀN CỌC ĐÃ GIẢI NGÂN</span>
+            <span class="statActiveRangeBadge text-[9px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">20/10 - 26/10</span>
+          </div>
+          <div id="statTotalDeposit" class="text-base sm:text-lg font-bold text-blue-600"><%= fmtDeposit %> đ</div>
+          <div class="text-[10px] text-slate-400 mt-0.5 truncate">Đã chuyển về tài khoản bán</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-3 hover:border-amber-200 transition">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] font-bold uppercase tracking-wide text-slate-400">TIỀN CỌC ĐANG GIỮ</span>
+            <span class="statActiveRangeBadge text-[9px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">20/10 - 26/10</span>
+          </div>
+          <div id="statHoldingDeposit" class="text-base sm:text-lg font-bold text-amber-500"><%= fmtHolding %> đ</div>
+          <div class="text-[10px] text-slate-400 mt-0.5 truncate">Đơn đã được xác nhận cọc</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-3 hover:border-teal-200 transition">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] font-bold uppercase tracking-wide text-slate-400">ĐƠN HÀNG THÀNH CÔNG</span>
+            <span class="statActiveRangeBadge text-[9px] font-semibold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">20/10 - 26/10</span>
+          </div>
+          <div id="statCompletedOrders" class="text-base sm:text-lg font-bold text-slate-800"><%= completedOrders %> / <%= totalOrders %> đơn</div>
+          <div id="statCompletionRate" class="text-[10px] <%= totalOrders == 0 ? "text-blue-600" : "text-teal-600" %> mt-0.5 font-medium truncate"><%= totalOrders == 0 ? "Chưa có đơn hàng để tính tỷ lệ" : (Math.round(100.0 * completedOrders / totalOrders) + "% hoàn tất") %></div>
         </div>
       </div>
 
       <!-- BIỂU ĐỒ DOANH THU + DONUT CƠ CẤU -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-4">
           <div class="flex items-start justify-between mb-3">
             <div>
               <div class="text-xs font-bold text-slate-800 uppercase tracking-wide">BIỂU ĐỒ DOANH THU GIAO DỊCH (VNĐ)</div>
               <div class="text-[11px] text-slate-400 mt-0.5">Theo dõi dòng tiền thu được từ giao dịch sản phẩm</div>
             </div>
-            <span class="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 text-slate-600 rounded-lg">Dữ liệu thực tế</span>
+            <span id="chartPeriodBadge" class="px-2 py-0.5 text-[10px] font-semibold bg-blue-50 text-blue-600 rounded-md">Theo ngày</span>
           </div>
-          <div style="position:relative;height:210px">
+          <div style="position:relative;height:230px">
             <canvas id="revenueChart"></canvas>
           </div>
           <% if (totalOrders == 0) { %>
@@ -654,13 +770,16 @@
           <% } %>
         </div>
 
-        <div class="bg-white rounded-xl border border-slate-200 p-5">
-          <div class="text-xs font-bold text-slate-800 uppercase tracking-wide mb-0.5">CƠ CẤU ĐƠN BÁN RA</div>
-          <div class="text-[11px] text-slate-400 mb-3">Tỷ lệ đơn hoàn tất, đang cọc và khiếu nại</div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between mb-0.5">
+            <div class="text-xs font-bold text-slate-800 uppercase tracking-wide">CƠ CẤU ĐƠN BÁN RA</div>
+            <span class="statActiveRangeBadge text-[9px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">20/10 - 26/10</span>
+          </div>
+          <div class="text-[11px] text-slate-400 mb-2">Tỷ lệ đơn hoàn tất, đang cọc và khiếu nại</div>
           <div style="position:relative;height:170px">
             <canvas id="structureChart"></canvas>
           </div>
-          <div class="flex flex-col gap-1.5 mt-3 text-[11px]">
+          <div class="flex flex-col gap-1.5 mt-2.5 text-[11px]">
             <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm" style="background:#14b8a6"></span> Đã hoàn tất</div>
             <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm" style="background:#f59e0b"></span> Đang giữ cọc</div>
             <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm" style="background:#f87171"></span> Đã hủy/khiếu nại</div>
@@ -668,11 +787,14 @@
         </div>
       </div>
 
-      <!-- BẢNG ĐƠN HÀNG CHI TIẾT -->
-      <div class="bg-white rounded-xl border border-slate-200 p-5">
-        <div class="flex items-center justify-between mb-4">
-          <div class="text-xs font-bold text-slate-800 uppercase tracking-wide">ĐƠN HÀNG BÁN CỦA BẠN (CHI TIẾT)</div>
-          <a href="05-quan-ly-don-hang.jsp" class="text-xs text-blue-600 hover:underline font-semibold">Xem tất cả tại Quản lý đơn hàng</a>
+      <!-- BẢNG ĐƠN HÀNG CHI TIẾT (CÓ BADGE THỜI GIAN THEO BIỂU ĐỒ) -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-800 uppercase tracking-wide">ĐƠN HÀNG BÁN CỦA BẠN (CHI TIẾT)</span>
+            <span id="tablePeriodBadge" class="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">20/10/2026 - 26/10/2026</span>
+          </div>
+          <a href="05-quan-ly-don-hang.jsp" class="text-xs text-blue-600 hover:underline font-semibold">[Xem tất cả tại Quản lý đơn hàng]</a>
         </div>
         <% if (sellerOrders.isEmpty()) { %>
           <div class="text-center py-8 text-xs text-slate-400">Bạn chưa có đơn hàng bán nào phát sinh trên sàn.</div>
@@ -681,21 +803,19 @@
             <table class="w-full text-xs">
               <thead>
                 <tr class="border-b border-slate-100 text-[11px] text-slate-400 uppercase tracking-wide">
-                  <th class="pb-2 text-left font-semibold">Sản phẩm</th>
-                  <th class="pb-2 text-left font-semibold">Người mua</th>
-                  <th class="pb-2 text-right font-semibold">Giá thỏa</th>
-                  <th class="pb-2 text-right font-semibold">Tiền cọc</th>
-                  <th class="pb-2 text-center font-semibold">Trạng thái</th>
-                  <th class="pb-2 text-right font-semibold">Ngày</th>
+                  <th class="py-2.5 px-3 text-left font-semibold">Sản phẩm</th>
+                  <th class="py-2.5 px-3 text-center font-semibold">Người mua</th>
+                  <th class="py-2.5 px-3 text-center font-semibold">Giá thỏa</th>
+                  <th class="py-2.5 px-3 text-center font-semibold">Tiền cọc</th>
+                  <th class="py-2.5 px-3 text-center font-semibold">Trạng thái</th>
+                  <th class="py-2.5 px-3 text-center font-semibold">Ngày</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-50">
+              <tbody id="sellerOrdersTableBody" class="divide-y divide-slate-50">
                 <%
                   java.text.NumberFormat nf2 = java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi","VN"));
                   java.text.SimpleDateFormat sdf2 = new java.text.SimpleDateFormat("dd/MM/yyyy");
-                  int shown = 0;
                   for (OrderSummary ord : sellerOrders) {
-                    if (shown >= 10) break; shown++;
                     String bCls, bTxt;
                     if ("COMPLETED".equalsIgnoreCase(ord.status)) {
                       bCls = "bg-teal-50 text-teal-700";
@@ -721,22 +841,25 @@
                     }
                     double pr = ord.agreedPrice > 0 ? ord.agreedPrice : ord.productPrice;
                 %>
-                <tr class="hover:bg-slate-50 transition">
-                  <td class="py-2.5 pr-3">
+                <tr data-order-time="<%= ord.createdAt != null ? ord.createdAt.getTime() : 0L %>" class="hover:bg-slate-50 transition">
+                  <td class="py-2.5 px-3 text-left">
                     <div class="flex items-center gap-2">
                       <img src="<%= ord.productImage %>" alt="" class="w-8 h-8 rounded object-cover border border-slate-100 shrink-0">
                       <span class="line-clamp-1 font-medium text-slate-800"><%= h(ord.productTitle) %></span>
                     </div>
                   </td>
-                  <td class="py-2.5 pr-3 text-slate-500"><%= h(ord.buyerName != null ? ord.buyerName : "N/A") %></td>
-                  <td class="py-2.5 pr-3 text-right font-semibold text-slate-800"><%= nf2.format(pr) %> đ</td>
-                  <td class="py-2.5 pr-3 text-right text-slate-500"><%= nf2.format(ord.depositAmount) %> đ</td>
-                  <td class="py-2.5 pr-3 text-center">
-                    <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold <%= bCls %>"><%= bTxt %></span>
+                  <td class="py-2.5 px-3 text-center text-slate-600 font-medium"><%= h(ord.buyerName != null ? ord.buyerName : "N/A") %></td>
+                  <td class="py-2.5 px-3 text-center font-bold text-slate-800 tabular-nums"><%= nf2.format(pr) %> đ</td>
+                  <td class="py-2.5 px-3 text-center text-slate-500 font-medium tabular-nums"><%= nf2.format(ord.depositAmount) %> đ</td>
+                  <td class="py-2.5 px-3 text-center">
+                    <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-semibold <%= bCls %>"><%= bTxt %></span>
                   </td>
-                  <td class="py-2.5 text-right text-slate-400"><%= ord.createdAt != null ? sdf2.format(ord.createdAt) : "" %></td>
+                  <td class="py-2.5 px-3 text-center text-slate-400 tabular-nums"><%= ord.createdAt != null ? sdf2.format(ord.createdAt) : "" %></td>
                 </tr>
                 <% } %>
+                <tr id="sellerOrdersFilterNoData" class="hidden">
+                  <td colspan="6" class="text-center py-6 text-slate-400">Không có đơn hàng nào trong khoảng thời gian đã chọn.</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -1148,12 +1271,15 @@
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
       });
+      const inactiveTabClass = 'flex-1 min-w-[130px] text-center pb-3 px-2 text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition whitespace-nowrap cursor-pointer';
+      const activeTabClass = 'flex-1 min-w-[130px] text-center pb-3 px-2 text-blue-600 border-b-2 border-blue-600 font-bold transition whitespace-nowrap cursor-pointer';
+
       ['profileTabPosts','profileTabOrders','profileTabStats','profileTabSaved','profileTabReviews'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.className = 'pb-3 px-3 text-slate-500 hover:text-slate-800 transition whitespace-nowrap';
+        if (el) el.className = inactiveTabClass;
       });
 
-      const activeClass = 'pb-3 px-3 text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap';
+      const activeClass = activeTabClass;
       if (sec === 'posts') {
         const secEl = document.getElementById('sectionPosts');
         if (secEl) secEl.classList.remove('hidden');
@@ -1443,59 +1569,331 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script>
     let chartsInited = false;
+    let revenueChartInstance = null;
+    let structureChartInstance = null;
+
+    // Toàn bộ dữ liệu đơn bán được trích xuất sang mảng JavaScript
+    const allSellerOrdersData = [
+      <% for (int i = 0; i < sellerOrders.size(); i++) {
+           OrderSummary ord = sellerOrders.get(i);
+           String iso = ord.createdAt != null ? new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(ord.createdAt) : "";
+           String dmy = ord.createdAt != null ? new java.text.SimpleDateFormat("dd/MM/yyyy").format(ord.createdAt) : "";
+           double priceVal = ord.agreedPrice > 0 ? ord.agreedPrice : ord.productPrice;
+           String pTitle = ord.productTitle != null ? ord.productTitle.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") : "";
+           String pImg = ord.productImage != null ? ord.productImage.replace("\\", "\\\\").replace("'", "\\'") : "";
+           String bName = ord.buyerName != null ? ord.buyerName.replace("\\", "\\\\").replace("'", "\\'") : "";
+           String oStatus = ord.status != null ? ord.status : "";
+           long t = ord.createdAt != null ? ord.createdAt.getTime() : 0L;
+      %>
+      {
+        id: <%= ord.id %>,
+        productTitle: '<%= pTitle %>',
+        productImage: '<%= pImg %>',
+        buyerName: '<%= bName %>',
+        price: <%= priceVal %>,
+        deposit: <%= ord.depositAmount %>,
+        status: '<%= oStatus %>',
+        dateIso: '<%= iso %>',
+        dateStr: '<%= dmy %>',
+        timestamp: <%= t %>
+      }<%= i < sellerOrders.size() - 1 ? "," : "" %>
+      <% } %>
+    ];
+
+    function updateDateDisplay(type, val) {
+      if (!val) return;
+      const parts = val.split('-');
+      if (parts.length === 3) {
+        const dmy = parts[2] + '/' + parts[1] + '/' + parts[0];
+        const el = document.getElementById(type === 'from' ? 'displayFromDate' : 'displayToDate');
+        if (el) el.innerText = dmy;
+      }
+    }
+
+    function initDatePickers() {
+      const fromInput = document.getElementById('inputFromDate');
+      const toInput = document.getElementById('inputToDate');
+      if (!fromInput || !toInput) return;
+      if (fromInput.value && toInput.value) return;
+
+      const now = new Date();
+      const toY = now.getFullYear();
+      const toM = String(now.getMonth() + 1).padStart(2, '0');
+      const toD = String(now.getDate()).padStart(2, '0');
+      const defaultTo = toY + '-' + toM + '-' + toD;
+
+      // 6 ngày trước (tổng cộng 7 ngày giống ảnh mẫu 20/10/2026 - 26/10/2026)
+      const fromObj = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+      const fromY = fromObj.getFullYear();
+      const fromM = String(fromObj.getMonth() + 1).padStart(2, '0');
+      const fromD = String(fromObj.getDate()).padStart(2, '0');
+      const defaultFrom = fromY + '-' + fromM + '-' + fromD;
+
+      fromInput.value = defaultFrom;
+      toInput.value = defaultTo;
+
+      updateDateDisplay('from', defaultFrom);
+      updateDateDisplay('to', defaultTo);
+    }
+
+    function setQuickRange(mode) {
+      const now = new Date();
+      let fromObj = new Date(now);
+
+      if (mode === 7) {
+        fromObj.setDate(now.getDate() - 6);
+      } else if (mode === 30) {
+        fromObj.setDate(now.getDate() - 29);
+      } else if (mode === 'this_month') {
+        fromObj = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (mode === 'all') {
+        if (allSellerOrdersData.length > 0) {
+          let minT = now.getTime();
+          allSellerOrdersData.forEach(o => {
+            if (o.timestamp && o.timestamp < minT) minT = o.timestamp;
+          });
+          fromObj = new Date(minT);
+        } else {
+          fromObj = new Date(now.getFullYear(), 0, 1);
+        }
+      }
+
+      const toY = now.getFullYear();
+      const toM = String(now.getMonth() + 1).padStart(2, '0');
+      const toD = String(now.getDate()).padStart(2, '0');
+
+      const fromY = fromObj.getFullYear();
+      const fromM = String(fromObj.getMonth() + 1).padStart(2, '0');
+      const fromD = String(fromObj.getDate()).padStart(2, '0');
+
+      const fVal = fromY + '-' + fromM + '-' + fromD;
+      const tVal = toY + '-' + toM + '-' + toD;
+
+      const fIn = document.getElementById('inputFromDate');
+      const tIn = document.getElementById('inputToDate');
+      if (fIn) fIn.value = fVal;
+      if (tIn) tIn.value = tVal;
+
+      updateDateDisplay('from', fVal);
+      updateDateDisplay('to', tVal);
+
+      applyStatsFilter();
+    }
+
+    function applyStatsFilter() {
+      const fromVal = document.getElementById('inputFromDate') ? document.getElementById('inputFromDate').value : '';
+      const toVal = document.getElementById('inputToDate') ? document.getElementById('inputToDate').value : '';
+      const periodSelect = document.getElementById('statsPeriodSelect');
+      const period = periodSelect ? periodSelect.value : 'day';
+
+      // Cập nhật nhãn badge thời gian (Loại thống kê)
+      const periodBadge = document.getElementById('chartPeriodBadge');
+      if (periodBadge) {
+        const periodTexts = { day: 'Theo ngày', week: 'Theo tuần', month: 'Theo tháng', year: 'Theo năm' };
+        periodBadge.innerText = periodTexts[period] || 'Theo ngày';
+      }
+
+      // Cập nhật chuỗi mốc thời gian hiển thị trên các thẻ thống kê & bảng chi tiết
+      let shortRangeStr = '';
+      let fullRangeStr = '';
+      if (fromVal && toVal) {
+        const fp = fromVal.split('-');
+        const tp = toVal.split('-');
+        if (fp.length === 3 && tp.length === 3) {
+          shortRangeStr = fp[2] + '/' + fp[1] + ' - ' + tp[2] + '/' + tp[1];
+          fullRangeStr = fp[2] + '/' + fp[1] + '/' + fp[0] + ' - ' + tp[2] + '/' + tp[1] + '/' + tp[0];
+        }
+      }
+
+      const activeRangeEl = document.getElementById('activeRangeIndicator');
+      if (activeRangeEl && fullRangeStr) {
+        activeRangeEl.innerText = fullRangeStr;
+      }
+
+      // Cập nhật tất cả badge trên 4 Card + Donut Chart
+      document.querySelectorAll('.statActiveRangeBadge').forEach(el => {
+        if (shortRangeStr) el.innerText = shortRangeStr;
+      });
+
+      // Cập nhật badge trên bảng ĐƠN HÀNG BÁN CỦA BẠN (CHI TIẾT)
+      const tableBadgeEl = document.getElementById('tablePeriodBadge');
+      if (tableBadgeEl && fullRangeStr) {
+        tableBadgeEl.innerText = fullRangeStr;
+      }
+
+      if (!fromVal || !toVal) return;
+      const fromTime = new Date(fromVal + 'T00:00:00').getTime();
+      const toTime = new Date(toVal + 'T23:59:59.999').getTime();
+
+      // 1. Lọc đơn theo mốc thời gian
+      const filtered = allSellerOrdersData.filter(o => {
+        if (!o.timestamp) return false;
+        return o.timestamp >= fromTime && o.timestamp <= toTime;
+      });
+
+      // 2. Tính toán lại 4 chỉ số Metric Cards
+      let totalRev = 0, totalDep = 0, holdingDep = 0, completedCount = 0;
+      let depOrdersCount = 0, cancOrdersCount = 0;
+
+      filtered.forEach(o => {
+        if (o.status === 'COMPLETED') {
+          totalRev += o.price;
+          totalDep += o.deposit;
+          completedCount++;
+        } else if (['DEPOSIT_CONFIRMED', 'DEPOSIT_PENDING', 'DEPOSITED', 'SHIPPING'].includes(o.status)) {
+          holdingDep += o.deposit;
+          depOrdersCount++;
+        } else if (['CANCELED', 'CANCELLED', 'DISPUTED'].includes(o.status)) {
+          cancOrdersCount++;
+        }
+      });
+
+      const nf = new Intl.NumberFormat('vi-VN');
+      const elRev = document.getElementById('statTotalRevenue');
+      const elDep = document.getElementById('statTotalDeposit');
+      const elHold = document.getElementById('statHoldingDeposit');
+      const elComp = document.getElementById('statCompletedOrders');
+      const elRate = document.getElementById('statCompletionRate');
+
+      if (elRev) elRev.innerText = nf.format(totalRev) + ' đ';
+      if (elDep) elDep.innerText = nf.format(totalDep) + ' đ';
+      if (elHold) elHold.innerText = nf.format(holdingDep) + ' đ';
+      if (elComp) elComp.innerText = completedCount + ' / ' + filtered.length + ' đơn';
+      if (elRate) {
+        if (filtered.length === 0) {
+          elRate.innerText = 'Chưa có đơn trong kỳ';
+          elRate.className = 'text-[11px] text-slate-400 mt-1 font-medium';
+        } else {
+          const pct = Math.round(100.0 * completedCount / filtered.length);
+          elRate.innerText = pct + '% hoàn tất';
+          elRate.className = 'text-[11px] text-teal-600 mt-1 font-medium';
+        }
+      }
+
+      // 3. Gom nhóm dữ liệu theo ngày / tuần / tháng / năm cho biểu đồ cột
+      const sorted = [...filtered].sort((a, b) => a.timestamp - b.timestamp);
+      const bucketMap = new Map();
+
+      sorted.forEach(o => {
+        const d = new Date(o.timestamp);
+        let label = '', sortKey = '';
+
+        if (period === 'day') {
+          const day = String(d.getDate()).padStart(2, '0');
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const y = d.getFullYear();
+          label = day + '/' + m;
+          sortKey = y + '-' + m + '-' + day;
+        } else if (period === 'week') {
+          const startOfWeek = new Date(d);
+          const dayOfWeek = (d.getDay() + 6) % 7; // Mon=0..Sun=6
+          startOfWeek.setDate(d.getDate() - dayOfWeek);
+          const sDay = String(startOfWeek.getDate()).padStart(2, '0');
+          const sM = String(startOfWeek.getMonth() + 1).padStart(2, '0');
+          const sY = startOfWeek.getFullYear();
+
+          const oneJan = new Date(d.getFullYear(), 0, 1);
+          const numberOfDays = Math.floor((d - oneJan) / (24 * 60 * 60 * 1000));
+          const weekNum = Math.ceil((numberOfDays + oneJan.getDay() + 1) / 7);
+
+          label = 'Tuần ' + weekNum + ' (' + sDay + '/' + sM + ')';
+          sortKey = sY + '-' + String(weekNum).padStart(2, '0');
+        } else if (period === 'month') {
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const y = d.getFullYear();
+          label = 'T' + m + '/' + y;
+          sortKey = y + '-' + m;
+        } else if (period === 'year') {
+          const y = String(d.getFullYear());
+          label = 'Năm ' + y;
+          sortKey = y;
+        }
+
+        if (!bucketMap.has(sortKey)) {
+          bucketMap.set(sortKey, { label, rev: 0, dep: 0, sortKey });
+        }
+        const b = bucketMap.get(sortKey);
+        if (o.status === 'COMPLETED') {
+          b.rev += o.price;
+        }
+        if (['DEPOSIT_CONFIRMED', 'DEPOSIT_PENDING', 'DEPOSITED', 'SHIPPING'].includes(o.status)) {
+          b.dep += o.deposit;
+        }
+      });
+
+      const sortedBuckets = Array.from(bucketMap.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+      let chartLabels = sortedBuckets.map(b => b.label);
+      let revenueData = sortedBuckets.map(b => b.rev);
+      let depositData = sortedBuckets.map(b => b.dep);
+
+      if (chartLabels.length === 0) {
+        chartLabels = ['Không có dữ liệu'];
+        revenueData = [0];
+        depositData = [0];
+      }
+
+      if (revenueChartInstance) {
+        revenueChartInstance.data.labels = chartLabels;
+        revenueChartInstance.data.datasets[0].data = revenueData;
+        revenueChartInstance.data.datasets[1].data = depositData;
+        revenueChartInstance.update();
+      }
+
+      // 4. Cập nhật biểu đồ Donut cơ cấu đơn hàng
+      const donutTotal = completedCount + depOrdersCount + cancOrdersCount;
+      if (structureChartInstance) {
+        if (donutTotal > 0) {
+          structureChartInstance.data.labels = ['Đã hoàn tất', 'Đang giữ cọc', 'Đã hủy/khiếu nại'];
+          structureChartInstance.data.datasets[0].data = [completedCount, depOrdersCount, cancOrdersCount];
+          structureChartInstance.data.datasets[0].backgroundColor = ['#14b8a6', '#f59e0b', '#f87171'];
+          structureChartInstance.data.datasets[0].borderWidth = 2;
+        } else {
+          structureChartInstance.data.labels = ['Chưa có đơn hàng'];
+          structureChartInstance.data.datasets[0].data = [1];
+          structureChartInstance.data.datasets[0].backgroundColor = ['#e2e8f0'];
+          structureChartInstance.data.datasets[0].borderWidth = 0;
+        }
+        structureChartInstance.update();
+      }
+
+      // 5. Lọc bảng đơn hàng chi tiết bên dưới
+      const rows = document.querySelectorAll('#sellerOrdersTableBody tr[data-order-time]');
+      let visibleRowCount = 0;
+      rows.forEach(tr => {
+        const t = parseInt(tr.getAttribute('data-order-time'), 10);
+        if (t >= fromTime && t <= toTime) {
+          tr.classList.remove('hidden');
+          visibleRowCount++;
+        } else {
+          tr.classList.add('hidden');
+        }
+      });
+
+      const noDataRow = document.getElementById('sellerOrdersFilterNoData');
+      if (noDataRow) {
+        if (visibleRowCount === 0) {
+          noDataRow.classList.remove('hidden');
+        } else {
+          noDataRow.classList.add('hidden');
+        }
+      }
+    }
+
     function initCharts() {
       if (chartsInited) return;
       chartsInited = true;
 
-      // Dữ liệu thực tế từ server
-      const completed = <%= completedOrders %>;
-      const depositOrders = <%
-        int dOrd = 0;
-        for (OrderSummary o : sellerOrders) {
-          if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status) || "DEPOSITED".equals(o.status)) dOrd++;
-        }
-        out.print(dOrd);
-      %>;
-      const canceledOrders = <%
-        int cOrd = 0;
-        for (OrderSummary o : sellerOrders) {
-          if ("CANCELED".equals(o.status) || "DISPUTED".equals(o.status)) cOrd++;
-        }
-        out.print(cOrd);
-      %>;
+      initDatePickers();
 
-      // Biểu đồ doanh thu + cọc theo ngày — gom tất cả ngày có đơn (cả COMPLETED và DEPOSIT)
-      <%
-        java.util.LinkedHashMap<String,Double> revByDay = new java.util.LinkedHashMap<>();
-        java.util.LinkedHashMap<String,Double> depByDay = new java.util.LinkedHashMap<>();
-        java.util.LinkedHashSet<String> allDays = new java.util.LinkedHashSet<>();
-        java.text.SimpleDateFormat sdfDay = new java.text.SimpleDateFormat("dd/MM");
-        for (OrderSummary o : sellerOrders) {
-          if (o.createdAt == null) continue;
-          String day = sdfDay.format(o.createdAt);
-          allDays.add(day);
-          if ("COMPLETED".equals(o.status)) {
-            revByDay.merge(day, o.agreedPrice > 0 ? o.agreedPrice : o.productPrice, Double::sum);
-          }
-          if ("DEPOSIT_CONFIRMED".equals(o.status) || "DEPOSIT_PENDING".equals(o.status) || "DEPOSITED".equals(o.status)) {
-            depByDay.merge(day, o.depositAmount, Double::sum);
-          }
-        }
-      %>
-      const chartLabels = [<% if (allDays.isEmpty()) { out.print("''"); } else { out.print(allDays.stream().map(k -> "'" + k + "'").collect(java.util.stream.Collectors.joining(","))); } %>];
-      const revenueData  = [<% if (allDays.isEmpty()) { out.print("0"); } else { out.print(allDays.stream().map(k -> String.valueOf(revByDay.getOrDefault(k,0.0))).collect(java.util.stream.Collectors.joining(","))); } %>];
-      const depositData  = [<% if (allDays.isEmpty()) { out.print("0"); } else { out.print(allDays.stream().map(k -> String.valueOf(depByDay.getOrDefault(k,0.0))).collect(java.util.stream.Collectors.joining(","))); } %>];
-
-      // Biểu đồ bar nhóm: doanh thu hoàn tất + tiền cọc đang giữ
       const rCtx = document.getElementById('revenueChart').getContext('2d');
-      new Chart(rCtx, {
+      revenueChartInstance = new Chart(rCtx, {
         type: 'bar',
         data: {
-          labels: chartLabels,
+          labels: [],
           datasets: [
             {
               label: 'Doanh thu hoàn tất (đ)',
-              data: revenueData,
+              data: [],
               backgroundColor: 'rgba(20,184,166,0.75)',
               borderColor: '#14b8a6',
               borderWidth: 1,
@@ -1503,7 +1901,7 @@
             },
             {
               label: 'Tiền cọc đang giữ (đ)',
-              data: depositData,
+              data: [],
               backgroundColor: 'rgba(245,158,11,0.65)',
               borderColor: '#f59e0b',
               borderWidth: 1,
@@ -1512,7 +1910,8 @@
           ]
         },
         options: {
-          responsive: true, maintainAspectRatio: false,
+          responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: {
               display: true,
@@ -1543,39 +1942,40 @@
         }
       });
 
-      // Biểu đồ donut cơ cấu — khi chưa có đơn hiển thị vòng xám trung tính
       const sCtx = document.getElementById('structureChart').getContext('2d');
-      const total = completed + depositOrders + canceledOrders;
-      new Chart(sCtx, {
+      structureChartInstance = new Chart(sCtx, {
         type: 'doughnut',
         data: {
-          labels: total > 0 ? ['Đã hoàn tất', 'Đang giữ cọc', 'Đã hủy/khiếu nại'] : ['Chưa có đơn hàng'],
+          labels: ['Đã hoàn tất', 'Đang giữ cọc', 'Đã hủy/khiếu nại'],
           datasets: [{
-            data: total > 0 ? [completed, depositOrders, canceledOrders] : [1],
-            backgroundColor: total > 0 ? ['#14b8a6', '#f59e0b', '#f87171'] : ['#e2e8f0'],
-            borderWidth: total > 0 ? 2 : 0,
+            data: [0, 0, 0],
+            backgroundColor: ['#14b8a6', '#f59e0b', '#f87171'],
+            borderWidth: 2,
             borderColor: '#fff'
           }]
         },
         options: {
-          responsive: true, maintainAspectRatio: false,
+          responsive: true,
+          maintainAspectRatio: false,
           cutout: '60%',
           plugins: {
             legend: { display: false },
             tooltip: {
               callbacks: {
-                label: ctx => total > 0
-                  ? ' ' + ctx.label + ': ' + ctx.parsed + ' đơn'
-                  : ' Chưa có đơn hàng nào'
+                label: ctx => ' ' + ctx.label + ': ' + ctx.parsed + ' đơn'
               }
             }
           }
         }
       });
+
+      // Áp dụng bộ lọc lần đầu
+      applyStatsFilter();
     }
 
     // Tự động kích hoạt tab dựa vào URL parameter ?tab= hoặc #hash
     document.addEventListener('DOMContentLoaded', function() {
+      initDatePickers();
       const urlParams = new URLSearchParams(window.location.search);
       const tab = urlParams.get('tab') || (window.location.hash ? window.location.hash.replace('#', '') : null);
       if (tab === 'stats') {

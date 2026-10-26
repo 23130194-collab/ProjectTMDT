@@ -1,7 +1,7 @@
 <component name="libraryTable">
   <library name="jakarta.servlet-api-6.0.0">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../../DoAn_TMDT/jakarta.servlet-api-6.0.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../jakarta.servlet-api-6.0.0.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
