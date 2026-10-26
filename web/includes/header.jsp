@@ -164,14 +164,29 @@
                   class="notif-item p-3.5 transition cursor-pointer flex gap-3 items-start <%= isUnread ? "bg-blue-50/80 border-l-4 border-l-blue-600 text-slate-900 font-medium" : "bg-white hover:bg-slate-50 border-l-4 border-l-transparent text-slate-500" %>">
                   
                   <!-- ICON THEO LOẠI THÔNG BÁO -->
-                  <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 <%= "ORDER_SHIPPING".equals(n.getType()) ? "bg-amber-100 text-amber-700" : ("REVIEW_RECEIVED".equals(n.getType()) ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700") %>">
-                    <% if ("ORDER_SHIPPING".equals(n.getType())) { %>
-                      📦
-                    <% } else if ("REVIEW_RECEIVED".equals(n.getType())) { %>
-                      ⭐
-                    <% } else { %>
-                      🔔
-                    <% } %>
+                  <%
+                    String badgeBg = "bg-blue-100 text-blue-700";
+                    String notifIcon = "🔔";
+                    String nType = n.getType() != null ? n.getType() : "";
+                    if ("ORDER_PLACED".equals(nType) || "NEW_ORDER".equals(nType)) {
+                      badgeBg = "bg-emerald-100 text-emerald-700";
+                      notifIcon = "🛒";
+                    } else if ("ORDER_CANCEL_REQUEST".equals(nType)) {
+                      badgeBg = "bg-orange-100 text-orange-700";
+                      notifIcon = "⏳";
+                    } else if ("ORDER_CANCELLED".equals(nType)) {
+                      badgeBg = "bg-rose-100 text-rose-700";
+                      notifIcon = "❌";
+                    } else if ("ORDER_SHIPPING".equals(nType)) {
+                      badgeBg = "bg-amber-100 text-amber-700";
+                      notifIcon = "📦";
+                    } else if ("REVIEW_RECEIVED".equals(nType)) {
+                      badgeBg = "bg-yellow-100 text-yellow-700";
+                      notifIcon = "⭐";
+                    }
+                  %>
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 <%= badgeBg %>">
+                    <%= notifIcon %>
                   </div>
 
                   <!-- NỘI DUNG THÔNG BÁO -->

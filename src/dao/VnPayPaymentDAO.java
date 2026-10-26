@@ -203,6 +203,7 @@ public class VnPayPaymentDAO {
                 cancelOtherPendingPayments(conn, productId, paymentId);
                 updatePayment(conn, paymentId, "PAID", transactionNo, responseCode, orderId);
                 addPaymentSystemMessage(conn, conversationId, buyerId, depositAmount);
+                sendOrderPlacedNotifications(conn, orderId, productId, buyerId, sellerId, depositAmount);
                 conn.commit();
                 return new CallbackResult(true, "Thanh toán đặt cọc thành công.");
             } catch (SQLException e) {
@@ -244,6 +245,52 @@ public class VnPayPaymentDAO {
             ps.setInt(2, buyerId);
             ps.setString(3, content);
             ps.executeUpdate();
+        }
+    }
+
+    private void sendOrderPlacedNotifications(Connection conn, int orderId, int productId, int buyerId, int sellerId, double depositAmount) {
+        try {
+            String productTitle = "Sản phẩm #" + productId;
+            String getProductSql = "SELECT title FROM products WHERE id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(getProductSql)) {
+                ps.setInt(1, productId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next() && rs.getString("title") != null) {
+                        productTitle = rs.getString("title");
+                    }
+                }
+            }
+            String buyerName = "Người mua #" + buyerId;
+            String getBuyerSql = "SELECT full_name FROM users WHERE id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(getBuyerSql)) {
+                ps.setInt(1, buyerId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next() && rs.getString("full_name") != null && !rs.getString("full_name").trim().isEmpty()) {
+                        buyerName = rs.getString("full_name").trim();
+                    }
+                }
+            }
+
+            String formattedDeposit = java.text.NumberFormat.getIntegerInstance(new java.util.Locale("vi", "VN")).format(Math.round(depositAmount)) + " đ";
+            String targetUrl = "05-quan-ly-don-hang.jsp?orderId=" + orderId;
+
+            NotificationDAO notifDAO = new NotificationDAO();
+            // 1. Thông báo cho Người Mua
+            notifDAO.createNotification(conn, buyerId,
+                    "Đặt cọc thành công đơn hàng #" + orderId,
+                    "Bạn đã đặt cọc thành công " + formattedDeposit + " cho sản phẩm \"" + productTitle + "\". Đơn hàng đã chuyển sang trạng thái Đã Đặt Cọc.",
+                    "ORDER_PLACED",
+                    targetUrl);
+
+            // 2. Thông báo cho Người Bán
+            notifDAO.createNotification(conn, sellerId,
+                    "Đơn hàng mới #" + orderId,
+                    buyerName + " đã đặt cọc " + formattedDeposit + " cho sản phẩm \"" + productTitle + "\". Vui lòng chuẩn bị và giao hàng cho người mua.",
+                    "NEW_ORDER",
+                    targetUrl);
+        } catch (Exception e) {
+            System.err.println("[VnPayPaymentDAO] Lỗi gửi thông báo đặt hàng: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

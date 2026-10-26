@@ -7,11 +7,29 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
 public class OrderDAO {
+    private static volatile boolean cancelColumnsEnsured = false;
+
+    private static void ensureCancelColumns(Connection conn) {
+        if (cancelColumnsEnsured) return;
+        try (Statement st = conn.createStatement()) {
+            try {
+                st.executeUpdate("ALTER TABLE orders ADD COLUMN cancel_requested BOOLEAN DEFAULT FALSE AFTER status");
+            } catch (SQLException ignored) {}
+            try {
+                st.executeUpdate("ALTER TABLE orders ADD COLUMN cancel_reason VARCHAR(255) NULL AFTER cancel_requested");
+            } catch (SQLException ignored) {}
+            try {
+                st.executeUpdate("ALTER TABLE orders ADD COLUMN cancel_requested_at TIMESTAMP NULL AFTER cancel_reason");
+            } catch (SQLException ignored) {}
+            cancelColumnsEnsured = true;
+        } catch (SQLException ignored) {}
+    }
 
     public int countOrdersForUser(int userId) {
         String sql = "SELECT COUNT(*) FROM orders WHERE buyer_id = ? OR seller_id = ?";
@@ -37,6 +55,7 @@ public class OrderDAO {
                 "o.seller_confirmed_at, o.buyer_confirmed_at, " +
                 "o.tracking_code, COALESCE(o.shipping_provider, 'GHN') AS shipping_provider, " +
                 "o.shipping_status, o.shipping_note, " +
+                "COALESCE(o.cancel_requested, 0) AS cancel_requested, o.cancel_reason, o.cancel_requested_at, " +
                 "p.title AS product_title, p.price AS product_price, " +
                 "COALESCE(p.address_detail, p.location) AS product_address, " +
                 "p.province AS product_province, p.ward AS product_ward, " +
@@ -52,13 +71,15 @@ public class OrderDAO {
                 "LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1 " +
                 "WHERE o.buyer_id = ? OR o.seller_id = ? " +
                 "ORDER BY o.created_at DESC, o.id DESC";
-        try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, userId);
-            ps.setInt(2, userId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    orders.add(mapResultSetToOrderSummary(rs));
+        try (Connection conn = DBContext.getConnection()) {
+            ensureCancelColumns(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, userId);
+                ps.setInt(2, userId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        orders.add(mapResultSetToOrderSummary(rs));
+                    }
                 }
             }
         } catch (SQLException | IllegalStateException e) {
@@ -75,6 +96,7 @@ public class OrderDAO {
                 "o.seller_confirmed_at, o.buyer_confirmed_at, " +
                 "o.tracking_code, COALESCE(o.shipping_provider, 'GHN') AS shipping_provider, " +
                 "o.shipping_status, o.shipping_note, " +
+                "COALESCE(o.cancel_requested, 0) AS cancel_requested, o.cancel_reason, o.cancel_requested_at, " +
                 "p.title AS product_title, p.price AS product_price, " +
                 "COALESCE(p.address_detail, p.location) AS product_address, " +
                 "p.province AS product_province, p.ward AS product_ward, " +
@@ -89,12 +111,14 @@ public class OrderDAO {
                 "JOIN users seller ON seller.id = o.seller_id " +
                 "LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1 " +
                 "WHERE o.id = ?";
-        try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, orderId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return mapResultSetToOrderSummary(rs);
+        try (Connection conn = DBContext.getConnection()) {
+            ensureCancelColumns(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, orderId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return mapResultSetToOrderSummary(rs);
+                    }
                 }
             }
         } catch (SQLException | IllegalStateException e) {
@@ -123,6 +147,9 @@ public class OrderDAO {
         item.shippingProvider = rs.getString("shipping_provider");
         item.shippingStatus = rs.getString("shipping_status");
         item.shippingNote = rs.getString("shipping_note");
+        item.cancelRequested = rs.getBoolean("cancel_requested");
+        item.cancelReason = rs.getString("cancel_reason");
+        item.cancelRequestedAt = rs.getTimestamp("cancel_requested_at");
 
         item.productTitle = rs.getString("product_title");
         item.productPrice = rs.getDouble("product_price");
@@ -461,5 +488,153 @@ public class OrderDAO {
         } catch (SQLException e) {
             System.err.println("[OrderDAO] Không thể gửi tin nhắn hệ thống: " + e.getMessage());
         }
+    }
+
+    public boolean requestCancelOrderByBuyer(int orderId, int buyerId, String cancelReason) {
+        String selectSql = "SELECT o.buyer_id, o.seller_id, o.product_id, p.title " +
+                "FROM orders o JOIN products p ON o.product_id = p.id WHERE o.id = ? AND o.buyer_id = ?";
+        String updateSql = "UPDATE orders SET cancel_requested = 1, cancel_reason = ?, cancel_requested_at = CURRENT_TIMESTAMP WHERE id = ?";
+
+        try (Connection conn = DBContext.getConnection()) {
+            ensureCancelColumns(conn);
+            int sellerId = 0;
+            int productId = 0;
+            String productTitle = "";
+
+            try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
+                ps.setInt(1, orderId);
+                ps.setInt(2, buyerId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) return false;
+                    sellerId = rs.getInt("seller_id");
+                    productId = rs.getInt("product_id");
+                    productTitle = rs.getString("title");
+                }
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+                ps.setString(1, cancelReason);
+                ps.setInt(2, orderId);
+                int rows = ps.executeUpdate();
+                if (rows > 0) {
+                    String sysMsg = "Người mua đã gửi yêu cầu hủy đơn hàng #" + orderId + ". Lý do: " + cancelReason + ". Đang chờ người bán phản hồi.";
+                    sendSystemMessage(conn, productId, buyerId, sellerId, sysMsg);
+
+                    NotificationDAO notifDAO = new NotificationDAO();
+                    notifDAO.createNotification(conn, sellerId, "Yêu cầu hủy đơn hàng #" + orderId,
+                            "Người mua yêu cầu hủy đơn cho sản phẩm \"" + productTitle + "\". Lý do: " + cancelReason + ". Vui lòng xem xét.",
+                            "ORDER_CANCEL_REQUESTED", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                    return true;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean acceptCancelOrderBySeller(int orderId, int sellerId) {
+        String selectSql = "SELECT o.buyer_id, o.seller_id, o.product_id, o.deposit_amount, o.cancel_reason, p.title " +
+                "FROM orders o JOIN products p ON o.product_id = p.id WHERE o.id = ? AND o.seller_id = ?";
+        String updateOrderSql = "UPDATE orders SET status = 'CANCELLED', shipping_status = 'CANCELLED', cancel_requested = 0, " +
+                "shipping_note = CONCAT('Người bán đã đồng ý hủy đơn. Lý do hủy: ', COALESCE(cancel_reason, 'Người mua yêu cầu hủy')) WHERE id = ?";
+        String updateProductSql = "UPDATE products SET status = 'ACTIVE' WHERE id = ?";
+
+        try (Connection conn = DBContext.getConnection()) {
+            ensureCancelColumns(conn);
+            conn.setAutoCommit(false);
+            try {
+                int buyerId = 0;
+                int productId = 0;
+                double depositAmount = 0;
+                String productTitle = "";
+
+                try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
+                    ps.setInt(1, orderId);
+                    ps.setInt(2, sellerId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            conn.rollback();
+                            return false;
+                        }
+                        buyerId = rs.getInt("buyer_id");
+                        productId = rs.getInt("product_id");
+                        depositAmount = rs.getDouble("deposit_amount");
+                        productTitle = rs.getString("title");
+                    }
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(updateOrderSql)) {
+                    ps.setInt(1, orderId);
+                    ps.executeUpdate();
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(updateProductSql)) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                String sysMsg = "Người bán đã đồng ý yêu cầu hủy đơn hàng #" + orderId + ". Đơn hàng đã hủy thành công, tiền cọc 100% được hoàn lại cho Người Mua và sản phẩm đã mở bán lại.";
+                sendSystemMessage(conn, productId, buyerId, sellerId, sysMsg);
+
+                NotificationDAO notifDAO = new NotificationDAO();
+                notifDAO.createNotification(conn, buyerId, "Đơn hàng #" + orderId + " đã được hủy thành công",
+                        "Người bán đã đồng ý yêu cầu hủy đơn \"" + productTitle + "\". Tiền cọc " + String.format("%,.0f đ", depositAmount) + " đã được hoàn lại cho bạn.",
+                        "ORDER_CANCELLED", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+
+                conn.commit();
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean rejectCancelOrderBySeller(int orderId, int sellerId, String rejectReason) {
+        String selectSql = "SELECT o.buyer_id, o.seller_id, o.product_id, p.title " +
+                "FROM orders o JOIN products p ON o.product_id = p.id WHERE o.id = ? AND o.seller_id = ?";
+        String updateSql = "UPDATE orders SET cancel_requested = 0 WHERE id = ?";
+
+        try (Connection conn = DBContext.getConnection()) {
+            ensureCancelColumns(conn);
+            int buyerId = 0;
+            int productId = 0;
+            String productTitle = "";
+
+            try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
+                ps.setInt(1, orderId);
+                ps.setInt(2, sellerId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) return false;
+                    buyerId = rs.getInt("buyer_id");
+                    productId = rs.getInt("product_id");
+                    productTitle = rs.getString("title");
+                }
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+                ps.setInt(1, orderId);
+                int rows = ps.executeUpdate();
+                if (rows > 0) {
+                    String sysMsg = "Người bán đã từ chối yêu cầu hủy đơn hàng #" + orderId + ". Lý do: " + rejectReason + ". Đơn hàng tiếp tục theo quy trình.";
+                    sendSystemMessage(conn, productId, buyerId, sellerId, sysMsg);
+
+                    NotificationDAO notifDAO = new NotificationDAO();
+                    notifDAO.createNotification(conn, buyerId, "Yêu cầu hủy đơn hàng #" + orderId + " bị từ chối",
+                            "Người bán từ chối yêu cầu hủy đơn \"" + productTitle + "\". Lý do: " + rejectReason + ". Đơn hàng sẽ tiếp tục giao nhận.",
+                            "ORDER_UPDATE", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                    return true;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }

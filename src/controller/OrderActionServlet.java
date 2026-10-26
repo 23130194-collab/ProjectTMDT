@@ -105,6 +105,71 @@ public class OrderActionServlet extends HttpServlet {
             } else {
                 sendResponse(request, response, false, "Không thể cập nhật trạng thái đơn hàng. Vui lòng thử lại.", null);
             }
+        } else if ("buyer_request_cancel".equalsIgnoreCase(action)) {
+            // Người mua gửi yêu cầu hủy đơn
+            if (!isBuyer) {
+                sendResponse(request, response, false, "Chỉ Người Mua mới có thể yêu cầu hủy đơn hàng.", null);
+                return;
+            }
+            if ("COMPLETED".equalsIgnoreCase(order.status) || "CANCELLED".equalsIgnoreCase(order.status) || "CANCELED".equalsIgnoreCase(order.status)) {
+                sendResponse(request, response, false, "Đơn hàng này đã hoàn tất hoặc đã hủy, không thể yêu cầu hủy thêm.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                return;
+            }
+            if (order.deliveryMethod == 1 && order.sellerConfirmed) {
+                sendResponse(request, response, false, "Người bán đã bấm xác nhận giao hàng trực tiếp. Không thể yêu cầu hủy đơn lúc này.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                return;
+            }
+            if (order.deliveryMethod == 2 && order.trackingCode != null && !order.trackingCode.trim().isEmpty() && !"CHO_LAY_HANG".equalsIgnoreCase(order.shippingStatus)) {
+                sendResponse(request, response, false, "Đơn hàng GHN đang được vận chuyển. Không thể yêu cầu hủy đơn lúc này.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                return;
+            }
+
+            String cancelReason = request.getParameter("cancelReason");
+            if (cancelReason == null || cancelReason.trim().isEmpty()) {
+                cancelReason = "Người mua đổi ý không muốn mua nữa";
+            }
+            boolean ok = orderDAO.requestCancelOrderByBuyer(orderId, currentUser.getId(), cancelReason.trim());
+            if (ok) {
+                sendResponse(request, response, true, "Đã gửi yêu cầu hủy đơn hàng đến Người Bán! Vui lòng chờ người bán xem xét và đồng ý hoàn cọc.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+            } else {
+                sendResponse(request, response, false, "Không thể gửi yêu cầu hủy đơn lúc này. Vui lòng thử lại.", null);
+            }
+        } else if ("seller_accept_cancel".equalsIgnoreCase(action)) {
+            // Người bán đồng ý hủy đơn và hoàn cọc
+            if (!isSeller) {
+                sendResponse(request, response, false, "Chỉ Người Bán mới có thể đồng ý hủy đơn hàng.", null);
+                return;
+            }
+            if (!order.cancelRequested) {
+                sendResponse(request, response, false, "Đơn hàng này chưa có yêu cầu hủy nào từ người mua.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                return;
+            }
+            boolean ok = orderDAO.acceptCancelOrderBySeller(orderId, currentUser.getId());
+            if (ok) {
+                sendResponse(request, response, true, "Bạn đã đồng ý hủy đơn hàng. Tiền cọc đã được hoàn trả lại cho Người Mua và sản phẩm đã mở bán lại.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+            } else {
+                sendResponse(request, response, false, "Không thể xử lý hủy đơn hàng lúc này. Vui lòng thử lại.", null);
+            }
+        } else if ("seller_reject_cancel".equalsIgnoreCase(action)) {
+            // Người bán từ chối yêu cầu hủy đơn
+            if (!isSeller) {
+                sendResponse(request, response, false, "Chỉ Người Bán mới có thể từ chối yêu cầu hủy đơn.", null);
+                return;
+            }
+            if (!order.cancelRequested) {
+                sendResponse(request, response, false, "Đơn hàng này chưa có yêu cầu hủy nào từ người mua.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                return;
+            }
+            String rejectReason = request.getParameter("rejectReason");
+            if (rejectReason == null || rejectReason.trim().isEmpty()) {
+                rejectReason = "Người bán từ chối yêu cầu hủy và tiếp tục giao dịch";
+            }
+            boolean ok = orderDAO.rejectCancelOrderBySeller(orderId, currentUser.getId(), rejectReason.trim());
+            if (ok) {
+                sendResponse(request, response, true, "Bạn đã từ chối yêu cầu hủy đơn. Đơn hàng tiếp tục theo quy trình giao nhận.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+            } else {
+                sendResponse(request, response, false, "Không thể cập nhật yêu cầu hủy đơn. Vui lòng thử lại.", null);
+            }
         } else if ("ghn_create".equalsIgnoreCase(action)) {
             // Người bán tạo đơn vận chuyển qua GHN
             if (!isSeller) {
