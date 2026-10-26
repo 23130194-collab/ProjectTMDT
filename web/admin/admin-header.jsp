@@ -405,6 +405,16 @@
       </svg>
       Từ khóa cấm
     </a>
+
+    <span class="sidebar-section-label">Dịch vụ &amp; Doanh thu</span>
+    <a href="<%= request.getContextPath() %>/admin/boost-packages"
+       class="sidebar-link <%= "boost-packages".equals(adminPage) ? "active" : "" %>">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M13 10V3L4 14h7v7l9-11h-7z"/>
+      </svg>
+      Gói Đẩy Tin &amp; VIP
+    </a>
   </nav>
 
   <!-- Bottom -->

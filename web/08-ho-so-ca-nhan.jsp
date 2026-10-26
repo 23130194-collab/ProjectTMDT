@@ -10,6 +10,7 @@
 <%@ page import="dao.ReviewDAO.SellerRatingSummary" %>
 <%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="jakarta.tags.fmt" prefix="fmt" %>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
 <%!
   private String h(String value) {
     if (value == null) {
@@ -204,6 +205,47 @@
       </div>
     </div>
 
+    <!-- WIDGET VÍ LƯỢT ĐẨY CHUNG TOÀN TÀI KHOẢN -->
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white p-4 shadow-sm border border-slate-800 mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+          🚀
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs uppercase tracking-wider text-blue-300 font-bold">Ví Lượt Đẩy Tin</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] bg-blue-500/20 text-blue-200 border border-blue-400/20 font-semibold">Ví tài khoản chung</span>
+          </div>
+          <div class="text-xs text-slate-300 mt-0.5">
+            Bạn đang có: <strong id="walletBumpCreditsCount" class="text-base font-extrabold text-amber-300">${sessionScope.user.bumpCredits != null ? sessionScope.user.bumpCredits : 0}</strong> lượt đẩy khả dụng (Dùng được cho mọi tin đăng của bạn)
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button type="button" onclick="openBumpWalletModal()" class="px-4 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-bold rounded-xl text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+          <span>+ Nạp Lượt Đẩy</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- THÔNG BÁO FLASH MESSAGE TỪ GÓI ĐẨY TIN -->
+    <%
+      String boostFlashMsg = (String) session.getAttribute("boostFlashMessage");
+      Boolean boostFlashSuccess = (Boolean) session.getAttribute("boostFlashSuccess");
+      if (boostFlashMsg != null) {
+        session.removeAttribute("boostFlashMessage");
+        session.removeAttribute("boostFlashSuccess");
+    %>
+      <div id="boostFlashBanner" class="p-3.5 rounded-xl <%= Boolean.TRUE.equals(boostFlashSuccess) ? "bg-emerald-50 border border-emerald-200 text-emerald-800" : "bg-red-50 border border-red-200 text-red-800" %> flex items-center justify-between text-xs font-semibold shadow-xs mb-3">
+        <div class="flex items-center gap-2">
+          <span><%= Boolean.TRUE.equals(boostFlashSuccess) ? "✓" : "✕" %></span>
+          <span><%= boostFlashMsg %></span>
+        </div>
+        <button type="button" onclick="document.getElementById('boostFlashBanner').remove()" class="text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer">✕</button>
+      </div>
+    <% } %>
+
     <!-- TABS ĐIỀU HƯỚNG NỘI DUNG TRANG CÁ NHÂN -->
     <c:set var="isStatsTab" value="${param.tab == 'stats'}" />
     <c:set var="isOrdersTab" value="${param.tab == 'orders'}" />
@@ -252,7 +294,7 @@
       <c:choose>
         <c:when test="${not empty myPosts}">
           <c:forEach var="post" items="${myPosts}">
-            <div class="post-item bg-white rounded-xl border border-slate-200 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+            <div class="post-item bg-white rounded-xl ${post.vipActive ? 'border-2 border-amber-300 shadow-sm shadow-amber-50' : 'border border-slate-200'} p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition"
                  data-status="${post.status}">
               <div class="flex items-center gap-3">
                 <c:choose>
@@ -266,7 +308,20 @@
                   </c:otherwise>
                 </c:choose>
                 <div>
-                  <span class="font-semibold text-slate-900 text-sm block">${post.title}</span>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-semibold text-slate-900 text-sm">${post.title}</span>
+                    <c:if test="${post.vipActive}">
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1 ${post.priorityLevel >= 2 ? 'bg-purple-100 text-purple-800 border border-purple-300' : 'bg-amber-100 text-amber-800 border border-amber-300'} shadow-2xs">
+                        <span>${post.priorityLevel >= 2 ? '👑 VIP Kim Cương' : '⭐ VIP Nổi Bật'}</span>
+                        <span class="opacity-75 font-normal">(${post.vipRemainingTimeText})</span>
+                      </span>
+                    </c:if>
+                    <c:if test="${post.remainingBumps > 0}">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                        🚀 Còn ${post.remainingBumps} lượt đẩy riêng
+                      </span>
+                    </c:if>
+                  </div>
                   <div class="flex items-center gap-2 text-xs mt-1 text-slate-500 flex-wrap">
                     <c:choose>
                       <c:when test="${post.price == 0}">
@@ -301,6 +356,56 @@
               </div>
 
               <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                <!-- NÚT GÓI ĐẨY TIN (VÍ CHUNG) / GHIM VIP -->
+                <c:if test="${post.status == 'ACTIVE'}">
+                  <c:choose>
+                    <c:when test="${sessionScope.user.bumpCredits > 0}">
+                      <button type="button" 
+                              data-title="<c:out value='${post.title}'/>"
+                              onclick="triggerPostBump(${post.id}, this.getAttribute('data-title'))" 
+                              class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shadow-xs transition flex items-center gap-1 cursor-pointer" 
+                              title="Dùng 1 lượt từ Ví để đưa tin này lên đầu trang">
+                        <span>🚀 Đẩy Tin (${sessionScope.user.bumpCredits})</span>
+                      </button>
+                    </c:when>
+                    <c:otherwise>
+                      <button type="button" 
+                              onclick="openBumpWalletModal()" 
+                              class="px-3 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-300 font-bold rounded-lg text-xs transition flex items-center gap-1 cursor-pointer" 
+                              title="Ví đã hết lượt. Bấm để nạp thêm lượt đẩy">
+                        <span>🚀 Đẩy Tin (0 lượt)</span>
+                      </button>
+                    </c:otherwise>
+                  </c:choose>
+
+                  <c:choose>
+                    <c:when test="${post.vipActive}">
+                      <button type="button" 
+                              data-title="<c:out value='${post.title}'/>"
+                              data-price="<fmt:formatNumber value='${post.price}' type='number' groupingUsed='true' maxFractionDigits='0'/> đ"
+                              data-image="${not empty post.primaryImage ? post.primaryImage : ''}"
+                              data-vip-exp="${post.pinnedUntilFormatted}"
+                              data-vip-rem="${post.vipRemainingTimeText}"
+                              onclick="openVipUpgradeModal(${post.id}, this.getAttribute('data-title'), true, this.getAttribute('data-vip-exp'), this.getAttribute('data-vip-rem'), this.getAttribute('data-price'), this.getAttribute('data-image'))" 
+                              class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-lg text-xs shadow-xs transition flex items-center gap-1 cursor-pointer"
+                              title="Tin đang VIP. Bấm để gia hạn cộng dồn thêm ngày">
+                        <span>👑 Gia Hạn VIP</span>
+                      </button>
+                    </c:when>
+                    <c:otherwise>
+                      <button type="button" 
+                              data-title="<c:out value='${post.title}'/>"
+                              data-price="<fmt:formatNumber value='${post.price}' type='number' groupingUsed='true' maxFractionDigits='0'/> đ"
+                              data-image="${not empty post.primaryImage ? post.primaryImage : ''}"
+                              onclick="openVipUpgradeModal(${post.id}, this.getAttribute('data-title'), false, '', '', this.getAttribute('data-price'), this.getAttribute('data-image'))" 
+                              class="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-lg text-xs shadow-xs transition flex items-center gap-1 cursor-pointer"
+                              title="Ghim bài viết lên vị trí VIP ưu tiên">
+                        <span>👑 Ghim VIP</span>
+                      </button>
+                    </c:otherwise>
+                  </c:choose>
+                </c:if>
+
                 <a href="product-detail?id=${post.id}" class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-xs text-slate-600">
                   Xem bài
                 </a>
@@ -1500,6 +1605,600 @@
         </c:if>
       }
     });
+  </script>
+
+  <!-- ==================== MODAL 1: NẠP VÍ LƯỢT ĐẨY TIN ==================== -->
+  <div id="bumpWalletModal" class="hidden fixed inset-0 z-[120] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 text-white flex items-center justify-center text-xl shadow-xs">
+            🚀
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              Nạp Ví Lượt Đẩy Tin
+              <span class="px-2 py-0.5 rounded-full text-[10px] bg-blue-500/30 text-blue-200 border border-blue-400/30 font-medium">Toàn tài khoản</span>
+            </h3>
+            <p class="text-xs text-slate-300 mt-0.5">
+              Số dư hiện tại: <strong id="walletModalBalance" class="text-amber-300 font-extrabold text-sm">${sessionScope.user.bumpCredits != null ? sessionScope.user.bumpCredits : 0}</strong> lượt khả dụng
+            </p>
+          </div>
+        </div>
+        <button type="button" onclick="closeBumpWalletModal()" class="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 max-h-[75vh] overflow-y-auto space-y-4">
+        <div class="bg-blue-50/80 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 flex items-start gap-2.5">
+          <span class="text-base shrink-0">💡</span>
+          <div class="leading-relaxed">
+            <strong>Lượt đẩy tin dùng chung:</strong> 1 lượt = đưa tin đăng nhảy lên vị trí Top 1 danh mục ngay lập tức. Lượt đẩy được lưu trữ vĩnh viễn trong ví, bạn có thể đẩy bất kỳ tin đăng nào vào khung giờ vàng mua sắm!
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-2">Chọn gói nạp lượt đẩy:</label>
+          <div id="walletPackagesGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="col-span-full text-center py-6 text-slate-400 text-xs">
+              Đang tải các gói lượt đẩy...
+            </div>
+          </div>
+        </div>
+
+        <!-- Thông tin gói được chọn -->
+        <div id="walletSelectedSummary" class="hidden p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+          <div>
+            <span class="text-slate-500 block">Gói đã chọn:</span>
+            <span id="walletSelectedName" class="font-bold text-slate-900 text-sm">--</span>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-500 block">Tổng thanh toán:</span>
+            <span id="walletSelectedPrice" class="font-extrabold text-blue-600 text-base">0 đ</span>
+          </div>
+        </div>
+
+        <div id="walletModalError" class="hidden p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl"></div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+        <button type="button" onclick="closeBumpWalletModal()" class="px-4 py-2 border border-slate-300 hover:bg-white text-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer">
+          Đóng
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnWalletMockTest" onclick="submitWalletPayment(true)" class="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs rounded-lg transition cursor-pointer" title="Kích hoạt nạp thử nghiệm không qua VNPay">
+            ⚡ Kích hoạt Test nhanh
+          </button>
+          <button type="button" id="btnWalletVnPay" onclick="submitWalletPayment(false)" class="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+            <span>Thanh toán VNPay Sandbox</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 2: GHIM VIP CHO BÀI VIẾT ==================== -->
+  <div id="vipUpgradeModal" class="hidden fixed inset-0 z-[120] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center text-xl shadow-xs">
+            👑
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              Ghim VIP Cho Tin Đăng
+              <span class="px-2 py-0.5 rounded-full text-[10px] bg-white/20 text-white font-medium">Top 1 Trang Chủ</span>
+            </h3>
+            <p id="vipModalPostTitle" class="text-xs text-amber-100 truncate max-w-sm sm:max-w-md mt-0.5">Tin đăng: ...</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeVipUpgradeModal()" class="w-8 h-8 flex items-center justify-center text-amber-100 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 max-h-[75vh] overflow-y-auto space-y-4">
+        <!-- Thông báo nếu bài đang có hạn VIP -->
+        <div id="vipModalActiveAlert" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-800 flex items-center gap-2">
+          <span>✨</span>
+          <span>Tin đăng này đang có VIP đến: <strong id="vipModalExpText">...</strong> (<span id="vipModalRemText">...</span>). Gia hạn gói sẽ <strong>cộng dồn thêm ngày</strong> vào thời hạn hiện tại.</span>
+        </div>
+
+        <!-- BẢN XEM TRƯỚC LIVE PREVIEW TRỰC TIẾP -->
+        <div class="p-3.5 bg-slate-900 rounded-xl text-white">
+          <div class="flex items-center justify-between text-[11px] text-slate-400 mb-2 font-semibold">
+            <span>BẢN XEM TRƯỚC TRÊN TRANG CHỦ &amp; DANH MỤC</span>
+            <span class="text-amber-300 flex items-center gap-1 font-bold">
+              <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+              Hiển thị thực tế
+            </span>
+          </div>
+          <div id="vipLivePreviewCard" class="bg-white text-slate-900 rounded-xl p-3 flex items-center gap-3 border-2 border-amber-400 shadow-md transition-all">
+            <img id="vipPreviewImg" src="" alt="preview" class="w-14 h-14 rounded-lg object-cover border border-slate-200 shrink-0">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span id="vipPreviewTitle" class="font-bold text-xs truncate max-w-[240px]">...</span>
+                <span id="vipPreviewBadge" class="px-2 py-0.5 rounded text-[10px] font-black tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                  ⭐ NỔI BẬT
+                </span>
+              </div>
+              <div class="text-xs font-extrabold text-amber-600 mt-1" id="vipPreviewPrice">...</div>
+              <div class="text-[10px] text-slate-400 flex items-center gap-1.5 mt-1">
+                <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span id="vipPreviewDesc">Cố định Top 1 liên tục 24/7 suốt thời hạn gói</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Danh sách gói VIP -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-2">Chọn gói ghim VIP:</label>
+          <div id="vipPackagesGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="col-span-full text-center py-6 text-slate-400 text-xs">
+              Đang tải các gói VIP...
+            </div>
+          </div>
+        </div>
+
+        <!-- Bảng quyền lợi VIP -->
+        <div class="grid grid-cols-3 gap-2 p-3 bg-amber-50/60 border border-amber-200 rounded-xl text-center text-xs">
+          <div class="p-1.5">
+            <div class="text-base mb-0.5">👁️</div>
+            <div class="font-bold text-slate-900 text-[11px]">Tăng 500% lượt xem</div>
+            <div class="text-[10px] text-slate-500">Giữ vị trí đầu trang 24/7</div>
+          </div>
+          <div class="p-1.5 border-x border-amber-200/80">
+            <div class="text-base mb-0.5">👑</div>
+            <div class="font-bold text-slate-900 text-[11px]">Huy hiệu VIP sang trọng</div>
+            <div class="text-[10px] text-slate-500">Tạo uy tín tuyệt đối</div>
+          </div>
+          <div class="p-1.5">
+            <div class="text-base mb-0.5">⚡</div>
+            <div class="font-bold text-slate-900 text-[11px]">Bán hàng nhanh gấp 3</div>
+            <div class="text-[10px] text-slate-500">Người mua liên hệ ngay</div>
+          </div>
+        </div>
+
+        <!-- Thông tin gói VIP được chọn -->
+        <div id="vipSelectedSummary" class="hidden p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+          <div>
+            <span class="text-slate-500 block">Gói VIP đã chọn:</span>
+            <span id="vipSelectedName" class="font-bold text-slate-900 text-sm">--</span>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-500 block">Tổng thanh toán:</span>
+            <span id="vipSelectedPrice" class="font-extrabold text-amber-600 text-base">0 đ</span>
+          </div>
+        </div>
+
+        <div id="vipModalError" class="hidden p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl"></div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+        <button type="button" onclick="closeVipUpgradeModal()" class="px-4 py-2 border border-slate-300 hover:bg-white text-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer">
+          Đóng
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnVipMockTest" onclick="submitVipPayment(true)" class="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs rounded-lg transition cursor-pointer" title="Kích hoạt VIP thử nghiệm không qua VNPay">
+            ⚡ Kích hoạt Test nhanh
+          </button>
+          <button type="button" id="btnVipVnPay" onclick="submitVipPayment(false)" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+            <span>Thanh toán VNPay Sandbox</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let cachedAllPackages = [];
+    let selectedWalletPkgId = null;
+    let selectedVipPkgId = null;
+    let currentVipProductId = null;
+    let currentWalletCredits = ${sessionScope.user.bumpCredits != null ? sessionScope.user.bumpCredits : 0};
+
+    function updateWalletCreditsDisplay(count) {
+      currentWalletCredits = count;
+      const el1 = document.getElementById('walletBumpCreditsCount');
+      if (el1) el1.textContent = count;
+      const el2 = document.getElementById('walletModalBalance');
+      if (el2) el2.textContent = count;
+    }
+
+    // Đẩy tin nhanh 1-chạm bằng Ví lượt đẩy
+    function triggerPostBump(productId, productTitle) {
+      if (currentWalletCredits <= 0) {
+        if (confirm('Ví lượt đẩy của bạn hiện đã hết lượt (0 lượt).\nBạn có muốn nạp thêm lượt đẩy để đưa tin đăng lên đầu không?')) {
+          openBumpWalletModal();
+        }
+        return;
+      }
+
+      const postName = productTitle ? ('"' + productTitle + '"') : ('#' + productId);
+      if (!confirm('Bạn có chắc muốn dùng 1 lượt đẩy tin từ Ví chung (Hiện còn ' + currentWalletCredits + ' lượt) để đưa tin ' + postName + ' lên đầu trang không?')) {
+        return;
+      }
+
+      const formData = new URLSearchParams();
+      formData.append('action', 'use_bump');
+      formData.append('productId', productId);
+
+      fetch('${pageContext.request.contextPath}/boost-service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: formData.toString()
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success') {
+          if (res.remainingCredits !== undefined) {
+            updateWalletCreditsDisplay(res.remainingCredits);
+          }
+          alert(res.message || 'Đẩy tin thành công!');
+          window.location.reload();
+        } else if (res.status === 'no_credits') {
+          if (confirm(res.message + '\nBạn có muốn nạp thêm lượt đẩy ngay bây giờ không?')) {
+            openBumpWalletModal();
+          }
+        } else {
+          alert(res.message || 'Không thể thực hiện đẩy tin.');
+        }
+      })
+      .catch(err => {
+        alert('Lỗi kết nối máy chủ: ' + err);
+      });
+    }
+
+    // Load tất cả các gói một lần duy nhất
+    function fetchPackagesOnce(callback) {
+      if (cachedAllPackages.length > 0) {
+        callback(cachedAllPackages);
+        return;
+      }
+      fetch('${pageContext.request.contextPath}/boost-service?action=packages')
+        .then(r => r.json())
+        .then(data => {
+          cachedAllPackages = data;
+          callback(data);
+        })
+        .catch(err => {
+          console.error(err);
+        });
+    }
+
+    // ==================== LOGIC MODAL 1: NẠP VÍ LƯỢT ĐẨY ====================
+    function openBumpWalletModal() {
+      selectedWalletPkgId = null;
+      document.getElementById('walletModalError').classList.add('hidden');
+      document.getElementById('walletSelectedSummary').classList.add('hidden');
+      document.getElementById('bumpWalletModal').classList.remove('hidden');
+
+      fetchPackagesOnce(packages => {
+        const bumpPackages = packages.filter(p => p.type === 'BUMP');
+        renderWalletPackages(bumpPackages);
+      });
+    }
+
+    function closeBumpWalletModal() {
+      document.getElementById('bumpWalletModal').classList.add('hidden');
+    }
+
+    function renderWalletPackages(packages) {
+      const container = document.getElementById('walletPackagesGrid');
+      container.innerHTML = '';
+
+      if (!packages || packages.length === 0) {
+        container.innerHTML = '<div class="col-span-full text-center py-6 text-slate-400 text-xs">Hiện chưa có gói lượt đẩy nào.</div>';
+        return;
+      }
+
+      packages.forEach((pkg, index) => {
+        const card = document.createElement('div');
+        card.id = 'wallet-pkg-card-' + pkg.id;
+        card.className = 'wallet-card border-2 border-slate-200 hover:border-blue-500 p-3.5 rounded-xl transition cursor-pointer flex flex-col justify-between bg-white hover:shadow-xs relative';
+        card.onclick = () => selectWalletPackage(pkg);
+
+        const priceFormatted = new Intl.NumberFormat('vi-VN').format(pkg.price) + ' đ';
+
+        let discountTag = '';
+        if (pkg.bumps >= 15) {
+          discountTag = '<span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">🔥 Tiết kiệm 33%</span>';
+        } else if (pkg.bumps >= 5) {
+          discountTag = '<span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">⚡ Tiết kiệm 20%</span>';
+        } else {
+          discountTag = '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">Dùng thử</span>';
+        }
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              ` + discountTag + `
+              <span class="text-xs font-black text-blue-700">` + priceFormatted + `</span>
+            </div>
+            <h4 class="font-bold text-xs text-slate-900 mb-1">` + pkg.name + `</h4>
+            <div class="text-xl font-black text-slate-800 my-1">` + pkg.bumps + ` <span class="text-xs font-normal text-slate-500">lượt đẩy</span></div>
+            <p class="text-[11px] text-slate-500 leading-snug">` + pkg.desc + `</p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">Vào ví tài khoản</span>
+            <span class="check-icon text-blue-600 font-bold hidden">✓ Chọn</span>
+          </div>
+        `;
+
+        container.appendChild(card);
+
+        if (index === 0 && !selectedWalletPkgId) {
+          selectWalletPackage(pkg);
+        }
+      });
+    }
+
+    function selectWalletPackage(pkg) {
+      selectedWalletPkgId = pkg.id;
+
+      document.querySelectorAll('.wallet-card').forEach(el => {
+        el.classList.remove('border-blue-600', 'bg-blue-50/30', 'ring-2', 'ring-blue-200');
+        el.classList.add('border-slate-200');
+        const icon = el.querySelector('.check-icon');
+        if (icon) icon.classList.add('hidden');
+      });
+
+      const selectedCard = document.getElementById('wallet-pkg-card-' + pkg.id);
+      if (selectedCard) {
+        selectedCard.classList.remove('border-slate-200');
+        selectedCard.classList.add('border-blue-600', 'bg-blue-50/30', 'ring-2', 'ring-blue-200');
+        const icon = selectedCard.querySelector('.check-icon');
+        if (icon) icon.classList.remove('hidden');
+      }
+
+      document.getElementById('walletSelectedSummary').classList.remove('hidden');
+      document.getElementById('walletSelectedName').textContent = pkg.name + ' (' + pkg.bumps + ' lượt)';
+      document.getElementById('walletSelectedPrice').textContent = new Intl.NumberFormat('vi-VN').format(pkg.price) + ' đ';
+    }
+
+    function submitWalletPayment(isMockTest) {
+      if (!selectedWalletPkgId) {
+        alert('Vui lòng chọn một gói nạp lượt đẩy.');
+        return;
+      }
+
+      const errBox = document.getElementById('walletModalError');
+      errBox.classList.add('hidden');
+
+      const btnVnp = document.getElementById('btnWalletVnPay');
+      const btnMock = document.getElementById('btnWalletMockTest');
+      btnVnp.disabled = true;
+      btnMock.disabled = true;
+      btnVnp.innerHTML = '<span>Đang xử lý...</span>';
+
+      const formData = new URLSearchParams();
+      formData.append('action', 'buy');
+      formData.append('productId', '0'); // 0 = nạp trực tiếp vào ví
+      formData.append('packageId', selectedWalletPkgId);
+      if (isMockTest) {
+        formData.append('test_mode', 'true');
+      }
+
+      fetch('${pageContext.request.contextPath}/boost-service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: formData.toString()
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success') {
+          if (res.payment_url) {
+            window.location.href = res.payment_url;
+          } else if (res.test_activated) {
+            if (res.remainingCredits !== undefined) {
+              updateWalletCreditsDisplay(res.remainingCredits);
+            }
+            alert(res.message || 'Nạp lượt đẩy thành công!');
+            window.location.reload();
+          }
+        } else {
+          errBox.textContent = res.message || 'Giao dịch thất bại. Vui lòng thử lại.';
+          errBox.classList.remove('hidden');
+        }
+      })
+      .catch(err => {
+        errBox.textContent = 'Lỗi kết nối máy chủ: ' + err;
+        errBox.classList.remove('hidden');
+      })
+      .finally(() => {
+        btnVnp.disabled = false;
+        btnMock.disabled = false;
+        btnVnp.innerHTML = '<span>Thanh toán VNPay Sandbox</span><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>';
+      });
+    }
+
+    // ==================== LOGIC MODAL 2: GHIM VIP BÀI VIẾT ====================
+    function openVipUpgradeModal(productId, productTitle, isVip, vipExpText, vipRemText, priceText, imageSrc) {
+      currentVipProductId = productId;
+      selectedVipPkgId = null;
+
+      document.getElementById('vipModalPostTitle').textContent = productTitle ? ('#' + productId + ' • ' + productTitle) : ('Bài đăng #' + productId);
+      document.getElementById('vipPreviewTitle').textContent = productTitle || 'Tên tin đăng';
+      document.getElementById('vipPreviewPrice').textContent = priceText || 'Liên hệ';
+      
+      const imgEl = document.getElementById('vipPreviewImg');
+      if (imageSrc && imageSrc.trim().length > 0) {
+        imgEl.src = imageSrc;
+        imgEl.classList.remove('hidden');
+      } else {
+        imgEl.src = '${pageContext.request.contextPath}/assets/images/no-image.png';
+      }
+
+      const activeAlert = document.getElementById('vipModalActiveAlert');
+      if (isVip && vipExpText) {
+        document.getElementById('vipModalExpText').textContent = vipExpText;
+        document.getElementById('vipModalRemText').textContent = vipRemText || '';
+        activeAlert.classList.remove('hidden');
+      } else {
+        activeAlert.classList.add('hidden');
+      }
+
+      document.getElementById('vipModalError').classList.add('hidden');
+      document.getElementById('vipSelectedSummary').classList.add('hidden');
+      document.getElementById('vipUpgradeModal').classList.remove('hidden');
+
+      fetchPackagesOnce(packages => {
+        const vipPackages = packages.filter(p => p.type === 'VIP_PIN');
+        renderVipPackages(vipPackages);
+      });
+    }
+
+    function closeVipUpgradeModal() {
+      document.getElementById('vipUpgradeModal').classList.add('hidden');
+      currentVipProductId = null;
+    }
+
+    function renderVipPackages(packages) {
+      const container = document.getElementById('vipPackagesGrid');
+      container.innerHTML = '';
+
+      if (!packages || packages.length === 0) {
+        container.innerHTML = '<div class="col-span-full text-center py-6 text-slate-400 text-xs">Hiện chưa có gói VIP nào.</div>';
+        return;
+      }
+
+      packages.forEach((pkg, index) => {
+        const card = document.createElement('div');
+        card.id = 'vip-pkg-card-' + pkg.id;
+        card.className = 'vip-card border-2 border-slate-200 hover:border-amber-400 p-4 rounded-xl transition cursor-pointer flex flex-col justify-between bg-white hover:shadow-xs relative';
+        card.onclick = () => selectVipPackage(pkg);
+
+        const priceFormatted = new Intl.NumberFormat('vi-VN').format(pkg.price) + ' đ';
+        const isDiamond = (pkg.priority >= 2 || (pkg.badge && pkg.badge.includes('KIM CƯƠNG')));
+        const badgeStyle = isDiamond ? 'bg-purple-100 text-purple-800 border-purple-300' : 'bg-amber-100 text-amber-800 border-amber-300';
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ` + badgeStyle + `">
+                ` + (pkg.badge || 'VIP') + `
+              </span>
+              <span class="text-xs font-black text-amber-600">` + priceFormatted + `</span>
+            </div>
+            <h4 class="font-bold text-xs text-slate-900 mb-1">` + pkg.name + `</h4>
+            <div class="text-lg font-black text-slate-800 my-0.5">` + pkg.days + ` ngày ghim VIP</div>
+            <p class="text-[11px] text-slate-500 leading-snug">` + pkg.desc + `</p>
+          </div>
+          <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">` + (isDiamond ? 'Ưu tiên tối đa #1' : 'Ưu tiên nổi bật') + `</span>
+            <span class="check-icon text-amber-500 font-bold hidden">✓ Chọn</span>
+          </div>
+        `;
+
+        container.appendChild(card);
+
+        if (index === 0 && !selectedVipPkgId) {
+          selectVipPackage(pkg);
+        }
+      });
+    }
+
+    function selectVipPackage(pkg) {
+      selectedVipPkgId = pkg.id;
+
+      document.querySelectorAll('.vip-card').forEach(el => {
+        el.classList.remove('border-amber-500', 'bg-amber-50/30', 'ring-2', 'ring-amber-200');
+        el.classList.add('border-slate-200');
+        const icon = el.querySelector('.check-icon');
+        if (icon) icon.classList.add('hidden');
+      });
+
+      const selectedCard = document.getElementById('vip-pkg-card-' + pkg.id);
+      if (selectedCard) {
+        selectedCard.classList.remove('border-slate-200');
+        selectedCard.classList.add('border-amber-500', 'bg-amber-50/30', 'ring-2', 'ring-amber-200');
+        const icon = selectedCard.querySelector('.check-icon');
+        if (icon) icon.classList.remove('hidden');
+      }
+
+      // Cập nhật Live Preview
+      const isDiamond = (pkg.priority >= 2 || (pkg.badge && pkg.badge.includes('KIM CƯƠNG')));
+      const previewCard = document.getElementById('vipLivePreviewCard');
+      const previewBadge = document.getElementById('vipPreviewBadge');
+      
+      if (isDiamond) {
+        previewCard.className = 'bg-white text-slate-900 rounded-xl p-3 flex items-center gap-3 border-2 border-purple-500 shadow-md shadow-purple-500/20 transition-all';
+        previewBadge.className = 'px-2 py-0.5 rounded text-[10px] font-black tracking-wider bg-purple-100 text-purple-800 border border-purple-300';
+        previewBadge.textContent = '👑 VIP KIM CƯƠNG';
+      } else {
+        previewCard.className = 'bg-white text-slate-900 rounded-xl p-3 flex items-center gap-3 border-2 border-amber-400 shadow-md shadow-amber-500/20 transition-all';
+        previewBadge.className = 'px-2 py-0.5 rounded text-[10px] font-black tracking-wider bg-amber-100 text-amber-800 border border-amber-300';
+        previewBadge.textContent = '⭐ NỔI BẬT';
+      }
+
+      document.getElementById('vipSelectedSummary').classList.remove('hidden');
+      document.getElementById('vipSelectedName').textContent = pkg.name + ' (' + pkg.days + ' ngày)';
+      document.getElementById('vipSelectedPrice').textContent = new Intl.NumberFormat('vi-VN').format(pkg.price) + ' đ';
+    }
+
+    function submitVipPayment(isMockTest) {
+      if (!currentVipProductId || !selectedVipPkgId) {
+        alert('Vui lòng chọn một gói VIP.');
+        return;
+      }
+
+      const errBox = document.getElementById('vipModalError');
+      errBox.classList.add('hidden');
+
+      const btnVnp = document.getElementById('btnVipVnPay');
+      const btnMock = document.getElementById('btnVipMockTest');
+      btnVnp.disabled = true;
+      btnMock.disabled = true;
+      btnVnp.innerHTML = '<span>Đang xử lý...</span>';
+
+      const formData = new URLSearchParams();
+      formData.append('action', 'buy');
+      formData.append('productId', currentVipProductId);
+      formData.append('packageId', selectedVipPkgId);
+      if (isMockTest) {
+        formData.append('test_mode', 'true');
+      }
+
+      fetch('${pageContext.request.contextPath}/boost-service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: formData.toString()
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success') {
+          if (res.payment_url) {
+            window.location.href = res.payment_url;
+          } else if (res.test_activated) {
+            alert(res.message || 'Kích hoạt gói VIP thành công!');
+            window.location.reload();
+          }
+        } else {
+          errBox.textContent = res.message || 'Giao dịch thất bại. Vui lòng thử lại.';
+          errBox.classList.remove('hidden');
+        }
+      })
+      .catch(err => {
+        errBox.textContent = 'Lỗi kết nối máy chủ: ' + err;
+        errBox.classList.remove('hidden');
+      })
+      .finally(() => {
+        btnVnp.disabled = false;
+        btnMock.disabled = false;
+        btnVnp.innerHTML = '<span>Thanh toán VNPay Sandbox</span><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>';
+      });
+    }
   </script>
 </body>
 </html>

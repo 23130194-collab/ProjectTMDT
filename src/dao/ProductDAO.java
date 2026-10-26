@@ -61,39 +61,68 @@ public class ProductDAO {
         return generatedId;
     }
 
-    // Hàm lấy danh sách sản phẩm để hiển thị trang chủ — CHỈ bài ACTIVE
+    // Helper trích xuất Product từ ResultSet bao gồm cả các trường VIP / Đẩy tin
+    private Product mapResultSetToProduct(ResultSet rs) throws SQLException {
+        Product p = new Product();
+        p.setId(rs.getInt("id"));
+        p.setUserId(rs.getInt("user_id"));
+        p.setCategoryId(rs.getInt("category_id"));
+        p.setDealType(rs.getString("deal_type"));
+        p.setTitle(rs.getString("title"));
+        p.setDescription(rs.getString("description"));
+        p.setPrice(rs.getDouble("price"));
+        p.setConditionStatus(rs.getString("condition_status"));
+        p.setLocation(rs.getString("location"));
+        p.setProvince(rs.getString("province"));
+        p.setWard(rs.getString("ward"));
+        p.setAddressDetail(rs.getString("address_detail"));
+        p.setStatus(rs.getString("status"));
+        p.setCreatedAt(rs.getTimestamp("created_at"));
+        p.setNewProduct(isNewProduct(p.getCreatedAt()));
+        p.setDeliveryMethod(rs.getInt("delivery_method"));
+        p.setSpecifications(rs.getString("specifications"));
+        p.setPrimaryImage(rs.getString("image_url"));
+
+        // Boost & VIP fields
+        boolean isPinned = rs.getBoolean("is_pinned");
+        Timestamp pinnedUntil = rs.getTimestamp("pinned_until");
+        int priority = rs.getInt("priority_level");
+        p.setPinned(isPinned);
+        p.setPinnedUntil(pinnedUntil);
+        p.setPriorityLevel(priority);
+        p.setBumpedAt(rs.getTimestamp("bumped_at"));
+        p.setRemainingBumps(rs.getInt("remaining_bumps"));
+
+        // Xác định huy hiệu hiển thị nếu còn hạn VIP
+        if (isPinned && pinnedUntil != null && pinnedUntil.after(new java.util.Date())) {
+            if (priority >= 2) {
+                p.setBadgeLabel("👑 VIP KIM CƯƠNG");
+                p.setBadgeColor("purple");
+            } else {
+                p.setBadgeLabel("⭐ NỔI BẬT");
+                p.setBadgeColor("amber");
+            }
+        }
+
+        return p;
+    }
+
+    // Hàm lấy danh sách sản phẩm để hiển thị trang chủ — CHỈ bài ACTIVE, ưu tiên VIP và Đẩy tin
     public List<Product> getRecentProducts() {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
                      "WHERE p.status = 'ACTIVE' " +
-                     "ORDER BY p.created_at DESC, p.id DESC";
+                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW()) DESC, " +
+                     "p.priority_level DESC, " +
+                     "COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC";
 
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                Product p = new Product();
-                p.setId(rs.getInt("id"));
-                p.setUserId(rs.getInt("user_id"));
-                p.setCategoryId(rs.getInt("category_id"));
-                p.setDealType(rs.getString("deal_type"));
-                p.setTitle(rs.getString("title"));
-                p.setDescription(rs.getString("description"));
-                p.setPrice(rs.getDouble("price"));
-                p.setConditionStatus(rs.getString("condition_status"));
-                p.setLocation(rs.getString("location"));
-                p.setProvince(rs.getString("province"));
-                p.setWard(rs.getString("ward"));
-                p.setAddressDetail(rs.getString("address_detail"));
-                p.setStatus(rs.getString("status"));
-                p.setCreatedAt(rs.getTimestamp("created_at"));
-                p.setNewProduct(isNewProduct(p.getCreatedAt()));
-                p.setDeliveryMethod(rs.getInt("delivery_method"));
-                p.setSpecifications(rs.getString("specifications"));
-                p.setPrimaryImage(rs.getString("image_url"));
-                list.add(p);
+                list.add(mapResultSetToProduct(rs));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -101,40 +130,23 @@ public class ProductDAO {
         return list;
     }
 
-    // Hàm lấy tối đa các sản phẩm mới nhất — CHỈ bài ACTIVE
+    // Hàm lấy tối đa các sản phẩm mới nhất — CHỈ bài ACTIVE, ưu tiên VIP và Đẩy tin
     public List<Product> getNewestProducts(int limit) {
         List<Product> list = new ArrayList<>();
-        int safeLimit = limit > 0 ? Math.min(limit, 10) : 10;
+        int safeLimit = limit > 0 ? Math.min(limit, 20) : 10;
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
-                     "WHERE p.status = 'ACTIVE' AND p.created_at >= NOW() - INTERVAL 2 DAY " +
-                     "ORDER BY p.created_at DESC, p.id DESC LIMIT ?";
+                     "WHERE p.status = 'ACTIVE' " +
+                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW()) DESC, " +
+                     "p.priority_level DESC, " +
+                     "COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC LIMIT ?";
 
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, safeLimit);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Product p = new Product();
-                    p.setId(rs.getInt("id"));
-                    p.setUserId(rs.getInt("user_id"));
-                    p.setCategoryId(rs.getInt("category_id"));
-                    p.setDealType(rs.getString("deal_type"));
-                    p.setTitle(rs.getString("title"));
-                    p.setDescription(rs.getString("description"));
-                    p.setPrice(rs.getDouble("price"));
-                    p.setConditionStatus(rs.getString("condition_status"));
-                    p.setLocation(rs.getString("location"));
-                    p.setProvince(rs.getString("province"));
-                    p.setWard(rs.getString("ward"));
-                    p.setAddressDetail(rs.getString("address_detail"));
-                    p.setStatus(rs.getString("status"));
-                    p.setCreatedAt(rs.getTimestamp("created_at"));
-                    p.setNewProduct(isNewProduct(p.getCreatedAt()));
-                    p.setDeliveryMethod(rs.getInt("delivery_method"));
-                    p.setSpecifications(rs.getString("specifications"));
-                    p.setPrimaryImage(rs.getString("image_url"));
-                    list.add(p);
+                    list.add(mapResultSetToProduct(rs));
                 }
             }
         } catch (SQLException e) {
@@ -143,13 +155,15 @@ public class ProductDAO {
         return list;
     }
 
-    // Tìm kiếm sản phẩm theo từ khóa — CHỈ bài ACTIVE
+    // Tìm kiếm sản phẩm theo từ khóa — CHỈ bài ACTIVE, ưu tiên VIP và Đẩy tin
     public List<Product> searchProducts(String keyword) {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
                      "WHERE p.status = 'ACTIVE' AND (p.title LIKE ? OR p.description LIKE ?) " +
-                     "ORDER BY p.id DESC";
+                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW()) DESC, " +
+                     "p.priority_level DESC, " +
+                     "COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC";
 
         try (Connection conn = DBContext.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -158,26 +172,7 @@ public class ProductDAO {
             ps.setString(2, pattern);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Product p = new Product();
-                    p.setId(rs.getInt("id"));
-                    p.setUserId(rs.getInt("user_id"));
-                    p.setCategoryId(rs.getInt("category_id"));
-                    p.setDealType(rs.getString("deal_type"));
-                    p.setTitle(rs.getString("title"));
-                    p.setDescription(rs.getString("description"));
-                    p.setPrice(rs.getDouble("price"));
-                    p.setConditionStatus(rs.getString("condition_status"));
-                    p.setLocation(rs.getString("location"));
-                    p.setProvince(rs.getString("province"));
-                    p.setWard(rs.getString("ward"));
-                    p.setAddressDetail(rs.getString("address_detail"));
-                    p.setStatus(rs.getString("status"));
-                    p.setCreatedAt(rs.getTimestamp("created_at"));
-                    p.setNewProduct(isNewProduct(p.getCreatedAt()));
-                    p.setDeliveryMethod(rs.getInt("delivery_method"));
-                    p.setSpecifications(rs.getString("specifications"));
-                    p.setPrimaryImage(rs.getString("image_url"));
-                    list.add(p);
+                    list.add(mapResultSetToProduct(rs));
                 }
             }
         } catch (SQLException e) {
@@ -222,25 +217,8 @@ public class ProductDAO {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    Product p = new Product();
-                    p.setId(rs.getInt("id"));
-                    p.setUserId(rs.getInt("user_id"));
-                    p.setCategoryId(rs.getInt("category_id"));
-                    p.setDealType(rs.getString("deal_type"));
-                    p.setTitle(rs.getString("title"));
-                    p.setDescription(rs.getString("description"));
-                    p.setPrice(rs.getDouble("price"));
-                    p.setConditionStatus(rs.getString("condition_status"));
-                    p.setLocation(rs.getString("location"));
-                    p.setProvince(rs.getString("province"));
-                    p.setWard(rs.getString("ward"));
-                    p.setAddressDetail(rs.getString("address_detail"));
+                    Product p = mapResultSetToProduct(rs);
                     p.setStatus(rs.getString("current_status"));
-                    p.setCreatedAt(rs.getTimestamp("created_at"));
-                    p.setNewProduct(isNewProduct(p.getCreatedAt()));
-                    p.setDeliveryMethod(rs.getInt("delivery_method"));
-                    p.setSpecifications(rs.getString("specifications"));
-                    p.setPrimaryImage(rs.getString("image_url"));
                     return p;
                 }
             }
@@ -268,26 +246,7 @@ public class ProductDAO {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Product p = new Product();
-                    p.setId(rs.getInt("id"));
-                    p.setUserId(rs.getInt("user_id"));
-                    p.setCategoryId(rs.getInt("category_id"));
-                    p.setDealType(rs.getString("deal_type"));
-                    p.setTitle(rs.getString("title"));
-                    p.setDescription(rs.getString("description"));
-                    p.setPrice(rs.getDouble("price"));
-                    p.setConditionStatus(rs.getString("condition_status"));
-                    p.setLocation(rs.getString("location"));
-                    p.setProvince(rs.getString("province"));
-                    p.setWard(rs.getString("ward"));
-                    p.setAddressDetail(rs.getString("address_detail"));
-                    p.setStatus(rs.getString("status"));
-                    p.setCreatedAt(rs.getTimestamp("created_at"));
-                    p.setNewProduct(isNewProduct(p.getCreatedAt()));
-                    p.setDeliveryMethod(rs.getInt("delivery_method"));
-                    p.setSpecifications(rs.getString("specifications"));
-                    p.setPrimaryImage(rs.getString("image_url"));
-                    list.add(p);
+                    list.add(mapResultSetToProduct(rs));
                 }
             }
         } catch (SQLException e) {

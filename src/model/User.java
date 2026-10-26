@@ -17,6 +17,7 @@ public class User {
     private int reputationScore;
     private String status;
     private Timestamp createdAt;
+    private int bumpCredits;
 
     public User() {
     }
@@ -128,5 +129,13 @@ public class User {
 
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public int getBumpCredits() {
+        return bumpCredits;
+    }
+
+    public void setBumpCredits(int bumpCredits) {
+        this.bumpCredits = bumpCredits;
     }
 }

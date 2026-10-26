@@ -421,6 +421,22 @@ public class UserDao {
         return false;
     }
 
+    public int getUserBumpCredits(int userId) {
+        String sql = "SELECT bump_credits FROM users WHERE id = ?";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("bump_credits");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
     private User mapUser(ResultSet rs) throws SQLException {
         User user = new User();
         user.setId(rs.getInt("id"));
@@ -437,6 +453,11 @@ public class UserDao {
         user.setReputationScore(rs.getInt("reputation_score"));
         user.setStatus(rs.getString("status"));
         user.setCreatedAt(rs.getTimestamp("created_at"));
+        try {
+            user.setBumpCredits(rs.getInt("bump_credits"));
+        } catch (SQLException ignored) {
+            user.setBumpCredits(0);
+        }
         return user;
     }
 
