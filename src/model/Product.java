@@ -163,4 +163,56 @@ public class Product {
     public void setUpdatedAt(Timestamp updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+    // Boost & VIP Pin fields
+    private boolean isPinned;
+    private Timestamp pinnedUntil;
+    private int priorityLevel;
+    private Timestamp bumpedAt;
+    private int remainingBumps;
+    private String badgeLabel;
+    private String badgeColor;
+
+    public boolean isVipActive() {
+        return isPinned && pinnedUntil != null && pinnedUntil.after(new java.util.Date());
+    }
+
+    public boolean isPinned() { return isPinned; }
+    public void setPinned(boolean pinned) { isPinned = pinned; }
+
+    public Timestamp getPinnedUntil() { return pinnedUntil; }
+    public void setPinnedUntil(Timestamp pinnedUntil) { this.pinnedUntil = pinnedUntil; }
+
+    public int getPriorityLevel() { return priorityLevel; }
+    public void setPriorityLevel(int priorityLevel) { this.priorityLevel = priorityLevel; }
+
+    public Timestamp getBumpedAt() { return bumpedAt; }
+    public void setBumpedAt(Timestamp bumpedAt) { this.bumpedAt = bumpedAt; }
+
+    public int getRemainingBumps() { return remainingBumps; }
+    public void setRemainingBumps(int remainingBumps) { this.remainingBumps = remainingBumps; }
+
+    public String getBadgeLabel() { return badgeLabel; }
+    public void setBadgeLabel(String badgeLabel) { this.badgeLabel = badgeLabel; }
+
+    public String getBadgeColor() { return badgeColor; }
+    public void setBadgeColor(String badgeColor) { this.badgeColor = badgeColor; }
+
+    public String getVipRemainingTimeText() {
+        if (!isVipActive() || pinnedUntil == null) return "";
+        long diff = pinnedUntil.getTime() - System.currentTimeMillis();
+        if (diff <= 0) return "";
+        long days = diff / (24 * 60 * 60 * 1000);
+        long hours = (diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000);
+        if (days > 0) {
+            return "Còn " + days + " ngày " + hours + "h";
+        }
+        long minutes = (diff % (60 * 60 * 1000)) / (60 * 1000);
+        return "Còn " + hours + "h " + minutes + "p";
+    }
+
+    public String getPinnedUntilFormatted() {
+        if (pinnedUntil == null) return "";
+        return new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(pinnedUntil);
+    }
 }

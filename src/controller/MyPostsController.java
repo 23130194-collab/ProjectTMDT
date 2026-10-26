@@ -30,6 +30,10 @@ public class MyPostsController extends HttpServlet {
             return;
         }
         User user = (User) session.getAttribute("user");
+        dao.UserDao userDao = new dao.UserDao();
+        user.setBumpCredits(userDao.getUserBumpCredits(user.getId()));
+        session.setAttribute("user", user);
+
         List<Product> myPosts = productDAO.getProductsByUserId(user.getId());
         req.setAttribute("myPosts", myPosts);
         req.setAttribute("savedFavorites", new FavoriteDAO().list(user.getId()));

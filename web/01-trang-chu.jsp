@@ -233,7 +233,7 @@
       </c:when>
       <c:otherwise>
         <c:forEach var="p" items="${products}">
-          <div class="product-card bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col group h-full cursor-pointer" data-category="${p.categoryId}" data-deal-type="<c:out value='${p.dealType}'/>" data-shipping="${p.deliveryMethod == 2 ? '3pl' : 'pickup'}" data-province="<c:out value='${p.province}'/>" data-ward="<c:out value='${p.ward}'/>" data-price="${p.price}" onclick="window.location.href='product-detail?id=${p.id}'">
+          <div class="product-card bg-white rounded-xl ${p.vipActive ? (p.priorityLevel >= 2 ? 'ring-2 ring-purple-500 border border-purple-400 shadow-md shadow-purple-100/50' : 'ring-2 ring-amber-400 border border-amber-300 shadow-md shadow-amber-100/50') : 'border border-slate-200 shadow-sm'} overflow-hidden hover:shadow-lg transition flex flex-col group h-full cursor-pointer relative" data-category="${p.categoryId}" data-deal-type="<c:out value='${p.dealType}'/>" data-shipping="${p.deliveryMethod == 2 ? '3pl' : 'pickup'}" data-province="<c:out value='${p.province}'/>" data-ward="<c:out value='${p.ward}'/>" data-price="${p.price}" onclick="window.location.href='product-detail?id=${p.id}'">
             <div class="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0">
               <c:choose>
                 <c:when test="${not empty p.primaryImage}">
@@ -243,6 +243,14 @@
                   <div class="w-full h-full flex items-center justify-center text-slate-400 bg-slate-200 text-xs">Không có ảnh</div>
                 </c:otherwise>
               </c:choose>
+              
+              <!-- HUY HIỆU VIP GHIM ĐẦU TRANG -->
+              <c:if test="${p.vipActive}">
+                <span class="absolute top-2.5 right-2.5 ${p.priorityLevel >= 2 ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-amber-500 to-orange-500'} text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wide">
+                  <c:out value="${not empty p.badgeLabel ? p.badgeLabel : 'VIP'}"/>
+                </span>
+              </c:if>
+
               <c:if test="${p.newProduct}"><span class="absolute top-2.5 left-2.5 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">Mới</span></c:if>
             </div>
             <div class="p-4 flex-1 flex flex-col justify-between">
