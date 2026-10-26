@@ -24,6 +24,7 @@
   <jsp:include page="includes/header.jsp" />
 
   <!-- THANH ĐIỀU KHIỂN KỊCH BẢN FLOW (SCENARIO SWITCHER FOR DEMO) -->
+  <c:if test="${product.dealType ne 'GIVE' and product.price gt 0 and not isProductOwner}">
   <section id="scenarioDemoControls" class="bg-slate-900 text-white py-2 px-4 text-xs">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
       <div class="flex items-center gap-2">
@@ -46,6 +47,7 @@
       </div>
     </div>
   </section>
+  </c:if>
 
   <!-- ĐƯỜNG DẪN BREADCRUMB PHÂN CẤP -->
   <div class="bg-white border-b border-slate-200">
@@ -150,11 +152,25 @@
                 <c:when test="${not empty product.displayLocation}"><c:out value="${product.displayLocation}"/>. </c:when>
                 <c:otherwise>Liên hệ người bán để biết địa điểm hẹn gặp. </c:otherwise>
               </c:choose>
-              Vui lòng liên hệ đặt cọc hoặc hẹn trước không giờ trước khi qua.
+              <c:choose><c:when test="${product.dealType eq 'GIVE' or product.price == 0}">Vui lòng nhắn tin với người tặng để thống nhất thời gian nhận sản phẩm.</c:when><c:otherwise>Vui lòng liên hệ đặt cọc hoặc hẹn trước khi qua.</c:otherwise></c:choose>
             </p>
           </div>
         </div>
 
+        <c:choose>
+        <c:when test="${isProductOwner}">
+        <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-2">
+          <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Tin đăng của bạn</h3>
+          <p class="text-xs leading-relaxed text-slate-600">Bạn là người đăng sản phẩm này. Người mua có thể nhắn tin cho bạn để trao đổi.</p>
+        </div>
+        </c:when>
+        <c:when test="${product.dealType eq 'GIVE' or product.price == 0}">
+        <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-2">
+          <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Nhận sản phẩm được tặng</h3>
+          <p class="text-xs leading-relaxed text-slate-600">Sản phẩm được tặng miễn phí. Nhắn tin với người tặng để thống nhất cách nhận.</p>
+        </div>
+        </c:when>
+        <c:otherwise>
         <!-- QUY TRÌNH MUA BÁN HẸN GẶP TRỰC TIẾP -->
         <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-3">
           <div class="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -196,6 +212,8 @@
             </div>
           </div>
         </div>
+        </c:otherwise>
+        </c:choose>
 
       </div>
 
@@ -208,7 +226,7 @@
             <div class="flex items-center gap-2 mb-2">
                               <span id="dealTypeBadge"
                   class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase">
-                  <c:choose><c:when test="${product.price == 0}">TIN TẶNG MIỄN PHÍ</c:when><c:otherwise>TIN BÁN THANH LÝ</c:otherwise></c:choose>
+                  <c:choose><c:when test="${product.dealType eq 'GIVE' or product.price == 0}">TIN TẶNG MIỄN PHÍ</c:when><c:otherwise>TIN BÁN THANH LÝ</c:otherwise></c:choose>
                 </span>
                               <span id="dealMethodBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
                   <c:choose><c:when test="${product.deliveryMethod == 2}">Giao Hàng Qua Bưu Điện</c:when><c:otherwise>Hẹn Gặp Trực Tiếp</c:otherwise></c:choose>
@@ -224,16 +242,32 @@
 
           <!-- BANNER TRẠNG THÁI THEO KỊCH BẢN FLOW -->
           <div id="scenarioNoticeBox"
-            class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed">
-            <span id="scenarioNoticeTitle" class="font-bold block text-[11px] uppercase tracking-wide">Hướng dẫn giao
-              dịch an toàn:</span>
-            <span id="scenarioNoticeContent">
+            class="p-3 <c:out value='${product.dealType eq "GIVE" or product.price == 0 ? "bg-emerald-50 border-emerald-200 text-emerald-900" : "bg-amber-50 border-amber-200 text-amber-900"}'/> border rounded-lg text-xs leading-relaxed">
+            <span id="scenarioNoticeTitle" class="font-bold block text-[11px] uppercase tracking-wide"><c:choose><c:when test="${isProductOwner}">Tin đăng của bạn:</c:when><c:when test="${product.dealType eq 'GIVE' or product.price == 0}">Nhận sản phẩm miễn phí:</c:when><c:otherwise>Hướng dẫn giao dịch an toàn:</c:otherwise></c:choose></span>
+            <span id="scenarioNoticeContent"><c:choose><c:when test="${isProductOwner}">
+              Người mua có thể nhắn tin cho bạn để trao đổi về sản phẩm.
+            </c:when><c:when test="${product.dealType eq 'GIVE' or product.price == 0}">
+              Nhắn tin với người tặng để thống nhất cách nhận sản phẩm. Không cần trả giá hoặc đặt cọc.
+            </c:when><c:otherwise>
               Mức cọc: trên 100.000đ cọc 10%; trên 50.000đ đến 100.000đ cọc 50%; từ 10.000đ đến 50.000đ cọc đủ 100%.
-            </span>
+            </c:otherwise></c:choose></span>
           </div>
 
           <!-- CÁC NÚT HÀNH ĐỘNG CHÍNH (THAY ĐỔI THEO FLOW) -->
           <div id="actionButtonsContainer" class="space-y-2.5 pt-1">
+            <c:choose>
+            <c:when test="${isProductOwner}">
+            <button type="button" disabled class="w-full py-3 bg-slate-100 text-slate-500 font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center cursor-not-allowed border border-slate-200">
+              Đây là tin đăng của bạn
+            </button>
+            </c:when>
+            <c:when test="${product.dealType eq 'GIVE' or product.price == 0}">
+            <a id="btnMessageGift" href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}"
+              class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">
+              Nhắn tin
+            </a>
+            </c:when>
+            <c:otherwise>
             <a id="btnDepositMain" href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}"
               class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">
               Đặt cọc giữ sản phẩm
@@ -242,7 +276,7 @@
             <div class="grid grid-cols-2 gap-2">
               <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}"
                 class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
-                Nhắn Tin Mua Máy
+                Nhắn tin
               </a>
               <c:choose>
                 <c:when test="${product.price == 0}">
@@ -259,10 +293,12 @@
                 </c:otherwise>
               </c:choose>
             </div>
+            </c:otherwise>
+            </c:choose>
 
             <button id="favoriteBtn" onclick="toggleFavorite()"
               class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-lg transition">
-              Lưu Tin Vào Danh Sách Yêu Thích
+              ${isFavorited ? 'Đã lưu vào danh sách yêu thích' : 'Lưu tin vào danh sách yêu thích'}
             </button>
           </div>
 
@@ -353,6 +389,7 @@
   <script>
     const ACTUAL_PRODUCT_SOLD = '${product.status}' === 'SOLD';
     const listedProductPrice = Number('${product.price}') || 0;
+    const IS_GIFT_PRODUCT = '${product.dealType}' === 'GIVE' || listedProductPrice <= 0;
     const listedDepositAmount = listedProductPrice > 100000 ? Math.round(listedProductPrice * 0.10) : (listedProductPrice >= 10000 && listedProductPrice <= 50000 ? Math.round(listedProductPrice) : Math.round(listedProductPrice * 0.50));
     const listedDepositRate = listedProductPrice > 100000 ? "10%" : (listedProductPrice >= 10000 && listedProductPrice <= 50000 ? "100%" : "50%");
     const listedDepositText = new Intl.NumberFormat('vi-VN').format(listedDepositAmount) + ' đ';
@@ -368,10 +405,11 @@
       }
     }
 
-    let isFavorited = false;
-    function toggleFavorite() {
-      isFavorited = !isFavorited;
+    let isFavorited = ${isFavorited};
+    const favoriteEndpoint = '${pageContext.request.contextPath}/favorites';
+    function syncFavoriteButton() {
       const btn = document.getElementById('favoriteBtn');
+      if (!btn) return;
       if (isFavorited) {
         btn.innerText = 'Đã Lưu Vào Danh Sách Yêu Thích';
         btn.className = 'w-full py-2 bg-amber-100 border border-amber-300 text-amber-900 font-bold text-xs rounded-lg transition';
@@ -380,6 +418,19 @@
         btn.className = 'w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-lg transition';
       }
     }
+    async function toggleFavorite() {
+      const btn = document.getElementById('favoriteBtn');
+      const action = isFavorited ? 'remove' : 'add';
+      const body = new URLSearchParams({action, productId: '${product.id}'});
+      try {
+        const response = await fetch(favoriteEndpoint, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+        if (response.status === 401) { alert('Vui lòng đăng nhập để lưu tin yêu thích.'); window.location.href='${pageContext.request.contextPath}/07-dang-nhap-xac-thuc.jsp'; return; }
+        const result = await response.json();
+        if (!result.success) { alert('Không thể cập nhật danh sách yêu thích.'); return; }
+        isFavorited = action === 'add'; syncFavoriteButton();
+      } catch (e) { alert('Không thể kết nối để cập nhật tin yêu thích.'); }
+    }
+    syncFavoriteButton();
 
     function reportListing() {
       const titleEl = document.getElementById('productTitle');
@@ -406,6 +457,16 @@
 
       if (scen === 'open') {
         overlay.classList.add('hidden');
+        if (IS_GIFT_PRODUCT) {
+          box.className = 'p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 leading-relaxed';
+          title.innerText = 'Nhận sản phẩm miễn phí:';
+          content.innerText = 'Sản phẩm được tặng miễn phí. Nhắn tin với người tặng để thống nhất cách nhận.';
+          actionContainer.innerHTML = `
+            <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">Nhắn tin</a>
+            <button id="favoriteBtn" onclick="toggleFavorite()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-lg transition">Lưu tin vào danh sách yêu thích</button>`;
+          syncFavoriteButton();
+          return;
+        }
         box.className = 'p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed';
         title.innerText = 'Điều hướng giao nhận an toàn:';
         content.innerText = 'Đặt cọc ' + listedDepositRate + ' giá sản phẩm (' + listedDepositText + ') qua VNPay để người bán giữ sản phẩm trong lúc hai bên hoàn tất giao dịch.';
@@ -416,7 +477,7 @@
           </a>
           <div class="grid grid-cols-2 gap-2">
             <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}" class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
-                Nhắn tin người bán
+                Nhắn tin
             </a>
             <c:choose>
               <c:when test="${product.price == 0}">
@@ -435,6 +496,7 @@
             Lưu Tin Vào Danh Sách Yêu Thích
           </button>
         `;
+        syncFavoriteButton();
       } else if (scen === 'locked') {
         overlay.classList.remove('hidden');
         document.getElementById('overlayBadge').innerText = 'ĐÃ NHẬN CỌC ' + listedDepositText.toUpperCase();

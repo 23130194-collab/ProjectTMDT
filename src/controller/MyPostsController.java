@@ -2,6 +2,7 @@ package controller;
 
 import dao.OrderDAO;
 import dao.ProductDAO;
+import dao.FavoriteDAO;
 import model.OrderSummary;
 import model.Product;
 import model.User;
@@ -31,6 +32,7 @@ public class MyPostsController extends HttpServlet {
         User user = (User) session.getAttribute("user");
         List<Product> myPosts = productDAO.getProductsByUserId(user.getId());
         req.setAttribute("myPosts", myPosts);
+        req.setAttribute("savedFavorites", new FavoriteDAO().list(user.getId()));
 
         // Load đơn hàng bán để hiển thị thống kê doanh thu
         List<OrderSummary> allOrders = orderDAO.getOrderSummariesForUser(user.getId());

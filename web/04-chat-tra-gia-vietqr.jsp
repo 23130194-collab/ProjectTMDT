@@ -925,11 +925,11 @@
         html += renderMessageBubble(message);
       });
 
-      if (latestProposal) {
+      // Keep transaction details out of the chat timeline after deposit so
+      // meetup and handoff messages stay visible. Full order details are in
+      // order management.
+      if (latestProposal && !depositPaid) {
         html += renderOfferCard(latestProposal, c, getOfferState(latestProposalIndex, c), depositPaid);
-      }
-      if (depositPaid) {
-        html += renderHandshakeCard(c);
       }
       container.innerHTML = html;
 
