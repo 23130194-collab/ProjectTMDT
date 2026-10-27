@@ -2,6 +2,7 @@
 <%@ page import="model.User" %>
 <%@ page import="model.Notification" %>
 <%@ page import="dao.OrderDAO" %>
+<%@ page import="dao.ChatDAO" %>
 <%@ page import="dao.NotificationDAO" %>
 <%@ page import="java.util.List" %>
 <%@ taglib uri="jakarta.tags.core" prefix="c" %>
@@ -23,6 +24,7 @@
   String avatarText = "";
   String avatarImage = "";
   int orderCount = currentUser != null ? new OrderDAO().countOrdersForUser(currentUser.getId()) : 0;
+  int unreadChatCount = currentUser != null ? new ChatDAO().countUnreadMessages(currentUser.getId()) : 0;
   NotificationDAO headerNotifDAO = new NotificationDAO();
   int unreadNotifCount = currentUser != null ? headerNotifDAO.countUnreadNotifications(currentUser.getId()) : 0;
   List<Notification> headerNotifs = currentUser != null ? headerNotifDAO.getNotificationsForUser(currentUser.getId(), 15) : java.util.Collections.emptyList();
@@ -113,7 +115,7 @@
       <a href="04-chat-tra-gia-vietqr.jsp" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition relative">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
         Tin nhắn
-        <span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500"></span>
+        <span id="chatUnreadBadge" class="<%= unreadChatCount > 0 ? "inline-flex" : "hidden" %> items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold bg-red-600 text-white rounded-full"><%= unreadChatCount %></span>
       </a>
 
       <!-- NÚT THÔNG BÁO VỚI DROPDOWN -->
@@ -432,6 +434,30 @@
       if (notifBtn) notifBtn.setAttribute('aria-expanded', 'false');
     }
   });
+</script>
+<script>
+  (function () {
+    const badge = document.getElementById('chatUnreadBadge');
+    if (!badge) return;
+    const endpoint = '${pageContext.request.contextPath}/chat-unread-count';
+    async function refreshUnreadChatCount() {
+      if (document.visibilityState === 'hidden') return;
+      try {
+        const response = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!data.success) return;
+        const count = Number(data.count) || 0;
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.classList.toggle('hidden', count <= 0);
+        badge.classList.toggle('inline-flex', count > 0);
+      } catch (e) {
+        // Keep the server-rendered count when a refresh cannot reach the server.
+      }
+    }
+    window.setInterval(refreshUnreadChatCount, 15000);
+    document.addEventListener('visibilitychange', refreshUnreadChatCount);
+  })();
 </script>
 
 <script>

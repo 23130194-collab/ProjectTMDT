@@ -27,8 +27,25 @@ public class OrderDAO {
             try {
                 st.executeUpdate("ALTER TABLE orders ADD COLUMN cancel_requested_at TIMESTAMP NULL AFTER cancel_reason");
             } catch (SQLException ignored) {}
+            try { st.executeUpdate("ALTER TABLE orders ADD COLUMN balance_payment_method VARCHAR(20) NOT NULL DEFAULT 'PENDING'"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("ALTER TABLE orders ADD COLUMN payment_status VARCHAR(20) NOT NULL DEFAULT 'UNPAID'"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("ALTER TABLE orders ADD COLUMN balance_expires_at TIMESTAMP NULL"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("ALTER TABLE orders ADD COLUMN balance_paid_at TIMESTAMP NULL"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("ALTER TABLE orders ADD COLUMN total_paid DECIMAL(15,2) NOT NULL DEFAULT 0"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("UPDATE orders SET total_paid=deposit_amount WHERE total_paid=0 AND deposit_amount>0"); } catch (SQLException ignored) {}
+            try { st.executeUpdate("UPDATE orders SET payment_status=CASE WHEN total_paid>=agreed_price THEN 'PAID' WHEN total_paid>0 THEN 'PARTIALLY_PAID' ELSE 'UNPAID' END WHERE payment_status='UNPAID' AND total_paid>0"); } catch (SQLException ignored) {}
             cancelColumnsEnsured = true;
         } catch (SQLException ignored) {}
+    }
+
+    public boolean setBalancePaymentMethod(int orderId, int buyerId, String method) {
+        if (!"COD".equals(method) && !"TRANSFER".equals(method)) return false;
+        String sql = "UPDATE orders SET balance_payment_method = ?, balance_expires_at = CASE WHEN ? = 'TRANSFER' THEN DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 24 HOUR) ELSE NULL END " +
+                "WHERE id = ? AND buyer_id = ? AND status = 'DEPOSITED' AND total_paid < agreed_price AND balance_payment_method = 'PENDING'";
+        try (Connection c = DBContext.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, method); ps.setString(2, method); ps.setInt(3, orderId); ps.setInt(4, buyerId);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException | IllegalStateException e) { e.printStackTrace(); return false; }
     }
 
     public int countOrdersForUser(int userId) {
@@ -48,7 +65,7 @@ public class OrderDAO {
 
     public List<OrderSummary> getOrderSummariesForUser(int userId) {
         List<OrderSummary> orders = new ArrayList<>();
-        String sql = "SELECT o.id, o.product_id, o.buyer_id, o.seller_id, o.agreed_price, o.deposit_amount, o.status, o.created_at, " +
+        String sql = "SELECT o.id, o.product_id, o.buyer_id, o.seller_id, o.agreed_price, o.deposit_amount, o.total_paid, o.balance_payment_method, o.payment_status, o.balance_expires_at, o.balance_paid_at, o.status, o.created_at, " +
                 "COALESCE(o.delivery_method, p.delivery_method, 1) AS final_delivery_method, " +
                 "COALESCE(o.seller_confirmed, 0) AS seller_confirmed, " +
                 "COALESCE(o.buyer_confirmed, 0) AS buyer_confirmed, " +
@@ -89,7 +106,7 @@ public class OrderDAO {
     }
 
     public OrderSummary getOrderSummaryById(int orderId) {
-        String sql = "SELECT o.id, o.product_id, o.buyer_id, o.seller_id, o.agreed_price, o.deposit_amount, o.status, o.created_at, " +
+        String sql = "SELECT o.id, o.product_id, o.buyer_id, o.seller_id, o.agreed_price, o.deposit_amount, o.total_paid, o.balance_payment_method, o.payment_status, o.balance_expires_at, o.balance_paid_at, o.status, o.created_at, " +
                 "COALESCE(o.delivery_method, p.delivery_method, 1) AS final_delivery_method, " +
                 "COALESCE(o.seller_confirmed, 0) AS seller_confirmed, " +
                 "COALESCE(o.buyer_confirmed, 0) AS buyer_confirmed, " +
@@ -135,6 +152,11 @@ public class OrderDAO {
         item.sellerId = rs.getInt("seller_id");
         item.agreedPrice = rs.getDouble("agreed_price");
         item.depositAmount = rs.getDouble("deposit_amount");
+        item.totalPaid = rs.getDouble("total_paid");
+        item.balancePaymentMethod = rs.getString("balance_payment_method");
+        item.paymentStatus = rs.getString("payment_status");
+        item.balanceExpiresAt = rs.getTimestamp("balance_expires_at");
+        item.balancePaidAt = rs.getTimestamp("balance_paid_at");
         item.status = rs.getString("status");
         item.createdAt = rs.getTimestamp("created_at");
 
@@ -254,7 +276,9 @@ public class OrderDAO {
                 "o.seller_confirmed, o.shipping_status, p.title " +
                 "FROM orders o JOIN products p ON o.product_id = p.id WHERE o.id = ?";
         String updateSql = "UPDATE orders SET buyer_confirmed = 1, buyer_confirmed_at = CURRENT_TIMESTAMP, " +
-                "status = 'COMPLETED', shipping_status = 'DA_GIAO' " +
+                "status = 'COMPLETED', shipping_status = 'DA_GIAO', " +
+                "payment_status = CASE WHEN balance_payment_method='COD' THEN 'PAID' ELSE payment_status END, " +
+                "total_paid = CASE WHEN balance_payment_method='COD' THEN agreed_price ELSE total_paid END " +
                 "WHERE id = ? AND buyer_id = ?";
 
         try (Connection conn = DBContext.getConnection()) {

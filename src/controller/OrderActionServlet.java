@@ -61,7 +61,25 @@ public class OrderActionServlet extends HttpServlet {
             return;
         }
 
-        if ("confirm_delivery".equalsIgnoreCase(action)) {
+        if (isSeller && "PARTIALLY_PAID".equalsIgnoreCase(order.paymentStatus) && !"COD".equalsIgnoreCase(order.balancePaymentMethod) &&
+                ("confirm_delivery".equalsIgnoreCase(action) || "ghn_create".equalsIgnoreCase(action))) {
+            sendResponse(request, response, false, "Người mua cần chọn thanh toán khi nhận hàng hoặc thanh toán chuyển khoản phần còn lại trước khi bàn giao/gửi hàng.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+            return;
+        }
+
+        if ("choose_balance_payment".equalsIgnoreCase(action)) {
+            if (!isBuyer) {
+                sendResponse(request, response, false, "Chỉ người mua mới có thể chọn hình thức thanh toán phần còn lại.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                return;
+            }
+            String method = request.getParameter("paymentMethod");
+            boolean ok = orderDAO.setBalancePaymentMethod(orderId, currentUser.getId(), method);
+            if (ok && "TRANSFER".equals(method)) {
+                response.sendRedirect("vnpay-create?orderId=" + orderId + "&paymentType=BALANCE");
+                return;
+            }
+            sendResponse(request, response, ok, ok ? "Đã chọn thanh toán khi nhận hàng." : "Không thể chọn phương thức thanh toán cho đơn này.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+        } else if ("confirm_delivery".equalsIgnoreCase(action)) {
             // Người bán xác nhận đã giao hàng trực tiếp
             if (!isSeller) {
                 sendResponse(request, response, false, "Chỉ Người Bán mới có thể xác nhận đã giao hàng.", null);
@@ -77,6 +95,11 @@ public class OrderActionServlet extends HttpServlet {
             // Người mua xác nhận đã nhận hàng (Trực tiếp hoặc GHN)
             if (!isBuyer) {
                 sendResponse(request, response, false, "Chỉ Người Mua mới có thể xác nhận đã nhận hàng.", null);
+                return;
+            }
+
+            if ("PARTIALLY_PAID".equalsIgnoreCase(order.paymentStatus) && !"COD".equalsIgnoreCase(order.balancePaymentMethod)) {
+                sendResponse(request, response, false, "Vui lòng chọn thanh toán khi nhận hàng hoặc thanh toán chuyển khoản phần còn lại trước khi xác nhận hoàn tất đơn.", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
                 return;
             }
 
@@ -187,7 +210,7 @@ public class OrderActionServlet extends HttpServlet {
             // Nếu người dùng chọn gọi Sandbox API hoặc đã cấu hình Token
             if ("sandbox_api".equalsIgnoreCase(createMode) || (ghnApiService.isConfigured() && !"simulator".equalsIgnoreCase(createMode))) {
                 try {
-                    double codAmount = Math.max(0, order.agreedPrice - order.depositAmount);
+                    double codAmount = Math.max(0, order.agreedPrice - Math.max(order.depositAmount, order.totalPaid));
                     trackingCode = ghnApiService.createOrder(
                             order.sellerName,
                             order.sellerPhone,

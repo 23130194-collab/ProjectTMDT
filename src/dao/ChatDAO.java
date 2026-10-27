@@ -58,6 +58,39 @@ public class ChatDAO {
         return 0;
     }
 
+    public int countUnreadMessages(int userId) {
+        String sql = "SELECT COUNT(*) FROM messages m JOIN conversations c ON c.id = m.conversation_id " +
+                "WHERE (c.buyer_id = ? OR c.seller_id = ?) AND m.sender_id <> ? " +
+                "AND m.read_at IS NULL AND m.message_type IN ('TEXT', 'PROPOSAL')";
+        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, userId);
+            ps.setInt(3, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    public void markConversationMessagesRead(int conversationId, int userId) {
+        String sql = "UPDATE messages m JOIN conversations c ON c.id = m.conversation_id " +
+                "SET m.read_at = CURRENT_TIMESTAMP WHERE m.conversation_id = ? " +
+                "AND (c.buyer_id = ? OR c.seller_id = ?) AND m.sender_id <> ? " +
+                "AND m.message_type IN ('TEXT', 'PROPOSAL') AND m.read_at IS NULL";
+        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, conversationId);
+            ps.setInt(2, userId);
+            ps.setInt(3, userId);
+            ps.setInt(4, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     public int getProductOwnerId(int productId) {
         String sql = "SELECT user_id FROM products WHERE id = ? LIMIT 1";
         try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {

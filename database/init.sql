@@ -77,6 +77,11 @@ CREATE TABLE orders (
     seller_id INT NOT NULL,
     agreed_price DECIMAL(15, 2) NOT NULL, -- Giá chốt cuối cùng
     deposit_amount DECIMAL(15, 2) DEFAULT 0, -- Tiền cọc (VietQR)
+    total_paid DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    balance_payment_method VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, TRANSFER, COD, PAID
+    payment_status VARCHAR(20) NOT NULL DEFAULT 'UNPAID', -- UNPAID, PARTIALLY_PAID, PAID
+    balance_expires_at TIMESTAMP NULL,
+    balance_paid_at TIMESTAMP NULL,
     status ENUM('NEGOTIATING', 'DEPOSITED', 'SHIPPING', 'COMPLETED', 'CANCELLED', 'DISPUTED') DEFAULT 'NEGOTIATING',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id),
@@ -104,6 +109,7 @@ CREATE TABLE messages (
     content TEXT,
     message_type ENUM('TEXT', 'PROPOSAL', 'SYSTEM') DEFAULT 'TEXT', -- Loại tin nhắn (chữ / báo giá / hệ thống báo)
     proposed_price DECIMAL(15,2), -- Chỉ dùng nếu type là PROPOSAL
+    read_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id),
     FOREIGN KEY (sender_id) REFERENCES users(id)

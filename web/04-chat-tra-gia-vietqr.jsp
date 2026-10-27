@@ -70,7 +70,7 @@
         Quản lý đơn hàng<%= chatLoggedIn ? " (" + chatOrderCount + ")" : "" %>
       </a>
       <a href="01-trang-chu.jsp" class="text-xs font-medium text-slate-500 hover:text-blue-600">Về trang chủ</a>
-      <a href="<%= chatLoggedIn ? "08-ho-so-ca-nhan.jsp" : "07-dang-nhap-xac-thuc.jsp" %>" title="<%= chatLoggedIn ? h(chatDisplayName) : "Đăng nhập" %>" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold overflow-hidden">
+      <a href="<%= chatLoggedIn ? "my-posts" : "07-dang-nhap-xac-thuc.jsp" %>" title="<%= chatLoggedIn ? h(chatDisplayName) : "Đăng nhập" %>" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold overflow-hidden">
         <% if (chatLoggedIn && !chatAvatarImage.isEmpty()) { %>
           <img src="<%= h(chatAvatarImage) %>" alt="Ảnh đại diện" class="w-full h-full rounded-full object-cover">
         <% } else { %>
@@ -339,6 +339,7 @@
 
           <form id="vnpayPaymentForm" action="vnpay-create" method="post">
             <input id="vnpayConversationId" type="hidden" name="conversationId" value="">
+            <input id="vnpayPaymentType" type="hidden" name="paymentType" value="DEPOSIT">
             <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-sm">
               Thanh toán đặt cọc qua VNPay Sandbox
             </button>
@@ -368,7 +369,7 @@
             </div>
           </div>
           <div class="pt-1 flex flex-col gap-2">
-            <a id="btnGoToUpdateAddress" href="08-ho-so-ca-nhan.jsp?openEdit=1" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-sm flex items-center justify-center gap-1.5">
+            <a id="btnGoToUpdateAddress" href="my-posts?openEdit=1" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-sm flex items-center justify-center gap-1.5">
               <span>Cập nhật địa chỉ trong Hồ sơ</span>
               <span>&rarr;</span>
             </a>
@@ -633,7 +634,7 @@
         <a href="05-quan-ly-don-hang.jsp" class="hover:text-blue-600">05. Quản lý đơn hàng</a>
         <a href="06-quan-tri-admin.jsp" class="hover:text-blue-600">06. Quản trị Admin</a>
         <a href="07-dang-nhap-xac-thuc.jsp" class="hover:text-blue-600">07. Đăng nhập / Đăng ký</a>
-        <a href="08-ho-so-ca-nhan.jsp" class="hover:text-blue-600">08. Hồ sơ cá nhân</a>
+        <a href="my-posts" class="hover:text-blue-600">08. Hồ sơ cá nhân</a>
       </div>
     </div>
   </footer>
@@ -656,6 +657,7 @@
     };
     let refreshTimer = null;
     let depositDeadlineTimer = null;
+    let depositPaymentDeadline = 0;
     let renderedExpiredProposalId = null;
     const offerDeadlineCache = Object.create(null);
 
@@ -687,6 +689,7 @@
     }
 
     function selectThread(role, id) {
+      if (currentConversationId !== id) depositPaymentDeadline = 0;
       currentRole = role;
       currentConversationId = id;
       loadChat(role, id);
@@ -986,7 +989,8 @@
       const isExpired = !depositPaid && offerState.status === 'expired';
       const depositAmount = calculateDepositAmount(proposedPrice);
       const remain = formatMoney(Math.max(0, proposedPrice - depositAmount));
-      const badge = depositPaid ? 'Đã thanh toán cọc' : productSold ? 'Sản phẩm đã hết' : offerState.badge;
+      const paidInFull = hasPaidFullAmount();
+      const badge = depositPaid ? (paidInFull ? 'Đã thanh toán toàn bộ' : 'Đã thanh toán cọc') : productSold ? 'Sản phẩm đã hết' : offerState.badge;
       const cardTitle = depositPaid ? 'TÓM TẮT GIAO DỊCH' : productSold ? 'SẢN PHẨM ĐÃ HẾT' : 'ĐỀ XUẤT TRẢ GIÁ';
       const badgeClass = depositPaid
         ? 'text-[10px] text-green-700 font-bold bg-green-100 px-1.5 py-0.5 rounded'
@@ -1005,7 +1009,7 @@
       const depositSummary = productSold
         ? 'Sản phẩm đã được người mua khác đặt cọc và không còn nhận trả giá.'
         : depositPaid
-        ? 'Đã thanh toán cọc ' + escapeHtml(formatMoney(depositAmount)) + ' qua VNPay. Số tiền còn lại ' + escapeHtml(remain) + ' thanh toán khi nhận sản phẩm.'
+        ? (paidInFull ? 'Đã thanh toán toàn bộ giá chốt qua VNPay.' : 'Đã thanh toán cọc ' + escapeHtml(formatMoney(depositAmount)) + ' qua VNPay. Số tiền còn lại ' + escapeHtml(remain) + ' thanh toán theo lựa chọn của người mua.')
         : isExpired
         ? 'Mức trả giá đã hết hạn sau 15 phút chưa đặt cọc. Giá đã quay về giá ban đầu; người mua cần gửi đề xuất mới.'
         : 'Tiền cọc giữ sản phẩm (' + getDepositRateLabel(proposedPrice) + '): <strong class="text-slate-900">' + escapeHtml(formatMoney(depositAmount)) + '</strong>. Số tiền còn lại <strong class="text-slate-900">' + escapeHtml(formatMoney(remain)) + '</strong> thanh toán khi nhận sản phẩm.';
@@ -1058,21 +1062,12 @@
       }
       if (/đồng ý|chốt|ok|okay/i.test(responseText)) {
         const acceptedAt = Number(sellerResponse.createdAtMs) || 0;
-        const expiresAt = getOfferExpiryAt(chatState.messages[proposalIndex], sellerResponse, conversation, acceptedAt);
-        if (acceptedAt > 0 && Date.now() >= expiresAt) {
-          return {
-            status: 'expired',
-            badge: 'Hết hạn - cần trả giá lại',
-            badgeClass: 'text-[10px] text-red-700 font-bold bg-red-100 px-1.5 py-0.5 rounded',
-            expiresAt: expiresAt
-          };
-        }
         return {
           status: 'accepted',
           badge: 'Người bán đã đồng ý',
           badgeClass: 'text-[10px] text-green-700 font-bold bg-green-100 px-1.5 py-0.5 rounded',
           acceptedAt: acceptedAt,
-          expiresAt: expiresAt
+          expiresAt: 0
         };
       }
       return fallback;
@@ -1176,7 +1171,12 @@
 
     function hasPaidDeposit() {
       return (chatState.messages || []).some(message => message.messageType === 'SYSTEM' &&
-        /VNPay đã xác nhận thanh toán đặt cọc/i.test(message.content || ''));
+        /VNPay đã xác nhận thanh toán (đặt cọc|toàn bộ)/i.test(message.content || ''));
+    }
+
+    function hasPaidFullAmount() {
+      return (chatState.messages || []).some(message => message.messageType === 'SYSTEM' &&
+        /VNPay đã xác nhận thanh toán toàn bộ/i.test(message.content || ''));
     }
 
     function renderQuickDepositBar() {
@@ -1204,9 +1204,21 @@
       }
 
       bar.className = 'px-4 py-2 bg-amber-50 border-t border-amber-200 flex items-center justify-between text-xs shrink-0';
-      bar.innerHTML = '<div class="min-w-0"><span class="block text-amber-900 font-medium text-[11px]">Giá đã chốt: ' + escapeHtml(formatMoney(dealPrice)) + '. Đặt cọc ' + getDepositRateLabel(dealPrice) + ' (' + escapeHtml(formatMoney(depositAmount)) + ') qua VNPay để giữ sản phẩm.' + deliveryNote + '</span>' +
+      bar.innerHTML = '<div class="min-w-0"><span class="block text-amber-900 font-medium text-[11px]">Giá đã chốt: ' + escapeHtml(formatMoney(dealPrice)) + '. Chọn đặt cọc ' + getDepositRateLabel(dealPrice) + ' (' + escapeHtml(formatMoney(depositAmount)) + ') hoặc thanh toán toàn bộ qua VNPay.' + deliveryNote + '</span>' +
         '<span class="block mt-1 text-[10px] text-amber-800">Đối với đơn hàng trên 100.000đ thì cọc mặc định là 10%, đơn từ 100.000đ trở xuống buộc cọc 50% và đối với đơn từ 10.000đ đến 50.000đ bắt buộc phải cọc 100%.</span></div>' +
-        '<button onclick="openQrModal()" class="px-3 py-1.5 ' + (needsAddress ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700') + ' text-white font-bold text-xs rounded-md shadow-sm transition shrink-0">' + (needsAddress ? 'Cập nhật địa chỉ & cọc' : 'Thanh toán cọc VNPay') + '</button>';
+        '<div class="flex gap-2 shrink-0"><button onclick="openQrModal()" class="px-3 py-1.5 ' + (needsAddress ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700') + ' text-white font-bold text-xs rounded-md shadow-sm transition">' + (needsAddress ? 'Cập nhật địa chỉ & cọc' : 'Thanh toán cọc') + '</button>' +
+        '<button onclick="startFullPayment()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm transition">Trả toàn bộ</button></div>';
+    }
+
+    function startFullPayment() {
+      const c = chatState.selectedConversation;
+      if (!c || currentRole === 'seller' || String(c.productStatus || '').toUpperCase() !== 'ACTIVE') { alert('Tin đăng không còn khả dụng để thanh toán.'); return; }
+      if (Number(c.deliveryMethod) === 2 && (!chatState.currentUser || !chatState.currentUser.hasShippingAddress)) { openRequireAddressModal(); return; }
+      const price = getDepositPrice(c);
+      if (price <= 0) { alert('Chỉ thanh toán được sau khi hai bên thống nhất giá.'); return; }
+      document.getElementById('vnpayConversationId').value = c.id;
+      document.getElementById('vnpayPaymentType').value = 'FULL';
+      document.getElementById('vnpayPaymentForm').submit();
     }
 
     function getDepositPrice(conversation) {
@@ -1230,25 +1242,19 @@
       }
       const proposalIndex = findLatestProposalIndex();
       const offerState = proposalIndex >= 0 ? getOfferState(proposalIndex, c) : null;
-      if (offerState && offerState.status === 'accepted' && offerState.expiresAt > 0) {
-        const remainingMs = Math.max(0, offerState.expiresAt - Date.now());
+      if (depositPaymentDeadline > 0) {
+        const remainingMs = Math.max(0, depositPaymentDeadline - Date.now());
         const remainingSeconds = Math.ceil(remainingMs / 1000);
         notice.classList.remove('hidden');
         countdown.classList.remove('hidden');
         countdown.textContent = 'Thời gian còn lại: ' + String(Math.floor(remainingSeconds / 60)).padStart(2, '0') + ':' + String(remainingSeconds % 60).padStart(2, '0');
-        renderedExpiredProposalId = null;
+        if (remainingMs <= 0) {
+          closeQrModal();
+          document.getElementById('vnpayPaymentForm').classList.add('opacity-50');
+        }
       } else {
         notice.classList.add('hidden');
         countdown.classList.add('hidden');
-        if (offerState && offerState.status === 'expired') {
-          closeQrModal();
-          const proposalId = chatState.messages[proposalIndex] ? chatState.messages[proposalIndex].id : proposalIndex;
-          if (renderedExpiredProposalId !== proposalId) {
-            renderedExpiredProposalId = proposalId;
-            renderMessages(true);
-            renderQuickDepositBar();
-          }
-        }
       }
     }
 
@@ -1277,7 +1283,7 @@
         } else if (c && c.id) {
           returnUrl += '?conversationId=' + encodeURIComponent(c.id);
         }
-        updateLink.href = '08-ho-so-ca-nhan.jsp?openEdit=1&returnUrl=' + encodeURIComponent(returnUrl);
+        updateLink.href = 'my-posts?openEdit=1&returnUrl=' + encodeURIComponent(returnUrl);
       }
       document.getElementById('requireAddressModal').classList.remove('hidden');
     }
@@ -1317,11 +1323,13 @@
       }
 
       const amount = calculateDepositAmount(depositPrice);
+      depositPaymentDeadline = Date.now() + 15 * 60 * 1000;
       const reference = 'Được tạo tự động khi chuyển sang VNPay';
       document.getElementById('qrDepositAmount').textContent = formatMoney(amount);
       document.getElementById('qrDepositRule').textContent = 'Số tiền đặt cọc (' + getDepositRateLabel(depositPrice) + '):';
       document.getElementById('qrTransferReference').textContent = reference;
       document.getElementById('vnpayConversationId').value = c.id;
+      document.getElementById('vnpayPaymentType').value = 'DEPOSIT';
       updateDepositExpiryDisplay();
       document.getElementById('qrModal').classList.remove('hidden');
     }

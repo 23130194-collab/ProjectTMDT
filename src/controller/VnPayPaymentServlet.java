@@ -58,6 +58,11 @@ public class VnPayPaymentServlet extends HttpServlet {
             return;
         }
 
+        if ("BALANCE".equalsIgnoreCase(request.getParameter("paymentType"))) {
+            startBalancePayment(request, response, buyer, tmnCode, hashSecret);
+            return;
+        }
+
         int conversationId = parseInt(request.getParameter("conversationId"));
         ChatConversation conversation = conversationId > 0 ? chatDAO.getConversation(conversationId, buyer.getId()) : null;
         if (conversation == null || conversation.getBuyerId() != buyer.getId()) {
@@ -98,11 +103,13 @@ public class VnPayPaymentServlet extends HttpServlet {
             return;
         }
 
+        String paymentType = "FULL".equalsIgnoreCase(request.getParameter("paymentType")) ? "FULL" : "DEPOSIT";
+        double chargeAmount = "FULL".equals(paymentType) ? terms.agreedPrice : depositAmount;
         String txnRef = "MN" + System.currentTimeMillis() + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         Timestamp expiresAt = new Timestamp(terms.expiresAt);
         try {
             paymentDAO.createPending(txnRef, conversation.getId(), buyer.getId(), conversation.getSellerId(),
-                    conversation.getProductId(), terms.agreedPrice, depositAmount, expiresAt);
+                    conversation.getProductId(), terms.agreedPrice, depositAmount, expiresAt, paymentType);
         } catch (SQLException | IllegalStateException e) {
             getServletContext().log("Không lưu được giao dịch đặt cọc VNPay.", e);
             String message = e.getMessage() != null && (e.getMessage().startsWith("Hội thoại đã có giao dịch") ||
@@ -117,10 +124,10 @@ public class VnPayPaymentServlet extends HttpServlet {
         params.put("vnp_Version", "2.1.0");
         params.put("vnp_Command", "pay");
         params.put("vnp_TmnCode", tmnCode);
-        params.put("vnp_Amount", String.valueOf(Math.round(depositAmount * 100)));
+        params.put("vnp_Amount", String.valueOf(Math.round(chargeAmount * 100)));
         params.put("vnp_CurrCode", "VND");
         params.put("vnp_TxnRef", txnRef);
-        params.put("vnp_OrderInfo", "Dat coc giu san pham " + conversation.getProductId());
+        params.put("vnp_OrderInfo", ("FULL".equals(paymentType) ? "Thanh toan toan bo san pham " : "Dat coc giu san pham ") + conversation.getProductId());
         params.put("vnp_OrderType", "other");
         params.put("vnp_Locale", "vn");
         params.put("vnp_ReturnUrl", returnUrl(request));
@@ -133,8 +140,40 @@ public class VnPayPaymentServlet extends HttpServlet {
         response.sendRedirect(paymentUrl);
     }
 
+    private void startBalancePayment(HttpServletRequest request, HttpServletResponse response, User buyer,
+                                     String tmnCode, String hashSecret) throws IOException, ServletException {
+        int orderId = parseInt(request.getParameter("orderId"));
+        model.OrderSummary order = new dao.OrderDAO().getOrderSummaryById(orderId);
+        if (order == null || order.buyerId != buyer.getId()) {
+            showResult(request, response, false, "Không tìm thấy đơn hàng cần thanh toán."); return;
+        }
+        double remaining = order.agreedPrice - order.depositAmount;
+        if (remaining <= 0) { showResult(request, response, false, "Đơn hàng không còn khoản tiền cần thanh toán."); return; }
+        long gatewayExpiry = Math.min(order.balanceExpiresAt == null ? 0 : order.balanceExpiresAt.getTime(), System.currentTimeMillis() + 15 * 60 * 1000L);
+        if (gatewayExpiry <= System.currentTimeMillis()) { showResult(request, response, false, "Đã hết 24 giờ thanh toán phần còn lại; đơn hàng sẽ được hủy."); return; }
+        String txnRef = "MN" + System.currentTimeMillis() + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        try {
+            paymentDAO.createPendingBalance(txnRef, order.id, buyer.getId(), new Timestamp(gatewayExpiry));
+        } catch (SQLException | IllegalStateException e) {
+            showResult(request, response, false, e.getMessage() == null ? "Không thể tạo giao dịch thanh toán." : e.getMessage()); return;
+        }
+        Map<String, String> params = new TreeMap<>();
+        ZonedDateTime now = ZonedDateTime.now(VIETNAM_ZONE);
+        params.put("vnp_Version", "2.1.0"); params.put("vnp_Command", "pay"); params.put("vnp_TmnCode", tmnCode);
+        params.put("vnp_Amount", String.valueOf(Math.round(remaining * 100))); params.put("vnp_CurrCode", "VND");
+        params.put("vnp_TxnRef", txnRef); params.put("vnp_OrderInfo", "Thanh toan phan con lai don hang " + order.id);
+        params.put("vnp_OrderType", "other"); params.put("vnp_Locale", "vn"); params.put("vnp_ReturnUrl", returnUrl(request));
+        params.put("vnp_IpAddr", clientIp(request)); params.put("vnp_CreateDate", now.format(VNPAY_DATE));
+        params.put("vnp_ExpireDate", Instant.ofEpochMilli(gatewayExpiry).atZone(VIETNAM_ZONE).format(VNPAY_DATE));
+        response.sendRedirect(SANDBOX_URL + "?" + buildQuery(params) + "&vnp_SecureHash=" + hmacSha512(hashSecret, buildHashData(params)));
+    }
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+        if ("BALANCE".equalsIgnoreCase(request.getParameter("paymentType")) && parseInt(request.getParameter("orderId")) > 0) {
+            doPost(request, response);
+            return;
+        }
         String path = request.getServletPath();
         if ("/vnpay-ipn".equals(path)) {
             handleIpn(request, response);
@@ -166,6 +205,16 @@ public class VnPayPaymentServlet extends HttpServlet {
         VnPayPaymentDAO.CallbackResult result = verified
                 ? processCallback(params)
                 : new VnPayPaymentDAO.CallbackResult(false, "Không xác minh được chữ ký trả về từ VNPay.");
+        if (verified && result.successful && "DEPOSIT".equalsIgnoreCase(result.paymentType) && result.orderId > 0) {
+            User sessionBuyer = getSessionUser(request);
+            model.OrderSummary order = new dao.OrderDAO().getOrderSummaryById(result.orderId);
+            if (sessionBuyer != null && order != null && order.buyerId == sessionBuyer.getId() && "PENDING".equalsIgnoreCase(order.balancePaymentMethod)) {
+                request.setAttribute("balanceChoiceOrderId", result.orderId);
+                request.setAttribute("paymentMessage", result.message);
+                request.getRequestDispatcher("/payment-choice.jsp").forward(request, response);
+                return;
+            }
+        }
         showResult(request, response, verified && result.successful, result.message);
     }
 
@@ -221,12 +270,7 @@ public class VnPayPaymentServlet extends HttpServlet {
             return new OfferTerms(false, "Người bán chưa đồng ý mức giá đề xuất.", 0, 0);
         }
 
-        long acceptedAt = sellerResponse.getCreatedAt() == null ? now : sellerResponse.getCreatedAt().getTime();
-        long expiresAt = acceptedAt + 15 * 60 * 1000L;
-        if (now >= expiresAt) {
-            return new OfferTerms(false, "Đã quá 15 phút. Mức giá chốt đã bị hủy; vui lòng gửi đề xuất trả giá mới.", 0, 0);
-        }
-        return new OfferTerms(true, "", proposal.getProposedPrice(), expiresAt);
+        return new OfferTerms(true, "", proposal.getProposedPrice(), now + 15 * 60 * 1000L);
     }
 
     private boolean validSignature(Map<String, String> params) {
