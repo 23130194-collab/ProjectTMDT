@@ -147,3 +147,25 @@ ON DUPLICATE KEY UPDATE
     description = VALUES(description),
     is_active = VALUES(is_active),
     sort_order = VALUES(sort_order);
+
+-- ------------------------------------------------------------------------------
+-- 6. Ghi chú thuật toán sắp xếp hiển thị trên website (Đã tích hợp trong ProductDAO.java)
+-- ------------------------------------------------------------------------------
+-- Quy tắc sắp xếp công bằng (Fair Rotation):
+-- 1. Ưu tiên 1: Tin VIP còn hạn (is_pinned = 1 AND pinned_until > NOW()) DESC
+-- 2. Ưu tiên 2: Cấp VIP cao hơn đứng trước: Kim Cương (priority_level = 2) > Nổi Bật (priority_level = 1)
+-- 3. Ưu tiên 3: CƠ CHẾ XOAY VÒNG CÔNG BẰNG: Nếu cùng cấp VIP, xoay vòng ngẫu nhiên RAND() mỗi lượt tải trang để chia đều lượt hiển thị (Impression).
+-- 4. Ưu tiên 4: Tin thường & Tin vừa bấm Đẩy: Sắp xếp theo COALESCE(bumped_at, created_at) DESC (Ai vừa đẩy/đăng gần nhất thì đứng trước).
+-- 5. Ưu tiên 5: id DESC
+--
+-- Ví dụ câu truy vấn chuẩn:
+-- SELECT p.*, pi.image_url FROM products p
+-- LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1
+-- WHERE p.status = 'ACTIVE'
+-- ORDER BY 
+--     (p.is_pinned = 1 AND p.pinned_until > NOW()) DESC,
+--     p.priority_level DESC,
+--     CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW()) THEN RAND() ELSE 0 END,
+--     COALESCE(p.bumped_at, p.created_at) DESC,
+--     p.id DESC;
+

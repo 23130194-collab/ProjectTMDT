@@ -111,6 +111,29 @@ public class ProductBoostDAO {
                     psBoost.executeUpdate();
                 }
 
+                // Gửi thông báo hệ thống (In-App Notification) cho người dùng
+                NotificationDAO notiDAO = new NotificationDAO();
+                if (pkg.isVipPackage() && productId != null && productId > 0) {
+                    String prodTitle = "tin đăng";
+                    try (PreparedStatement psT = conn.prepareStatement("SELECT title FROM products WHERE id = ?")) {
+                        psT.setInt(1, productId);
+                        try (ResultSet rsT = psT.executeQuery()) {
+                            if (rsT.next()) prodTitle = rsT.getString("title");
+                        }
+                    }
+                    notiDAO.createNotification(conn, userId,
+                        "👑 Kích hoạt VIP thành công",
+                        "Tin đăng '" + prodTitle + "' đã được nâng cấp lên gói " + pkg.getName() + " thành công!",
+                        "PROMOTION",
+                        "product-detail?id=" + productId);
+                } else if (pkg.isBumpPackage()) {
+                    notiDAO.createNotification(conn, userId,
+                        "🚀 Nạp Ví Lượt Đẩy thành công",
+                        "Bạn đã nạp thành công " + pkg.getName() + ". Đã cộng " + bumpsAddedToWallet + " lượt đẩy vào ví tài khoản.",
+                        "PROMOTION",
+                        (productId != null && productId > 0) ? ("product-detail?id=" + productId) : "my-posts");
+                }
+
                 conn.commit();
                 return true;
             } catch (SQLException e) {
@@ -167,6 +190,20 @@ public class ProductBoostDAO {
                         psBump.executeUpdate();
                     }
 
+                    // Gửi thông báo đẩy tin thành công
+                    String prodTitle = "tin đăng";
+                    try (PreparedStatement psT = conn.prepareStatement("SELECT title FROM products WHERE id = ?")) {
+                        psT.setInt(1, productId);
+                        try (ResultSet rsT = psT.executeQuery()) {
+                            if (rsT.next()) prodTitle = rsT.getString("title");
+                        }
+                    }
+                    new NotificationDAO().createNotification(conn, userId,
+                        "🚀 Đẩy tin thành công",
+                        "Tin đăng '" + prodTitle + "' đã được đưa lên đầu danh mục.",
+                        "SYSTEM",
+                        "product-detail?id=" + productId);
+
                     conn.commit();
                     return true;
                 }
@@ -189,6 +226,20 @@ public class ProductBoostDAO {
                         psUpdateProd.setInt(2, userId);
                         psUpdateProd.executeUpdate();
                     }
+
+                    // Gửi thông báo đẩy tin thành công
+                    String prodTitle = "tin đăng";
+                    try (PreparedStatement psT = conn.prepareStatement("SELECT title FROM products WHERE id = ?")) {
+                        psT.setInt(1, productId);
+                        try (ResultSet rsT = psT.executeQuery()) {
+                            if (rsT.next()) prodTitle = rsT.getString("title");
+                        }
+                    }
+                    new NotificationDAO().createNotification(conn, userId,
+                        "🚀 Đẩy tin thành công",
+                        "Tin đăng '" + prodTitle + "' đã được đưa lên đầu danh mục.",
+                        "SYSTEM",
+                        "product-detail?id=" + productId);
 
                     conn.commit();
                     return true;

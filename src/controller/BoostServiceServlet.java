@@ -94,6 +94,25 @@ public class BoostServiceServlet extends HttpServlet {
                 return;
             }
 
+            // 1. Chỉ bài đăng ACTIVE mới được phép đẩy
+            if (!"ACTIVE".equalsIgnoreCase(product.getStatus())) {
+                response.getWriter().write("{\"status\":\"error\",\"message\":\"Chỉ bài đăng đang hoạt động (ACTIVE) mới có thể sử dụng lượt đẩy tin.\"}");
+                return;
+            }
+
+            // 2. Cooldown Protection: Tránh spam bấm nhầm làm lãng phí lượt đẩy (giãn cách tối thiểu 5 phút)
+            java.sql.Timestamp lastBumped = product.getBumpedAt();
+            if (lastBumped != null) {
+                long diffMillis = System.currentTimeMillis() - lastBumped.getTime();
+                long cooldownMillis = 5L * 60 * 1000; // 5 phút
+                if (diffMillis < cooldownMillis) {
+                    long remainingSeconds = (cooldownMillis - diffMillis) / 1000;
+                    long remainingMinutes = (remainingSeconds + 59) / 60;
+                    response.getWriter().write(String.format("{\"status\":\"cooldown\",\"message\":\"Bài đăng của bạn vừa được đẩy cách đây ít phút và đang ở đầu danh sách. Vui lòng quay lại sau %d phút nữa để tránh lãng phí lượt đẩy!\"}", remainingMinutes));
+                    return;
+                }
+            }
+
             int walletCredits = userDao.getUserBumpCredits(user.getId());
             if (walletCredits <= 0 && product.getRemainingBumps() <= 0) {
                 response.getWriter().write("{\"status\":\"no_credits\",\"message\":\"Ví lượt đẩy của bạn đã hết. Vui lòng nạp thêm lượt đẩy để tiếp tục.\"}");
@@ -127,6 +146,12 @@ public class BoostServiceServlet extends HttpServlet {
                 if (product == null || product.getUserId() != user.getId()) {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     response.getWriter().write("{\"status\":\"error\",\"message\":\"Không tìm thấy bài đăng hoặc bạn không phải chủ sở hữu bài viết này.\"}");
+                    return;
+                }
+
+                // Nếu là gói VIP thì bắt buộc bài đăng phải đang ACTIVE
+                if (pkg.isVipPackage() && !"ACTIVE".equalsIgnoreCase(product.getStatus())) {
+                    response.getWriter().write("{\"status\":\"error\",\"message\":\"Chỉ bài đăng đang hoạt động (ACTIVE) mới có thể nâng cấp gói VIP.\"}");
                     return;
                 }
             } else if (pkg.isVipPackage()) {

@@ -70,7 +70,7 @@
       <div class="lg:col-span-7 space-y-6">
 
         <!-- KHUNG ẢNH CHÍNH & THUMBNAILS THỰC TẾ -->
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden p-3 shadow-sm relative">
+        <div class="bg-white rounded-xl ${product.vipActive ? (product.priorityLevel >= 2 ? 'border-2 border-purple-400 shadow-md shadow-purple-100/50' : 'border-2 border-amber-300 shadow-md shadow-amber-100/50') : 'border border-slate-200'} overflow-hidden p-3 shadow-sm relative">
 
           <!-- OVERLAY TRẠNG THÁI TẠM KHÓA / ĐÃ BÁN -->
           <div id="imageLockOverlay"
@@ -85,7 +85,7 @@
             </p>
           </div>
 
-                    <div
+          <div
             class="w-full h-80 sm:h-96 rounded-lg overflow-hidden relative group bg-slate-950 flex items-center justify-center">
             <c:set var="mainImage" value="${not empty images ? images[0].imageUrl : 'assets/images/no-image.jpg'}" />
             <img id="mainDetailImage"
@@ -96,6 +96,11 @@
               class="absolute top-3 left-3 bg-blue-600 text-white text-xs font-semibold px-2.5 py-1 rounded shadow-sm">
               Ảnh thực tế 100%
             </span>
+            <c:if test="${product.vipActive}">
+              <span class="absolute top-3 right-3 ${product.priorityLevel >= 2 ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-amber-500 to-orange-500'} text-white text-xs font-black px-3 py-1 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wide">
+                <c:out value="${not empty product.badgeLabel ? product.badgeLabel : 'VIP'}"/>
+              </span>
+            </c:if>
             <span id="activeImageIndex"
               class="absolute bottom-3 right-3 bg-slate-900/80 text-white text-xs px-2.5 py-1 rounded backdrop-blur">
               1 / <c:choose><c:when test="${not empty images}">${fn:length(images)}</c:when><c:otherwise>0</c:otherwise></c:choose> Góc chụp
@@ -221,14 +226,19 @@
       <div class="lg:col-span-5 space-y-5">
 
         <!-- THẺ GIÁ VÀ ĐIỀU HƯỚNG GIAO NHẬN -->
-        <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="bg-white rounded-xl ${product.vipActive ? (product.priorityLevel >= 2 ? 'border-2 border-purple-400 shadow-sm shadow-purple-50' : 'border-2 border-amber-300 shadow-sm shadow-amber-50') : 'border border-slate-200'} p-5 sm:p-6 shadow-sm space-y-4">
           <div>
-            <div class="flex items-center gap-2 mb-2">
-                              <span id="dealTypeBadge"
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
+              <c:if test="${product.vipActive}">
+                <span class="px-2.5 py-0.5 rounded text-[10px] font-black ${product.priorityLevel >= 2 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs'} uppercase flex items-center gap-1 tracking-wide">
+                  <c:out value="${not empty product.badgeLabel ? product.badgeLabel : 'VIP'}"/>
+                </span>
+              </c:if>
+              <span id="dealTypeBadge"
                   class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase">
                   <c:choose><c:when test="${product.dealType eq 'GIVE' or product.price == 0}">TIN TẶNG MIỄN PHÍ</c:when><c:otherwise>TIN BÁN THANH LÝ</c:otherwise></c:choose>
                 </span>
-                              <span id="dealMethodBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
+              <span id="dealMethodBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
                   <c:choose><c:when test="${product.deliveryMethod == 2}">Giao Hàng Qua Bưu Điện</c:when><c:otherwise>Hẹn Gặp Trực Tiếp</c:otherwise></c:choose>
                 </span>
             </div>
