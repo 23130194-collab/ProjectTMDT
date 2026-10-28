@@ -155,6 +155,29 @@ public class ChatDAO {
         return 0;
     }
 
+    /** Opens the conversation belonging to the active/completed order for either participant. */
+    public int findOrCreateConversationForProductOrder(int productId, int userId) {
+        String sql = "SELECT buyer_id, seller_id FROM orders WHERE product_id = ? " +
+                "AND status IN ('DEPOSITED', 'SHIPPING', 'COMPLETED') " +
+                "AND (buyer_id = ? OR seller_id = ?) ORDER BY created_at DESC, id DESC LIMIT 1";
+        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, productId);
+            ps.setInt(2, userId);
+            ps.setInt(3, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return 0;
+                int buyerId = rs.getInt("buyer_id");
+                int sellerId = rs.getInt("seller_id");
+                if (buyerId == userId || sellerId == userId) {
+                    return findOrCreateConversation(conn, productId, buyerId, sellerId);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
     public List<ChatConversation> getConversations(int userId, String role) {
         List<ChatConversation> conversations = new ArrayList<>();
         boolean buyerRole = "buyer".equalsIgnoreCase(role);

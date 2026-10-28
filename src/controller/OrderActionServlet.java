@@ -41,6 +41,32 @@ public class OrderActionServlet extends HttpServlet {
         }
 
         String action = request.getParameter("action");
+        if ("claim_free_gift".equalsIgnoreCase(action)) {
+            int productId = parseInt(request.getParameter("productId"));
+            if (productId <= 0) {
+                sendResponse(request, response, false, "Sản phẩm không hợp lệ.", null);
+                return;
+            }
+            try {
+                int giftOrderId = orderDAO.createFreeGiftOrder(productId, currentUser.getId());
+                if (giftOrderId > 0) {
+                    sendResponse(request, response, true, "Đã tạo đơn nhận sản phẩm miễn phí.",
+                            "05-quan-ly-don-hang.jsp?orderId=" + giftOrderId);
+                } else if (giftOrderId == -2) {
+                    sendResponse(request, response, false, "Bạn không thể tự đặt đơn cho tin đăng của mình.", null);
+                } else if (giftOrderId == -3) {
+                    sendResponse(request, response, false,
+                            "Vui lòng cập nhật số điện thoại và địa chỉ nhận hàng trong hồ sơ trước khi đặt đơn GHN.", null);
+                } else {
+                    sendResponse(request, response, false, "Sản phẩm không còn khả dụng hoặc đã có người đặt nhận.", null);
+                }
+            } catch (Exception e) {
+                getServletContext().log("Không thể tạo đơn nhận sản phẩm miễn phí: " + e.getMessage(), e);
+                sendResponse(request, response, false, "Chưa thể tạo đơn lúc này. Vui lòng thử lại.", null);
+            }
+            return;
+        }
+
         int orderId = parseInt(request.getParameter("orderId"));
         if (orderId <= 0) {
             sendResponse(request, response, false, "Mã đơn hàng không hợp lệ.", null);

@@ -38,6 +38,131 @@ public class OrderDAO {
         } catch (SQLException ignored) {}
     }
 
+    /** Returns the transaction state only when the viewer is the buyer or seller of this product's order. */
+    public String getUserProductTransactionState(int productId, int userId) {
+        String sql = "SELECT status, total_paid, agreed_price, COALESCE(delivery_method, 1) AS delivery_method FROM orders " +
+                "WHERE product_id = ? AND (buyer_id = ? OR seller_id = ?) AND status IN ('DEPOSITED','SHIPPING','COMPLETED') " +
+                "ORDER BY created_at DESC, id DESC LIMIT 1";
+        try (Connection conn = DBContext.getConnection()) {
+            ensureCancelColumns(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, productId);
+                ps.setInt(2, userId);
+                ps.setInt(3, userId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) return "";
+                    if ("COMPLETED".equalsIgnoreCase(rs.getString("status"))) return "COMPLETED";
+                    if (rs.getDouble("total_paid") >= rs.getDouble("agreed_price")) {
+                        return rs.getInt("delivery_method") == 2 ? "PAID_GHN" : "PAID_DIRECT";
+                    }
+                    if (rs.getDouble("total_paid") > 0) {
+                        return rs.getInt("delivery_method") == 2 ? "DEPOSITED_GHN" : "DEPOSITED_DIRECT";
+                    }
+                    return "";
+                }
+            }
+        } catch (SQLException | IllegalStateException e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
+    /** Atomically creates a zero-payment order for an available free listing. */
+    public int createFreeGiftOrder(int productId, int buyerId) throws SQLException {
+        try (Connection conn = DBContext.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                int sellerId;
+                int deliveryMethod;
+                String title;
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT user_id, title, price, deal_type, status, delivery_method FROM products WHERE id = ? FOR UPDATE")) {
+                    ps.setInt(1, productId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next() || !"ACTIVE".equalsIgnoreCase(rs.getString("status")) ||
+                                !"GIVE".equalsIgnoreCase(rs.getString("deal_type")) || rs.getDouble("price") != 0) {
+                            conn.rollback();
+                            return -1;
+                        }
+                        sellerId = rs.getInt("user_id");
+                        title = rs.getString("title");
+                        deliveryMethod = rs.getInt("delivery_method");
+                    }
+                }
+                if (sellerId == buyerId) {
+                    conn.rollback();
+                    return -2;
+                }
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT id FROM orders WHERE product_id = ? AND status IN ('DEPOSITED','SHIPPING','COMPLETED') LIMIT 1")) {
+                    ps.setInt(1, productId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            conn.rollback();
+                            return -1;
+                        }
+                    }
+                }
+                if (deliveryMethod == 2) {
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "SELECT phone, address_detail, ward, province FROM users WHERE id = ?")) {
+                        ps.setInt(1, buyerId);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (!rs.next() || isBlank(rs.getString("phone")) || isBlank(rs.getString("address_detail")) ||
+                                    isBlank(rs.getString("ward")) || isBlank(rs.getString("province"))) {
+                                conn.rollback();
+                                return -3;
+                            }
+                        }
+                    }
+                }
+
+                int orderId;
+                String insertSql = "INSERT INTO orders (product_id, buyer_id, seller_id, agreed_price, deposit_amount, total_paid, " +
+                        "balance_payment_method, payment_status, delivery_method, status) VALUES (?, ?, ?, 0, 0, 0, 'PAID', 'PAID', ?, 'DEPOSITED')";
+                try (PreparedStatement ps = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setInt(1, productId);
+                    ps.setInt(2, buyerId);
+                    ps.setInt(3, sellerId);
+                    ps.setInt(4, deliveryMethod);
+                    ps.executeUpdate();
+                    try (ResultSet keys = ps.getGeneratedKeys()) {
+                        if (!keys.next()) throw new SQLException("Không lấy được mã đơn hàng vừa tạo.");
+                        orderId = keys.getInt(1);
+                    }
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement("UPDATE products SET status = 'SOLD' WHERE id = ? AND status = 'ACTIVE'")) {
+                    ps.setInt(1, productId);
+                    if (ps.executeUpdate() != 1) throw new SQLException("Sản phẩm vừa được người khác nhận.");
+                }
+
+                String deliveryText = deliveryMethod == 2 ? "qua GHN" : "tại điểm hẹn trực tiếp";
+                NotificationDAO notifications = new NotificationDAO();
+                notifications.createNotification(conn, sellerId, "Sản phẩm miễn phí đã có người nhận",
+                        "Đơn hàng #MN-" + orderId + " cho sản phẩm \"" + title + "\" đã được tạo. Hình thức giao nhận: " + deliveryText + ".",
+                        "ORDER_SHIPPING", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                notifications.createNotification(conn, buyerId, "Đã tạo đơn nhận sản phẩm miễn phí",
+                        "Đơn hàng #MN-" + orderId + " cho sản phẩm \"" + title + "\" đã được tạo. Hình thức giao nhận: " + deliveryText + ".",
+                        "ORDER_SHIPPING", "05-quan-ly-don-hang.jsp?orderId=" + orderId);
+                sendSystemMessage(conn, productId, buyerId, sellerId,
+                        "Đơn nhận sản phẩm miễn phí #MN-" + orderId + " đã được tạo. Hình thức giao nhận: " + deliveryText + ".");
+
+                conn.commit();
+                return orderId;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
     public boolean setBalancePaymentMethod(int orderId, int buyerId, String method) {
         if (!"COD".equals(method) && !"TRANSFER".equals(method)) return false;
         String sql = "UPDATE orders SET balance_payment_method = ?, balance_expires_at = CASE WHEN ? = 'TRANSFER' THEN DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 24 HOUR) ELSE NULL END " +
@@ -499,6 +624,18 @@ public class OrderDAO {
                 ps.setInt(3, sellerId);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) convId = rs.getInt(1);
+                }
+            }
+            if (convId <= 0) {
+                String insertConvSql = "INSERT INTO conversations (product_id, buyer_id, seller_id) VALUES (?, ?, ?)";
+                try (PreparedStatement ps = conn.prepareStatement(insertConvSql, Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setInt(1, productId);
+                    ps.setInt(2, buyerId);
+                    ps.setInt(3, sellerId);
+                    ps.executeUpdate();
+                    try (ResultSet keys = ps.getGeneratedKeys()) {
+                        if (keys.next()) convId = keys.getInt(1);
+                    }
                 }
             }
             if (convId > 0) {
