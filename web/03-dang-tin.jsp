@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="model.Product" %>
 <%@ page import="model.ProductImage" %>
+<%@ page import="model.BoostPackage" %>
 <%@ page import="util.JsonUtil" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.List" %>
@@ -31,22 +32,46 @@
   boolean isLoggedIn = (session != null && session.getAttribute("user") != null);
   User sessionUser = session != null ? (User) session.getAttribute("user") : null;
   if (sessionUser == null && session != null) sessionUser = (User) session.getAttribute("currentUser");
-  // Chuẩn bị các giá trị mặc định hoặc lấy từ editProduct
-  String formTitle    = isEditMode ? editProduct.getTitle() : "";
-  String formPrice    = isEditMode ? (editProduct.getPrice() == 0 ? "" : String.valueOf((long)editProduct.getPrice())) : "";
-  String formDesc     = isEditMode ? (editProduct.getDescription() != null ? editProduct.getDescription() : "") : "";
-  int    formCatId    = isEditMode ? editProduct.getCategoryId() : 1;
-  int    formDelivery = isEditMode ? editProduct.getDeliveryMethod() : 1;
-  String formProvince = isEditMode ? editProduct.getProvince() : (sessionUser != null && sessionUser.getProvince() != null ? sessionUser.getProvince() : "");
-  String formWard = isEditMode ? editProduct.getWard() : (sessionUser != null && sessionUser.getWard() != null ? sessionUser.getWard() : "");
-  String formAddressDetail = isEditMode ? editProduct.getAddressDetail() : (sessionUser != null && sessionUser.getAddressDetail() != null ? sessionUser.getAddressDetail() : "");
-  String formDealType = isEditMode && "GIVE".equals(editProduct.getDealType()) ? "give" : "sell";
-  // Đọc specs JSON thành Map để truyền sang JS
-  Map<String,String> editSpecs = isEditMode ? JsonUtil.jsonToMap(editProduct.getSpecifications()) : new java.util.HashMap<>();
-  if (editSpecs == null) editSpecs = new java.util.HashMap<>();
-  // Serialize specs sang JS object string an toàn bằng JsonUtil
-  String specsJsObj = isEditMode ? JsonUtil.mapToJson(editSpecs) : "{}";
 
+  // Đọc dữ liệu form trả về khi có lỗi validate (hoặc lấy từ editProduct / sessionUser)
+  String reqTitle = (String) request.getAttribute("formTitle");
+  String formTitle = reqTitle != null ? reqTitle : (isEditMode ? editProduct.getTitle() : "");
+  String reqPrice = (String) request.getAttribute("formPrice");
+  String formPrice = reqPrice != null ? reqPrice : (isEditMode ? (editProduct.getPrice() == 0 ? "" : String.valueOf((long)editProduct.getPrice())) : "");
+  String reqDesc = (String) request.getAttribute("formDesc");
+  String formDesc = reqDesc != null ? reqDesc : (isEditMode ? (editProduct.getDescription() != null ? editProduct.getDescription() : "") : "");
+  Integer reqCatId = (Integer) request.getAttribute("formCatId");
+  int formCatId = reqCatId != null ? reqCatId : (isEditMode ? editProduct.getCategoryId() : 1);
+  Integer reqDelivery = (Integer) request.getAttribute("formDelivery");
+  int formDelivery = reqDelivery != null ? reqDelivery : (isEditMode ? editProduct.getDeliveryMethod() : 1);
+  String reqProvince = (String) request.getAttribute("formProvince");
+  String formProvince = reqProvince != null ? reqProvince : (isEditMode ? editProduct.getProvince() : (sessionUser != null && sessionUser.getProvince() != null ? sessionUser.getProvince() : ""));
+  String reqWard = (String) request.getAttribute("formWard");
+  String formWard = reqWard != null ? reqWard : (isEditMode ? editProduct.getWard() : (sessionUser != null && sessionUser.getWard() != null ? sessionUser.getWard() : ""));
+  String reqAddr = (String) request.getAttribute("formAddressDetail");
+  String formAddressDetail = reqAddr != null ? reqAddr : (isEditMode ? editProduct.getAddressDetail() : (sessionUser != null && sessionUser.getAddressDetail() != null ? sessionUser.getAddressDetail() : ""));
+  String reqDeal = (String) request.getAttribute("formDealType");
+  String formDealType = reqDeal != null ? reqDeal : (isEditMode && "GIVE".equals(editProduct.getDealType()) ? "give" : "sell");
+
+  String reqSpecsJson = (String) request.getAttribute("formSpecsJson");
+  Map<String,String> editSpecs = reqSpecsJson != null ? JsonUtil.jsonToMap(reqSpecsJson) : (isEditMode ? JsonUtil.jsonToMap(editProduct.getSpecifications()) : new java.util.HashMap<>());
+  if (editSpecs == null) editSpecs = new java.util.HashMap<>();
+  String specsJsObj = JsonUtil.mapToJson(editSpecs);
+
+  String moderationError = (String) request.getAttribute("moderationError");
+  String imageError = (String) request.getAttribute("imageError");
+  String generalError = (String) request.getAttribute("generalError");
+
+  @SuppressWarnings("unchecked")
+  List<BoostPackage> boostPackages = (List<BoostPackage>) request.getAttribute("boostPackages");
+  if (boostPackages == null) {
+      try { boostPackages = new dao.BoostPackageDAO().getAllActivePackages(); } catch (Exception ignored) {}
+  }
+  Integer userBumpCredits = (Integer) request.getAttribute("userBumpCredits");
+  if (userBumpCredits == null && sessionUser != null) {
+      try { userBumpCredits = new dao.UserDao().getUserBumpCredits(sessionUser.getId()); } catch (Exception ignored) {}
+  }
+  if (userBumpCredits == null) userBumpCredits = 0;
 %>
 <!DOCTYPE html>
 <html lang="vi">
@@ -70,16 +95,46 @@
   <!-- BIỂU MẪU ĐĂNG TIN C2C ĐA NĂNG -->
   <main class="max-w-3xl mx-auto px-4 py-8 flex-1 w-full relative">
     
-    <form action="<%= isEditMode ? "edit-post" : "post-ad" %>" method="POST" enctype="multipart/form-data" class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-8">
+    <form id="postAdForm" action="<%= isEditMode ? "edit-post" : "post-ad" %>" method="POST" enctype="multipart/form-data" class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-8">
       <% if (isEditMode) { %>
         <input type="hidden" name="productId" value="<%= editProduct.getId() %>">
         <script type="application/json" id="editSpecsJson"><%= specsJsObj %></script>
       <% } else { %>
         <script type="application/json" id="editSpecsJson">{}</script>
       <% } %>
-      <div>
+      <div class="space-y-3">
         <h1 class="text-xl sm:text-2xl font-bold text-slate-900"><%= isEditMode ? "Sửa Tin Đăng" : "Đăng Tin Mua Bán & Thanh Lý Đồ Dùng" %></h1>
         <p class="text-xs text-slate-500 mt-1"><%= isEditMode ? "Cập nhật thông tin bài đăng của bạn" : "Tiếp cận hàng ngàn người mua trong khu vực với cơ chế đặt cọc giữ chỗ an tâm" %></p>
+
+        <% if (moderationError != null && !moderationError.isEmpty()) { %>
+          <div class="p-3.5 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-3 shadow-xs">
+            <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <div class="text-xs text-red-800">
+              <span class="font-bold block text-sm mb-0.5">Nội dung chưa được duyệt:</span>
+              <%= h(moderationError) %>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (imageError != null && !imageError.isEmpty()) { %>
+          <div class="p-3.5 bg-amber-50 border-l-4 border-amber-500 rounded-r-xl flex items-start gap-3 shadow-xs">
+            <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <div class="text-xs text-amber-800">
+              <span class="font-bold block text-sm mb-0.5">Yêu cầu hình ảnh:</span>
+              <%= h(imageError) %>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (generalError != null && !generalError.isEmpty()) { %>
+          <div class="p-3.5 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-3 shadow-xs">
+            <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div class="text-xs text-red-800">
+              <span class="font-bold block text-sm mb-0.5">Thông báo:</span>
+              <%= h(generalError) %>
+            </div>
+          </div>
+        <% } %>
       </div>
 
       <!-- BƯỚC 1: HÌNH THỨC ĐĂNG TIN -->
@@ -107,9 +162,12 @@
 
       <!-- BƯỚC 2: HÌNH ẢNH THỰC TẾ -->
       <div class="space-y-3">
-        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
-          Bước 2: Hình ảnh thực tế (Tối đa 6 ảnh chụp rõ nét) <span class="text-red-500">*</span>
-        </label>
+        <div class="flex items-center justify-between">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+            Bước 2: Hình ảnh thực tế (Tối thiểu 1 ảnh, tối đa 6 ảnh) <span class="text-red-500">*</span>
+          </label>
+          <span class="text-[10px] text-slate-400">JPG, PNG, WEBP &lt; 10MB</span>
+        </div>
         <% if (isEditMode && !editProductImages.isEmpty()) { %>
         <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700 mb-2">
           Đang hiển thị <strong><%= editProductImages.size() %> ảnh</strong> hiện tại của tin đăng.
@@ -131,13 +189,17 @@
           <% } %>
         </div>
         <% } %>
-        <label class="block border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-blue-500 transition cursor-pointer bg-slate-50 relative">
-          <input type="file" name="images" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-0" onchange="previewImages(this)">
+        <label id="uploadDropZone" class="block border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-blue-500 transition cursor-pointer bg-slate-50 relative">
+          <input type="file" id="imagesInput" name="images" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-0" onchange="previewImages(this)">
           <div class="text-xs font-semibold text-blue-600"><%= isEditMode ? "Bấm để tải ảnh MỚI lên (bỏ qua nếu giữ ảnh cũ)" : "Bấm để tải ảnh chụp món đồ lên hoặc kéo thả tệp vào đây" %></div>
           <p class="text-[11px] text-slate-500 mt-1">Chụp đủ các góc cạnh, tem thông số, các vết trầy xước (nếu có) để người mua yên tâm</p>
-          <div id="previewContainer" class="mt-4 flex flex-wrap justify-center gap-2.5 relative z-10">
+          <div id="previewContainer" class="mt-4 flex flex-wrap justify-center gap-3 relative z-10">
           </div>
         </label>
+        <div id="imageValidationError" class="hidden text-xs text-red-600 font-medium flex items-center gap-1.5 mt-1.5 p-2 bg-red-50 rounded-lg border border-red-200">
+          <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span id="imageValidationText">Vui lòng chọn ít nhất 1 ảnh chụp thực tế của sản phẩm trước khi xuất bản.</span>
+        </div>
         <!-- Lưu danh sách ảnh cũ để server giữ nguyên nếu không upload ảnh mới -->
         <script type="application/json" id="existingImagesJson"><%= existingImagesJson %></script>
       </div>
@@ -149,20 +211,26 @@
         </label>
 
         <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1">Tiêu đề bài đăng</label>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-medium text-slate-700">Tiêu đề bài đăng <span class="text-red-500">*</span></label>
+            <span id="titleCounter" class="text-[10px] text-slate-400">0/100 ký tự</span>
+          </div>
           <input 
             type="text" 
-            name="title" placeholder="Ví dụ: iPhone 18 Pro Max Đỏ Burgundy 256GB chính hãng hoặc MacBook Pro M3" 
+            id="postTitleInput"
+            name="title" placeholder="Ví dụ: iPhone 15 Pro Max Đỏ Burgundy 256GB chính hãng hoặc MacBook Pro M3" 
+            maxlength="100"
             required
             value="<%= formTitle %>"
-            class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
           >
+          <p class="text-[10px] text-slate-400 mt-1">Gợi ý: [Hãng] + [Tên máy / Model] + [Dung lượng / Tình trạng] để người mua tìm thấy ngay</p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-medium text-slate-700 mb-1">Danh mục hàng hóa <span class="text-red-500">*</span></label>
-            <select id="categorySelect" name="categoryId" class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="renderCategorySpecs(this.value, IS_EDIT_MODE ? window._editSpecsFromServer : {})">  
+            <select id="categorySelect" name="categoryId" class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs" onchange="renderCategorySpecs(this.value, IS_EDIT_MODE ? window._editSpecsFromServer : {})">  
               <option value="1" <%= formCatId == 1 ? "selected" : "" %>>Điện Tử & Thiết Bị Số</option>
               <option value="2" <%= formCatId == 2 ? "selected" : "" %>>Xe Cộ & Phương Tiện</option>
               <option value="3" <%= formCatId == 3 ? "selected" : "" %>>Điện Lạnh & Gia Dụng</option>
@@ -172,12 +240,20 @@
 
           <div>
             <label class="block text-xs font-medium text-slate-700 mb-1">Giá bán mong muốn (VNĐ) <span class="text-red-500">*</span></label>
-            <input 
-              type="text" 
-              name="price" value="<%= formPrice %>"
-              required
-              class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-red-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+            <div class="relative">
+              <input 
+                type="text" 
+                id="postPriceInput"
+                name="price" value="<%= formPrice %>"
+                placeholder="Ví dụ: 15.000.000"
+                required
+                autocomplete="off"
+                oninput="formatPriceInput(this)"
+                class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-red-600 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8 shadow-2xs"
+              >
+              <span class="absolute right-3 top-2 text-xs font-bold text-slate-400 pointer-events-none">₫</span>
+            </div>
+            <div id="priceInWords" class="text-[11px] text-blue-700 font-medium mt-1 min-h-[16px]"></div>
           </div>
         </div>
 
@@ -198,7 +274,7 @@
         <div>
           <label class="block text-xs font-medium text-slate-700 mb-1">Mô tả tình trạng chi tiết</label>
           <textarea name="description" rows="4" 
-            class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
+            class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed shadow-2xs"
           ><%= formDesc %></textarea>
         </div>
       </div>
@@ -214,8 +290,7 @@
             <input type="radio" name="delivery_method" value="1" <%= formDelivery == 1 ? "checked" : "" %> class="mt-0.5 w-4 h-4 text-blue-600 rounded">
             <div>
               <span class="text-xs font-bold text-slate-900 block">1. Hẹn gặp trực tiếp (Người mua cọc giữ chỗ 10%)</span>
-          <p class="text-[11px] text-slate-600 mt-0.5">Phù hợp với mặt hàng Xe cộ, Đồ cồng kềnh. Người mua đặt cọc trước qua VNPay để hẹn giờ xem đồ, chống bỏ hẹn.</p>
-  
+              <p class="text-[11px] text-slate-600 mt-0.5">Phù hợp với mặt hàng Xe cộ, Đồ cồng kềnh. Người mua đặt cọc trước qua VNPay để hẹn giờ xem đồ, chống bỏ hẹn.</p>
             </div>
           </label>
 
@@ -266,50 +341,145 @@
         </div>
       </div>
 
-      <!-- BƯỚC 6: ĐẨY TIN NỔI BẬT (VIP BOOST) -->
-      <div class="space-y-3 p-4 bg-amber-50/70 border-2 border-amber-300 rounded-xl">
-        <div class="flex items-center justify-between">
-          <label class="block text-xs font-bold uppercase tracking-wider text-amber-900">
-            Bước 6: Gói đẩy tin nổi bật (VIP Boost) - Bán nhanh trong 24h
-          </label>
-          <span class="text-[10px] font-bold text-amber-700 bg-amber-200 px-2 py-0.5 rounded">
-            Tùy Chọn
+      <!-- BƯỚC 6: TÙY CHỌN ĐẨY TIN (VIP BOOST) -->
+      <div class="space-y-4 p-4 sm:p-5 bg-amber-50/40 border-2 border-amber-400 rounded-2xl shadow-2xs">
+        <div class="flex items-center justify-between pb-1">
+          <div>
+            <h3 class="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
+              <span class="w-5 h-5 rounded-md bg-amber-500/20 text-amber-700 flex items-center justify-center text-xs">⚡</span>
+              Bước 6: Tùy Chọn Đẩy Tin (Bán Nhanh Hơn)
+            </h3>
+            <p class="text-[11px] text-amber-700/80 mt-0.5">Tiếp cận nhiều người mua hơn bằng lượt đẩy sẵn có hoặc gói VIP</p>
+          </div>
+          <span class="text-[11px] font-semibold text-amber-800 bg-amber-100/90 border border-amber-200 px-3 py-1 rounded-lg shadow-2xs">
+            Tùy chọn
           </span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-          <label class="p-3 bg-white border-2 border-blue-500 rounded-lg cursor-pointer flex flex-col justify-between shadow-sm">
-            <div>
-              <input type="radio" name="vip_boost" value="normal" checked class="text-blue-600">
-              <span class="font-bold text-xs text-slate-800 block mt-1">Tin Thường</span>
-              <p class="text-[10px] text-slate-500 mt-1">Hiển thị theo luồng thời gian tự nhiên.</p>
-            </div>
-            <div class="font-bold text-xs text-slate-700 mt-2">0 đ (Miễn phí)</div>
-          </label>
+        <!-- PHẦN 1: DỊCH VỤ SẴN CÓ CỦA BẠN -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-700">
+              1. Dịch vụ sẵn có của bạn
+            </span>
+            <span class="text-[11px] text-slate-400">Không tốn phí</span>
+          </div>
 
-          <label class="p-3 bg-white border border-slate-200 rounded-lg cursor-pointer flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between">
-                <input type="radio" name="vip_boost" value="hot" class="text-amber-600">
-                <span class="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">HOT</span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Gói Tin Thường Miễn Phí -->
+            <label class="vip-option-card p-3.5 bg-white border-2 border-blue-500 bg-blue-50/20 rounded-xl cursor-pointer flex flex-col justify-between shadow-2xs transition hover:border-blue-400" data-card-type="free" data-submit-text="Đăng Tin Miễn Phí Ngay">
+              <div>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <input type="radio" name="vip_boost" value="normal" checked class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                    <span class="font-semibold text-xs text-slate-800">Tin Thường</span>
+                  </div>
+                  <span class="text-[10px] font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">Miễn phí</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">Hiển thị theo thứ tự thời gian tự nhiên của sàn.</p>
               </div>
-              <span class="font-bold text-xs text-amber-900 block mt-1">Gói Nổi Bật Danh Mục</span>
-              <p class="text-[10px] text-slate-500 mt-1">Ghim đầu danh mục Xe cộ trong 24h, tăng gấp 5 lần lượt xem.</p>
-            </div>
-            <div class="font-bold text-xs text-amber-700 mt-2">15.000 đ / ngày</div>
-          </label>
+              <div class="font-semibold text-xs text-slate-800 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span>0 đ</span>
+                <span class="text-[10px] text-slate-400 font-normal">Mặc định</span>
+              </div>
+            </label>
 
-          <label class="p-3 bg-white border border-slate-200 rounded-lg cursor-pointer flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between">
-                <input type="radio" name="vip_boost" value="vip" class="text-purple-600">
-                <span class="text-[9px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">VIP</span>
+            <!-- Dùng lượt đẩy từ Ví Lượt Đẩy -->
+            <% if (userBumpCredits > 0) { %>
+            <label class="vip-option-card p-3.5 bg-white border border-slate-200 rounded-xl cursor-pointer flex flex-col justify-between shadow-2xs transition hover:border-emerald-400" data-card-type="wallet" data-submit-text="Đăng Tin & Đẩy Lên Đầu (Trừ 1 Lượt Ví)">
+              <div>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <input type="radio" name="vip_boost" value="use_bump" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500">
+                    <span class="font-semibold text-xs text-slate-800">Dùng 1 Lượt Đẩy Tin</span>
+                  </div>
+                  <span class="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Ví có <%= userBumpCredits %> lượt</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">Đưa tin lên đầu danh mục ngay sau khi được duyệt.</p>
               </div>
-              <span class="font-bold text-xs text-purple-900 block mt-1">Gói VIP Toàn Sàn</span>
-              <p class="text-[10px] text-slate-500 mt-1">Ghim vị trí ưu tiên đầu Trang Chủ toàn quốc kèm viền cam nổi bật.</p>
+              <div class="font-semibold text-xs text-emerald-700 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span>Trừ 1 lượt ví</span>
+                <span class="text-[10px] text-slate-400 font-normal">Còn lại <%= (userBumpCredits - 1) %> lượt</span>
+              </div>
+            </label>
+            <% } else { %>
+            <div class="p-3.5 bg-white border border-slate-200/70 rounded-xl flex flex-col justify-between opacity-60">
+              <div>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="w-4 h-4 rounded-full border border-slate-300 bg-slate-100 inline-block"></span>
+                    <span class="font-semibold text-xs text-slate-600">Dùng 1 Lượt Đẩy Tin</span>
+                  </div>
+                  <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">Ví có 0 lượt</span>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">Ví của bạn chưa có lượt đẩy sẵn. Bạn có thể chọn gói mua thêm bên dưới.</p>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span>0 lượt</span>
+                <span class="text-[10px] text-slate-400">Xem gói bên dưới ↓</span>
+              </div>
             </div>
-            <div class="font-bold text-xs text-purple-700 mt-2">30.000 đ / ngày</div>
-          </label>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- PHÂN CÁCH NHẸ NHÀNG GIỮA 2 PHẦN -->
+        <div class="relative py-1">
+          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-amber-200"></div></div>
+          <div class="relative flex justify-center">
+            <span class="bg-amber-50/90 px-3 text-[11px] text-amber-700/80 font-medium">Hoặc nâng cấp để bán nhanh hơn</span>
+          </div>
+        </div>
+
+        <!-- PHẦN 2: CÁC GÓI DỊCH VỤ CÓ THỂ MUA THÊM -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-700">
+              2. Gói dịch vụ đẩy tin & VIP
+            </span>
+            <span class="text-[11px] text-slate-400">Thanh toán an toàn qua VNPay</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <% if (boostPackages != null && !boostPackages.isEmpty()) { %>
+            <% for (model.BoostPackage pkg : boostPackages) { 
+                 String badgeBg = "bg-amber-50 text-amber-700 border-amber-200";
+                 if ("purple".equalsIgnoreCase(pkg.getBadgeColor())) {
+                     badgeBg = "bg-purple-50 text-purple-700 border-purple-200";
+                 } else if ("emerald".equalsIgnoreCase(pkg.getBadgeColor())) {
+                     badgeBg = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                 } else if ("blue".equalsIgnoreCase(pkg.getBadgeColor())) {
+                     badgeBg = "bg-blue-50 text-blue-700 border-blue-200";
+                 }
+                 String submitLabel = "Đăng Tin & Mua Gói " + h(pkg.getName()) + " (" + String.format("%,.0f đ", pkg.getPrice()) + ")";
+            %>
+            <label class="vip-option-card p-3.5 bg-white border border-slate-200 rounded-xl cursor-pointer flex flex-col justify-between shadow-2xs transition hover:border-slate-300" data-card-type="paid" data-submit-text="<%= submitLabel %>">
+              <div>
+                <div class="flex items-center justify-between gap-1">
+                  <div class="flex items-center gap-2">
+                    <input type="radio" name="vip_boost" value="<%= pkg.getId() %>" class="w-4 h-4 text-amber-600 focus:ring-amber-500">
+                    <span class="font-semibold text-xs text-slate-800 line-clamp-1"><%= h(pkg.getName()) %></span>
+                  </div>
+                  <span class="text-[10px] font-medium <%= badgeBg %> px-1.5 py-0.5 rounded-md border flex-shrink-0"><%= h(pkg.getBadgeLabel()) %></span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-2 line-clamp-2 leading-relaxed"><%= h(pkg.getDescription()) %></p>
+              </div>
+              <div class="font-semibold text-xs text-amber-600 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span><%= String.format("%,.0f đ", pkg.getPrice()) %></span>
+                <% if (pkg.getDurationDays() > 0) { %>
+                  <span class="text-[10px] text-slate-400 font-normal"><%= pkg.getDurationDays() %> ngày</span>
+                <% } else if (pkg.getBumpCount() > 0) { %>
+                  <span class="text-[10px] text-slate-400 font-normal"><%= pkg.getBumpCount() %> lượt</span>
+                <% } %>
+              </div>
+            </label>
+            <% } %>
+          <% } else { %>
+            <div class="col-span-3 text-center py-4 text-xs text-slate-400 bg-white rounded-xl border border-slate-200">
+              Hiện chưa có gói đẩy tin mở bán thêm.
+            </div>
+          <% } %>
+          </div>
         </div>
       </div>
 
@@ -318,8 +488,8 @@
         <a href="my-posts" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">
           Hủy bỏ
         </a>
-        <button type="submit" class="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-bold rounded-lg shadow-sm transition">
-          <%= isEditMode ? "Lưu Thay Đổi" : "Đăng Tin Miễn Phí Ngay" %>
+        <button type="submit" id="submitPostBtn" class="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-2">
+          <span id="submitBtnText"><%= isEditMode ? "Lưu Thay Đổi" : "Đăng Tin Miễn Phí Ngay" %></span>
         </button>
       </div>
 
@@ -474,17 +644,17 @@
       // ── BƯỚC 1: Phục hồi radio buttons ──────────────────────────────────
       // deal_type (Bán / Tặng)
       if (draft.deal_type) {
-        const dealEl = document.querySelector(`input[name="deal_type"][value="${draft.deal_type}"]`);
+        const dealEl = document.querySelector('input[name="deal_type"][value="' + draft.deal_type + '"]');
         if (dealEl) dealEl.checked = true;
       }
       // delivery_method
       if (draft.delivery_method) {
-        const deliveryEl = document.querySelector(`input[name="delivery_method"][value="${draft.delivery_method}"]`);
+        const deliveryEl = document.querySelector('input[name="delivery_method"][value="' + draft.delivery_method + '"]');
         if (deliveryEl) deliveryEl.checked = true;
       }
       // vip_boost
       if (draft.vip_boost) {
-        const vipEl = document.querySelector(`input[name="vip_boost"][value="${draft.vip_boost}"]`);
+        const vipEl = document.querySelector('input[name="vip_boost"][value="' + draft.vip_boost + '"]');
         if (vipEl) vipEl.checked = true;
       }
 
@@ -507,12 +677,12 @@
       // (Phải đặt SAU dispatch events vì event handlers có thể reset giá trị)
       function setField(name, value) {
         if (value === undefined || value === null) return;
-        const el = document.querySelector(`[name="${name}"]`);
+        const el = document.querySelector('[name="' + name + '"]');
         if (el) {
           el.value = value;
-          console.log(`[MuaNgay] Đã phục hồi [${name}] = "${value}"`);
+          console.log('[MuaNgay] Đã phục hồi [' + name + '] = "' + value + '"');
         } else {
-          console.warn(`[MuaNgay] Không tìm thấy field [${name}]`);
+          console.warn('[MuaNgay] Không tìm thấy field [' + name + ']');
         }
       }
 
@@ -535,45 +705,144 @@
       return true;
     }
 
-    // --- CHẶN SUBMIT: NẾU CHƯA ĐĂNG NHẬP, LƯU FORM RỒI REDIRECT ---
-    document.addEventListener('DOMContentLoaded', function () {
-      // Chỉ xử lý form đăng tin mới (không phải chỉnh sửa)
-      if (IS_EDIT_MODE) return;
+    // --- HÀM ĐỌC TIỀN THÀNH CHỮ TIẾNG VIỆT ---
+    function numberToVietnameseWords(n) {
+      if (!n || n <= 0) return '';
+      const digits = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+      const units = ['', 'nghìn', 'triệu', 'tỷ', 'nghìn tỷ', 'triệu tỷ'];
 
-      const form = document.querySelector('form[action="post-ad"]');
+      function readGroup(group, showZeroHundred) {
+        let a = Math.floor(group / 100);
+        let b = Math.floor((group % 100) / 10);
+        let c = group % 10;
+        let res = '';
+        if (a > 0 || showZeroHundred) {
+          res += digits[a] + ' trăm ';
+          if (b === 0 && c > 0) res += 'lẻ ';
+        }
+        if (b > 1) {
+          res += digits[b] + ' mươi ';
+          if (c === 1) res += 'mốt ';
+          else if (c === 5) res += 'lăm ';
+          else if (c > 0) res += digits[c] + ' ';
+        } else if (b === 1) {
+          res += 'mười ';
+          if (c === 5) res += 'lăm ';
+          else if (c > 0) res += digits[c] + ' ';
+        } else if (b === 0 && c > 0) {
+          res += digits[c] + ' ';
+        }
+        return res.trim();
+      }
+
+      let num = Math.floor(n);
+      let groups = [];
+      while (num > 0) {
+        groups.push(num % 1000);
+        num = Math.floor(num / 1000);
+      }
+
+      let result = '';
+      for (let i = groups.length - 1; i >= 0; i--) {
+        let grp = groups[i];
+        if (grp > 0) {
+          let showZero = (i < groups.length - 1);
+          let s = readGroup(grp, showZero);
+          if (s) {
+            result += s + ' ' + units[i] + ' ';
+          }
+        }
+      }
+      result = result.trim();
+      if (!result) return '';
+      return result.charAt(0).toUpperCase() + result.slice(1) + ' đồng';
+    }
+
+    function formatPriceInput(input) {
+      if (!input) return;
+      let raw = input.value.replace(/\D/g, '');
+      const wordsEl = document.getElementById('priceInWords');
+      if (raw) {
+        let num = parseInt(raw, 10);
+        input.value = num.toLocaleString('vi-VN');
+        if (wordsEl) {
+          wordsEl.textContent = 'Bằng chữ: ' + numberToVietnameseWords(num);
+          wordsEl.style.display = 'block';
+        }
+      } else {
+        input.value = '';
+        if (wordsEl) {
+          wordsEl.textContent = '';
+          wordsEl.style.display = 'none';
+        }
+      }
+    }
+
+    // --- CHẶN SUBMIT: KIỂM TRA ẢNH & ĐĂNG NHẬP ---
+    document.addEventListener('DOMContentLoaded', function () {
+      const form = document.getElementById('postAdForm') || document.querySelector('form[action="post-ad"]');
       if (!form) return;
 
       form.addEventListener('submit', function (e) {
-        if (!IS_LOGGED_IN) {
-          e.preventDefault(); // Ngăn submit
-          saveFormDraft();
-          // Redirect sang trang login với tham số redirect=post-ad
-          window.location.href = CONTEXT_PATH + '/login?redirect=post-ad';
+        // 1. Kiểm tra bắt buộc ảnh (chỉ với tin đăng mới)
+        if (!IS_EDIT_MODE && selectedFiles.length === 0) {
+          e.preventDefault();
+          const errBox = document.getElementById('imageValidationError');
+          if (errBox) errBox.classList.remove('hidden');
+          const dropZone = document.getElementById('uploadDropZone');
+          if (dropZone) {
+            dropZone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            dropZone.classList.add('border-red-500', 'bg-red-50/50');
+            setTimeout(() => dropZone.classList.remove('border-red-500', 'bg-red-50/50'), 3000);
+          }
+          return false;
         }
-        // Nếu đã đăng nhập → submit bình thường, đồng thời xóa draft cũ
-        else {
+
+        // 2. Chặn submit nếu chưa đăng nhập
+        if (!IS_EDIT_MODE && !IS_LOGGED_IN) {
+          e.preventDefault();
+          saveFormDraft();
+          window.location.href = CONTEXT_PATH + '/login?redirect=post-ad';
+          return false;
+        }
+
+        // 3. Nếu hợp lệ và đã đăng nhập, xóa draft cũ
+        if (!IS_EDIT_MODE && IS_LOGGED_IN) {
           localStorage.removeItem(POST_AD_DRAFT_KEY);
         }
       });
     });
 
     // --- PHỤC HỒI FORM KHI VỪA ĐĂNG NHẬP THÀNH CÔNG ---
-    // Chạy ngay khi script load để phục hồi sớm nhất có thể
     if (IS_LOGGED_IN && !IS_EDIT_MODE && localStorage.getItem(POST_AD_DRAFT_KEY)) {
-      // Đánh dấu cần phục hồi sau khi DOM ready và specs đã render
       window._needRestoreDraft = true;
     }
   </script>
 
-      <script>
+  <script>
     let selectedFiles = [];
     let dragStartIndex = null;
 
     function previewImages(input) {
+      const errBox = document.getElementById('imageValidationError');
+      if (errBox) errBox.classList.add('hidden');
+
       if (input.files && input.files.length > 0) {
         for (let i = 0; i < input.files.length; i++) {
+          const file = input.files[i];
+          if (!file.type.startsWith('image/')) {
+            alert('Tệp "' + file.name + '" không đúng định dạng ảnh (chỉ chấp nhận JPG, PNG, WEBP, GIF).');
+            continue;
+          }
+          if (file.size > 10 * 1024 * 1024) {
+            alert('Ảnh "' + file.name + '" quá lớn (' + (file.size / (1024 * 1024)).toFixed(1) + 'MB). Vui lòng chọn ảnh dưới 10MB.');
+            continue;
+          }
           if (selectedFiles.length < 6) { 
-            selectedFiles.push(input.files[i]);
+            selectedFiles.push(file);
+          } else {
+            alert('Bạn chỉ có thể tải lên tối đa 6 hình ảnh.');
+            break;
           }
         }
       }
@@ -584,7 +853,8 @@
     function updateFileInput() {
       const dt = new DataTransfer();
       selectedFiles.forEach(file => dt.items.add(file));
-      document.querySelector('input[type="file"][name="images"]').files = dt.files;
+      const fileInput = document.getElementById('imagesInput') || document.querySelector('input[type="file"][name="images"]');
+      if (fileInput) fileInput.files = dt.files;
     }
 
     function renderPreview() {
@@ -592,11 +862,10 @@
       container.innerHTML = '';
       
       if (selectedFiles.length === 0) {
-        // Giao diện gốc ban đầu khi chưa có ảnh
         container.innerHTML = `
             <div class="w-16 h-16 bg-slate-200 rounded-lg flex items-center justify-center text-[10px] text-slate-600 font-medium pointer-events-none">Ảnh chính</div>
             <div class="w-16 h-16 bg-slate-200 rounded-lg flex items-center justify-center text-[10px] text-slate-600 font-medium pointer-events-none">Góc nghiêng</div>
-            <div class="w-16 h-16 bg-slate-200 rounded-lg flex items-center justify-center text-[10px] text-slate-600 font-medium pointer-events-none">Lốc máy / Tem</div>
+            <div class="w-16 h-16 bg-slate-200 rounded-lg flex items-center justify-center text-[10px] text-slate-600 font-medium pointer-events-none">Tem / Thông số</div>
             <div class="w-16 h-16 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-[10px] text-slate-400 font-medium pointer-events-none">+ Thêm ảnh</div>
         `;
         updateFileInput();
@@ -607,13 +876,12 @@
         const url = URL.createObjectURL(file);
         
         const wrapper = document.createElement('div');
-        wrapper.className = 'relative group w-16 h-16 flex-shrink-0 cursor-grab active:cursor-grabbing transition-transform duration-200 bg-white rounded-lg hover:-translate-y-1';
+        wrapper.className = 'relative group w-20 h-20 flex-shrink-0 cursor-grab active:cursor-grabbing transition-transform duration-200 bg-white rounded-lg hover:-translate-y-0.5 shadow-xs';
         wrapper.draggable = true;
         
         wrapper.addEventListener('dragstart', function(e) {
           dragStartIndex = index;
           e.dataTransfer.effectAllowed = 'move';
-          // Fix issue HTML5 drag drop on same element
           setTimeout(() => this.classList.add('opacity-40'), 0);
         });
         
@@ -624,7 +892,7 @@
         
         wrapper.addEventListener('drop', function(e) {
           e.preventDefault();
-          e.stopPropagation(); // Ngăn chặn trigger chọn file của label cha
+          e.stopPropagation();
           const dragEndIndex = index;
           if (dragStartIndex !== null && dragStartIndex !== dragEndIndex) {
             const draggedItem = selectedFiles.splice(dragStartIndex, 1)[0];
@@ -639,22 +907,37 @@
 
         const img = document.createElement('img');
         img.src = url;
-        img.className = 'w-full h-full object-cover rounded-lg border-2 ' + (index === 0 ? 'border-amber-500 shadow-sm' : 'border-slate-200');
+        img.className = 'w-full h-full object-cover rounded-lg border-2 ' + (index === 0 ? 'border-amber-500 shadow-xs' : 'border-slate-200');
         
         const label = document.createElement('div');
         if (index === 0) {
-          label.className = 'absolute bottom-0 left-0 right-0 bg-amber-500 text-white text-[9px] text-center font-bold py-0.5 rounded-b-md shadow-sm truncate px-1';
+          label.className = 'absolute bottom-0 left-0 right-0 bg-amber-500 text-white text-[9px] text-center font-bold py-0.5 rounded-b-md shadow-xs truncate px-1';
           label.innerText = 'Ảnh đại diện';
         } else {
-          label.className = 'absolute bottom-0 left-0 right-0 bg-slate-800/70 backdrop-blur-sm text-white text-[9px] text-center font-medium py-0.5 rounded-b-md truncate px-1';
-          label.innerText = 'Chi tiết ' + index;
+          label.className = 'absolute bottom-0 left-0 right-0 bg-slate-800/70 backdrop-blur-xs text-white text-[9px] text-center font-medium py-0.5 rounded-b-md truncate px-1';
+          label.innerText = 'Ảnh ' + (index + 1);
+        }
+
+        // Nút đặt làm ảnh đại diện cho index > 0
+        if (index > 0) {
+          const setPrimaryBtn = document.createElement('button');
+          setPrimaryBtn.type = 'button';
+          setPrimaryBtn.innerHTML = '★ Chính';
+          setPrimaryBtn.title = 'Đặt làm ảnh đại diện (đưa lên vị trí đầu tiên)';
+          setPrimaryBtn.className = 'absolute top-1 left-1 bg-amber-500 hover:bg-amber-600 text-white rounded px-1 py-0.5 text-[8px] font-bold opacity-0 group-hover:opacity-100 transition shadow-xs z-20 cursor-pointer';
+          setPrimaryBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const chosen = selectedFiles.splice(index, 1)[0];
+            selectedFiles.unshift(chosen);
+            renderPreview();
+          };
+          wrapper.appendChild(setPrimaryBtn);
         }
         
         const removeBtn = document.createElement('div');
         removeBtn.innerHTML = '✕';
         removeBtn.className = 'absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:scale-110 shadow-md transition-all z-20 cursor-pointer';
-        
-        // Ngăn chặn nổi bọt event lên label cha khi click nút xóa (ngăn mở file dialog)
         removeBtn.onclick = function(e) {
           e.preventDefault(); 
           e.stopPropagation();
@@ -673,31 +956,58 @@
   </script>
   <script>
     document.addEventListener("DOMContentLoaded", function() {
+      // KHỞI TẠO BỘ ĐẾM TIÊU ĐỀ
+      const titleInput = document.getElementById('postTitleInput');
+      const titleCounter = document.getElementById('titleCounter');
+      if (titleInput && titleCounter) {
+        const updateCount = () => {
+          const len = titleInput.value.length;
+          titleCounter.textContent = len + "/100 ký tự";
+          if (len >= 20) {
+            titleCounter.className = 'text-green-600 font-semibold text-[10px]';
+          } else {
+            titleCounter.className = 'text-slate-400 font-normal text-[10px]';
+          }
+        };
+        titleInput.addEventListener('input', updateCount);
+        updateCount();
+      }
+
+      // KHỞI TẠO ĐỊNH DẠNG GIÁ TIỀN & ĐỌC CHỮ
+      const priceInput = document.getElementById('postPriceInput');
+      if (priceInput && priceInput.value) {
+        formatPriceInput(priceInput);
+      }
+
       // BƯỚC 1: HÌNH THỨC ĐĂNG TIN
       const dealRadios = document.querySelectorAll('input[name="deal_type"]');
-      const priceInput = document.querySelector('input[name="price"]');
       dealRadios.forEach(radio => {
         radio.addEventListener('change', function() {
-          // Reset style
           dealRadios.forEach(r => {
             const label = r.closest('label');
             label.className = 'flex flex-col p-3.5 border-2 border-slate-200 hover:border-slate-300 rounded-xl cursor-pointer';
             label.querySelector('span:first-child').className = 'text-xs font-bold text-slate-800';
           });
-          // Set active style
           const activeLabel = this.closest('label');
           activeLabel.className = 'flex flex-col p-3.5 border-2 border-blue-600 bg-blue-50/50 rounded-xl cursor-pointer';
           activeLabel.querySelector('span:first-child').className = 'text-xs font-bold text-blue-900';
 
-          // BƯỚC 3: Giá bán mong muốn
+          const pi = document.getElementById('postPriceInput');
+          const wordsEl = document.getElementById('priceInWords');
           if (this.value === 'give') {
-            priceInput.value = '0';
-            priceInput.readOnly = true;
-            priceInput.className = 'w-full px-3.5 py-2 bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold text-slate-400 cursor-not-allowed';
+            if (pi) {
+              pi.value = '0';
+              pi.readOnly = true;
+              pi.className = 'w-full px-3.5 py-2 bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold text-slate-400 cursor-not-allowed pr-8 shadow-2xs';
+            }
+            if (wordsEl) wordsEl.textContent = 'Bằng chữ: Miễn phí (0 đồng)';
           } else {
-            priceInput.value = '';
-            priceInput.readOnly = false;
-            priceInput.className = 'w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-red-600 focus:outline-none focus:ring-2 focus:ring-blue-500';
+            if (pi) {
+              pi.value = '';
+              pi.readOnly = false;
+              pi.className = 'w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-red-600 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8 shadow-2xs';
+            }
+            if (wordsEl) wordsEl.textContent = '';
           }
         });
       });
@@ -706,12 +1016,10 @@
       const deliveryChecks = document.querySelectorAll('input[name="delivery_method"]');
       deliveryChecks.forEach(check => {
         check.addEventListener('change', function() {
-          // Reset all
           deliveryChecks.forEach(c => {
              const lbl = c.closest('label');
              lbl.className = 'flex items-start gap-3 p-3.5 border border-slate-200 rounded-xl cursor-pointer';
           });
-          // Highlight active
           if (this.checked) {
             const label = this.closest('label');
             label.className = 'flex items-start gap-3 p-3.5 border-2 border-blue-600 bg-blue-50/50 rounded-xl cursor-pointer';
@@ -719,30 +1027,41 @@
         });
       });
 
-      // BƯỚC 6: GÓI ĐẨY TIN VIP
+      // BƯỚC 6: GÓI ĐẨY TIN VIP ACTIVE STYLING & DYNAMIC SUBMIT BUTTON
+      const vipCards = document.querySelectorAll('.vip-option-card');
       const vipRadios = document.querySelectorAll('input[name="vip_boost"]');
-      vipRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-          // Tắt hết
-          vipRadios.forEach(r => {
-            const label = r.closest('label');
-            label.className = 'p-3 bg-white border border-slate-200 rounded-lg cursor-pointer flex flex-col justify-between';
-          });
-          
-          // Bật cái được chọn
-          const activeLabel = this.closest('label');
-          const isHot = activeLabel.querySelector('span.text-amber-700');
-          const isVip = activeLabel.querySelector('span.text-purple-700');
-          
-          if (isVip) {
-            activeLabel.className = 'p-3 bg-white border-2 border-purple-500 rounded-lg cursor-pointer flex flex-col justify-between shadow-sm';
-          } else if (isHot) {
-            activeLabel.className = 'p-3 bg-white border-2 border-amber-500 rounded-lg cursor-pointer flex flex-col justify-between shadow-sm';
+      const submitBtnText = document.getElementById('submitBtnText');
+      const isPostEditMode = <%= isEditMode ? "true" : "false" %>;
+
+      function updateVipCardStyles() {
+        vipRadios.forEach(radio => {
+          const card = radio.closest('.vip-option-card');
+          if (!card) return;
+          const cardType = card.dataset.cardType || 'free';
+
+          if (radio.checked) {
+            if (cardType === 'free') {
+              card.className = 'vip-option-card p-3.5 bg-white border-2 border-blue-500 bg-blue-50/20 rounded-xl cursor-pointer flex flex-col justify-between shadow-2xs transition';
+            } else if (cardType === 'wallet') {
+              card.className = 'vip-option-card p-3.5 bg-white border-2 border-emerald-500 bg-emerald-50/20 rounded-xl cursor-pointer flex flex-col justify-between shadow-2xs transition';
+            } else {
+              card.className = 'vip-option-card p-3.5 bg-white border-2 border-amber-500 bg-amber-50/25 rounded-xl cursor-pointer flex flex-col justify-between shadow-2xs transition';
+            }
+
+            if (submitBtnText && !isPostEditMode) {
+              const text = card.dataset.submitText;
+              if (text) submitBtnText.textContent = text;
+            }
           } else {
-            activeLabel.className = 'p-3 bg-white border-2 border-blue-500 rounded-lg cursor-pointer flex flex-col justify-between shadow-sm';
+            card.className = 'vip-option-card p-3.5 bg-white border border-slate-200 rounded-xl cursor-pointer flex flex-col justify-between shadow-2xs transition hover:border-slate-300';
           }
         });
+      }
+
+      vipRadios.forEach(radio => {
+        radio.addEventListener('change', updateVipCardStyles);
       });
+      updateVipCardStyles();
 
       // KHỞI TẠO THÔNG SỐ DANH MỤC BAN ĐẦU
       const catSelect = document.getElementById('categorySelect');
@@ -1011,41 +1330,169 @@
 
       data.fields.forEach(field => {
         const div = document.createElement('div');
-        div.className = 'flex flex-col';
+        div.className = 'flex flex-col relative combobox-field';
 
         const label = document.createElement('label');
         label.className = 'block text-[11px] font-semibold text-slate-700 mb-1';
         label.innerHTML = field.label + (field.required ? ' <span class="text-red-500 font-bold">*</span>' : ' <span class="text-slate-400 font-normal text-[10px]">(Tùy chọn)</span>');
 
-        const select = document.createElement('select');
-        select.name = field.name;
-        select.className = 'w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-2xs';
+        // Bọc input và dropdown menu gợi ý
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative w-full';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.name = field.name;
+        input.autocomplete = 'off';
+        input.className = 'w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-2xs placeholder:text-slate-400';
+        
+        // Placeholder gợi ý: "Chọn hoặc tự nhập..."
+        const defaultPlaceholder = field.options && field.options[0] ? field.options[0].replace(/^--\s*|\s*--$/g, '') : 'Chọn hoặc tự nhập...';
+        input.placeholder = defaultPlaceholder.includes('Chọn') ? defaultPlaceholder.replace('Chọn', 'Chọn hoặc tự nhập') : ('Chọn hoặc tự nhập ' + field.label.toLowerCase() + '...');
+        
         if (field.required) {
-          select.required = true;
+          input.required = true;
         }
 
         const savedValue = specs[field.label] || '';
         const draftValue = draftSpecs ? (draftSpecs[field.name] || '') : '';
+        const initialVal = savedValue || draftValue || '';
+        if (initialVal) {
+          input.value = initialVal;
+        }
 
-        field.options.forEach((opt, idx) => {
-          const option = document.createElement('option');
-          if (idx === 0) {
-            option.value = '';
-            option.textContent = opt;
-          } else {
-            option.value = opt;
-            option.textContent = opt;
-            if ((savedValue && opt === savedValue) || (!savedValue && draftValue && opt === draftValue)) {
-              option.selected = true;
-            }
+        // Nút mũi tên dropdown
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.tabIndex = -1;
+        toggleBtn.title = 'Bấm để chọn từ danh sách';
+        toggleBtn.className = 'absolute right-0 top-0 bottom-0 px-2.5 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer';
+        toggleBtn.innerHTML = '<svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
+
+        // Menu danh sách gợi ý
+        const dropdownMenu = document.createElement('div');
+        dropdownMenu.className = 'hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-56 overflow-y-auto py-1 divide-y divide-slate-50 transition-all';
+
+        // Lấy danh sách các options (bỏ phần tử đầu tiên là placeholder -- Chọn... --)
+        const rawOptions = field.options.slice(1);
+
+        function filterOptions(searchTerm) {
+          dropdownMenu.innerHTML = '';
+          const term = (searchTerm || '').toLowerCase().trim();
+          const matched = rawOptions.filter(opt => !term || opt.toLowerCase().includes(term));
+
+          if (matched.length === 0) {
+            const emptyTip = document.createElement('div');
+            emptyTip.className = 'px-3 py-2 text-[11px] text-slate-500 italic bg-slate-50 flex items-center gap-1.5';
+            emptyTip.innerHTML = '<span class="text-blue-500 font-bold">✎</span> Đang dùng thông tin tự nhập: "<span class="text-slate-800 font-semibold truncate">' + (input.value || '') + '</span>"';
+            dropdownMenu.appendChild(emptyTip);
+            return;
           }
-          select.appendChild(option);
+
+          matched.forEach(opt => {
+            const item = document.createElement('div');
+            item.className = 'px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-700 cursor-pointer flex items-center justify-between transition group';
+            
+            // Highlight text nếu trùng khớp
+            if (term) {
+              const escapedTerm = term.split('').map(c => ['*','+','?','^','$','{','}','(',')','|','[',']','\\','.','/'].includes(c) ? '\\' + c : c).join('');
+              const regex = new RegExp('(' + escapedTerm + ')', 'gi');
+              item.innerHTML = opt.replace(regex, '<span class="text-blue-600 font-bold bg-blue-100/60 rounded px-0.5">$1</span>');
+            } else {
+              item.textContent = opt;
+            }
+
+            // Đánh dấu nếu trùng với giá trị đang chọn
+            if (input.value && input.value.trim().toLowerCase() === opt.trim().toLowerCase()) {
+              item.classList.add('bg-blue-50/70', 'font-semibold', 'text-blue-700');
+              const checkIcon = document.createElement('span');
+              checkIcon.className = 'text-blue-600 text-xs font-bold';
+              checkIcon.textContent = '✓';
+              item.appendChild(checkIcon);
+            }
+
+            const selectThisOption = (e) => {
+              if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+              input.value = opt;
+              closeMenu();
+              input.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+
+            item.addEventListener('mousedown', selectThisOption);
+            item.addEventListener('click', selectThisOption);
+
+            dropdownMenu.appendChild(item);
+          });
+        }
+
+        function openMenu() {
+          // Đóng tất cả các combobox khác đang mở
+          document.querySelectorAll('.combobox-field div.absolute').forEach(m => {
+            if (m !== dropdownMenu) m.classList.add('hidden');
+          });
+          document.querySelectorAll('.combobox-field button svg').forEach(svg => {
+            if (!toggleBtn.contains(svg)) svg.classList.remove('rotate-180');
+          });
+
+          filterOptions(input.value);
+          dropdownMenu.classList.remove('hidden');
+          const svg = toggleBtn.querySelector('svg');
+          if (svg) svg.classList.add('rotate-180');
+        }
+
+        function closeMenu() {
+          dropdownMenu.classList.add('hidden');
+          const svg = toggleBtn.querySelector('svg');
+          if (svg) svg.classList.remove('rotate-180');
+        }
+
+        // Sự kiện mở/lọc
+        input.addEventListener('focus', openMenu);
+        input.addEventListener('click', openMenu);
+        input.addEventListener('input', () => {
+          openMenu();
+          filterOptions(input.value);
         });
 
+        toggleBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (dropdownMenu.classList.contains('hidden')) {
+            input.focus();
+            openMenu();
+          } else {
+            closeMenu();
+          }
+        });
+
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            closeMenu();
+          }
+        });
+
+        wrapper.appendChild(input);
+        wrapper.appendChild(toggleBtn);
+        wrapper.appendChild(dropdownMenu);
+
         div.appendChild(label);
-        div.appendChild(select);
+        div.appendChild(wrapper);
         container.appendChild(div);
       });
+
+      // Bắt sự kiện click ra ngoài để đóng menu
+      if (!window._comboboxGlobalClickHandlerAdded) {
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('.combobox-field')) {
+            document.querySelectorAll('.combobox-field div.absolute').forEach(m => m.classList.add('hidden'));
+            document.querySelectorAll('.combobox-field button svg').forEach(svg => svg.classList.remove('rotate-180'));
+          }
+        });
+        window._comboboxGlobalClickHandlerAdded = true;
+      }
 
       if (window._pendingSpecsDraft) {
         window._pendingSpecsDraft = null;

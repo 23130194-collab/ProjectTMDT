@@ -279,13 +279,24 @@
         session.removeAttribute("boostFlashMessage");
         session.removeAttribute("boostFlashSuccess");
     %>
-      <div id="boostFlashBanner" class="p-3.5 rounded-xl <%= Boolean.TRUE.equals(boostFlashSuccess) ? "bg-emerald-50 border border-emerald-200 text-emerald-800" : "bg-red-50 border border-red-200 text-red-800" %> flex items-center justify-between text-xs font-semibold shadow-xs mb-3">
+      <div id="boostFlashBanner" class="p-3.5 rounded-xl transition-all duration-500 <%= Boolean.TRUE.equals(boostFlashSuccess) ? "bg-emerald-50 border border-emerald-200 text-emerald-800" : "bg-red-50 border border-red-200 text-red-800" %> flex items-center justify-between text-xs font-semibold shadow-xs mb-3">
         <div class="flex items-center gap-2">
           <span><%= Boolean.TRUE.equals(boostFlashSuccess) ? "✓" : "✕" %></span>
           <span><%= boostFlashMsg %></span>
         </div>
-        <button type="button" onclick="document.getElementById('boostFlashBanner').remove()" class="text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer">✕</button>
+        <button type="button" onclick="dismissBoostFlash()" class="text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer" title="Đóng thông báo">✕</button>
       </div>
+      <script>
+        function dismissBoostFlash() {
+          const b = document.getElementById('boostFlashBanner');
+          if (b) {
+            b.style.opacity = '0';
+            b.style.transform = 'translateY(-6px)';
+            setTimeout(function() { if (b) b.remove(); }, 500);
+          }
+        }
+        setTimeout(dismissBoostFlash, 5000);
+      </script>
     <% } %>
 
     <!-- TABS ĐIỀU HƯỚNG NỘI DUNG TRANG CÁ NHÂN -->
@@ -358,6 +369,11 @@
                         <span class="opacity-75 font-normal">(${post.vipRemainingTimeText})</span>
                       </span>
                     </c:if>
+                    <c:if test="${not empty post.bumpedAt}">
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1 shadow-2xs" title="Đã đẩy tin lên đầu lúc ${post.bumpedAtFormatted}">
+                        <span>🚀 Đã Đẩy Tin</span>
+                      </span>
+                    </c:if>
                     <c:if test="${post.remainingBumps > 0}">
                       <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
                         🚀 Còn ${post.remainingBumps} lượt đẩy riêng
@@ -393,6 +409,13 @@
                         <span>${post.status}</span>
                       </c:otherwise>
                     </c:choose>
+                    <c:if test="${not empty post.bumpedAt}">
+                      <span>•</span>
+                      <span class="text-blue-600 font-medium flex items-center gap-1" title="Lần đẩy gần nhất: ${post.bumpedAtFormatted}">
+                        <svg class="w-3 h-3 text-blue-500 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        Đẩy lúc: <fmt:formatDate value="${post.bumpedAt}" pattern="HH:mm dd/MM"/>
+                      </span>
+                    </c:if>
                   </div>
                 </div>
               </div>
@@ -407,7 +430,7 @@
                               onclick="triggerPostBump(${post.id}, this.getAttribute('data-title'))" 
                               class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shadow-xs transition flex items-center gap-1 cursor-pointer" 
                               title="Dùng 1 lượt từ Ví để đưa tin này lên đầu trang">
-                        <span>🚀 Đẩy Tin (${sessionScope.user.bumpCredits})</span>
+                        <span>Đẩy Tin (${sessionScope.user.bumpCredits})</span>
                       </button>
                     </c:when>
                     <c:otherwise>
@@ -415,7 +438,7 @@
                               onclick="openBumpWalletModal()" 
                               class="px-3 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-300 font-bold rounded-lg text-xs transition flex items-center gap-1 cursor-pointer" 
                               title="Ví đã hết lượt. Bấm để nạp thêm lượt đẩy">
-                        <span>🚀 Đẩy Tin (0 lượt)</span>
+                        <span>Đẩy Tin (0 lượt)</span>
                       </button>
                     </c:otherwise>
                   </c:choose>
@@ -431,7 +454,7 @@
                               onclick="openVipUpgradeModal(${post.id}, this.getAttribute('data-title'), true, this.getAttribute('data-vip-exp'), this.getAttribute('data-vip-rem'), this.getAttribute('data-price'), this.getAttribute('data-image'))" 
                               class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-lg text-xs shadow-xs transition flex items-center gap-1 cursor-pointer"
                               title="Tin đang VIP. Bấm để gia hạn cộng dồn thêm ngày">
-                        <span>👑 Gia Hạn VIP</span>
+                        <span>Gia Hạn VIP</span>
                       </button>
                     </c:when>
                     <c:otherwise>
@@ -442,7 +465,7 @@
                               onclick="openVipUpgradeModal(${post.id}, this.getAttribute('data-title'), false, '', '', this.getAttribute('data-price'), this.getAttribute('data-image'))" 
                               class="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-lg text-xs shadow-xs transition flex items-center gap-1 cursor-pointer"
                               title="Ghim bài viết lên vị trí VIP ưu tiên">
-                        <span>👑 Ghim VIP</span>
+                        <span>Ghim VIP</span>
                       </button>
                     </c:otherwise>
                   </c:choose>
@@ -2313,9 +2336,9 @@
 
         let discountTag = '';
         if (pkg.bumps >= 15) {
-          discountTag = '<span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">🔥 Tiết kiệm 33%</span>';
+          discountTag = '<span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">Tiết kiệm 33%</span>';
         } else if (pkg.bumps >= 5) {
-          discountTag = '<span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">⚡ Tiết kiệm 20%</span>';
+          discountTag = '<span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">Tiết kiệm 20%</span>';
         } else {
           discountTag = '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">Dùng thử</span>';
         }
@@ -2535,11 +2558,11 @@
       if (isDiamond) {
         previewCard.className = 'bg-white text-slate-900 rounded-xl p-3 flex items-center gap-3 border-2 border-purple-500 shadow-md shadow-purple-500/20 transition-all';
         previewBadge.className = 'px-2 py-0.5 rounded text-[10px] font-black tracking-wider bg-purple-100 text-purple-800 border border-purple-300';
-        previewBadge.textContent = '👑 VIP KIM CƯƠNG';
+        previewBadge.textContent = 'VIP KIM CƯƠNG';
       } else {
         previewCard.className = 'bg-white text-slate-900 rounded-xl p-3 flex items-center gap-3 border-2 border-amber-400 shadow-md shadow-amber-500/20 transition-all';
         previewBadge.className = 'px-2 py-0.5 rounded text-[10px] font-black tracking-wider bg-amber-100 text-amber-800 border border-amber-300';
-        previewBadge.textContent = '⭐ NỔI BẬT';
+        previewBadge.textContent = 'NỔI BẬT';
       }
 
       document.getElementById('vipSelectedSummary').classList.remove('hidden');

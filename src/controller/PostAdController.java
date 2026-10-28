@@ -1,5 +1,9 @@
 package controller;
 
+import dao.BoostPackageDAO;
+import dao.ProductBoostDAO;
+import dao.UserDao;
+import model.BoostPackage;
 import model.Product;
 import model.ProductImage;
 import model.User;
@@ -15,17 +19,20 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 @WebServlet(name = "PostAdController", value = "/post-ad")
 @MultipartConfig(
@@ -35,15 +42,37 @@ import java.util.UUID;
 )
 public class PostAdController extends HttpServlet {
 
-    private ProductService productService = new ProductService();
-    private ModerationService moderationService = new ModerationService();
+    private static final String SANDBOX_URL = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final DateTimeFormatter VNPAY_DATE = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+    private final ProductService productService = new ProductService();
+    private final ModerationService moderationService = new ModerationService();
+    private final BoostPackageDAO boostPackageDAO = new BoostPackageDAO();
+    private final ProductBoostDAO productBoostDAO = new ProductBoostDAO();
+    private final UserDao userDao = new UserDao();
     private static final String UPLOAD_DIR = "assets/uploads";
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Cho phép tất cả người dùng (kể cả chưa đăng nhập) vào trang đăng tin
-        // Việc kiểm tra login chỉ xảy ra khi submit form (doPost)
+        loadBoostData(request);
         request.getRequestDispatcher("03-dang-tin.jsp").forward(request, response);
+    }
+
+    private void loadBoostData(HttpServletRequest request) {
+        try {
+            List<BoostPackage> packages = boostPackageDAO.getAllActivePackages();
+            request.setAttribute("boostPackages", packages);
+        } catch (Exception ignored) {}
+
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("user") != null) {
+            User user = (User) session.getAttribute("user");
+            int credits = userDao.getUserBumpCredits(user.getId());
+            request.setAttribute("userBumpCredits", credits);
+        } else {
+            request.setAttribute("userBumpCredits", 0);
+        }
     }
 
     private void putIfPresent(Map<String, String> map, String key, String value) {
@@ -52,21 +81,37 @@ public class PostAdController extends HttpServlet {
         }
     }
 
+    private void populateFormAttributes(HttpServletRequest request, String title, String priceStr, String description,
+                                        int categoryId, String dealType, int deliveryMethod,
+                                        String province, String ward, String addressDetail,
+                                        Map<String, String> specsMap) {
+        request.setAttribute("formTitle", title);
+        request.setAttribute("formPrice", priceStr);
+        request.setAttribute("formDesc", description);
+        request.setAttribute("formCatId", categoryId);
+        request.setAttribute("formDealType", dealType);
+        request.setAttribute("formDelivery", deliveryMethod);
+        request.setAttribute("formProvince", province);
+        request.setAttribute("formWard", ward);
+        request.setAttribute("formAddressDetail", addressDetail);
+        request.setAttribute("formSpecsJson", JsonUtil.mapToJson(specsMap));
+    }
+
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
 
-        // 0. Kiểm tra đăng nhập: lấy user từ session
+        // 0. Kiểm tra đăng nhập
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login");
+            response.sendRedirect(request.getContextPath() + "/login?redirect=post-ad");
             return;
         }
         User currentUser = (User) session.getAttribute("user");
 
         // 1. Lấy thông tin text từ Form
         String title = request.getParameter("title");
-        String categoryIdStr = request.getParameter("categoryId"); 
+        String categoryIdStr = request.getParameter("categoryId");
         String priceStr = request.getParameter("price");
         String description = request.getParameter("description");
         String dealType = request.getParameter("deal_type"); // "sell" hoặc "give"
@@ -86,16 +131,15 @@ public class PostAdController extends HttpServlet {
                     categoryId = 4;
                 }
             }
-        } catch (Exception e) {}
+        } catch (Exception ignored) {}
 
-        // Nếu chọn "Tặng miễn phí" thì price = 0, bỏ qua giá nhập vào
         double price = 0;
         if (!"give".equals(dealType)) {
             try {
                 if (priceStr != null) {
-                    price = Double.parseDouble(priceStr.replace(".", "").replace(",", ""));
+                    price = Double.parseDouble(priceStr.replace(".", "").replace(",", "").trim());
                 }
-            } catch (Exception e) {}
+            } catch (Exception ignored) {}
         }
 
         // Đóng gói thông số kỹ thuật (specifications) theo từng danh mục
@@ -167,101 +211,291 @@ public class PostAdController extends HttpServlet {
 
         String specsJson = JsonUtil.mapToJson(specsMap);
 
-        // 2. Lưu địa chỉ tin đăng thành các trường riêng để có thể lọc chính xác.
         String province = request.getParameter("province");
         String ward = request.getParameter("ward");
         String addressDetail = request.getParameter("address_detail");
 
-        // 3. Tạo đối tượng Product
-        Product product = new Product();
-        product.setUserId(currentUser.getId()); // Lấy từ session
-        product.setCategoryId(categoryId);
-        product.setTitle(title);
-        product.setDescription(description);
-        product.setPrice(price);
-        // Kiểm duyệt tự động: quét từ khóa cấm
-        String moderatedStatus = moderationService.moderate(title, description);
-        System.err.println("[PostAd] Title='" + title + "' Desc='" + description + "' → Status=" + moderatedStatus);
-        product.setStatus(moderatedStatus);
-        product.setConditionStatus(conditionStatus);
-        product.setSpecifications(specsJson);
-        product.setProvince(province);
-        product.setWard(ward);
-        product.setAddressDetail(addressDetail);
-
         String deliveryMethodStr = request.getParameter("delivery_method");
         int deliveryMethod = 1;
         if (deliveryMethodStr != null) {
-            try { deliveryMethod = Integer.parseInt(deliveryMethodStr); } catch (Exception e) {}
+            try { deliveryMethod = Integer.parseInt(deliveryMethodStr); } catch (Exception ignored) {}
         }
-        product.setDeliveryMethod(deliveryMethod);
-        product.setDealType("give".equals(dealType) ? "GIVE" : "SELL"); // Lưu loại giao dịch
 
-        // 3. Xử lý Upload Ảnh
+        // 2. Kiểm duyệt tự động trước khi lưu: quét từ khóa cấm
+        String combined = (title != null ? title : "") + " " + (description != null ? description : "");
+        String violation = moderationService.findViolation(combined);
+        if (violation != null) {
+            request.setAttribute("moderationError", "Bài đăng chứa từ khóa không phù hợp: \"" + violation + "\". Vui lòng chỉnh sửa lại tiêu đề hoặc mô tả.");
+            populateFormAttributes(request, title, priceStr, description, categoryId, dealType, deliveryMethod, province, ward, addressDetail, specsMap);
+            loadBoostData(request);
+            request.getRequestDispatcher("03-dang-tin.jsp").forward(request, response);
+            return;
+        }
+
+        // 3. Xử lý & Kiểm tra Upload Ảnh
         String applicationPath = request.getServletContext().getRealPath("");
-        String uploadFilePath = applicationPath + File.separator + UPLOAD_DIR;
-
-        // Thư mục lưu vào mã nguồn (nếu có)
-        String sourceFilePath = "e:" + File.separator + "ProjectTMDT" + File.separator + "web" + File.separator + UPLOAD_DIR.replace("/", File.separator);
-
+        String uploadFilePath = applicationPath + File.separator + UPLOAD_DIR.replace("/", File.separator);
         File fileSaveDir = new File(uploadFilePath);
         if (!fileSaveDir.exists()) fileSaveDir.mkdirs();
-        
-        File sourceSaveDir = new File(sourceFilePath);
-        if (!sourceSaveDir.exists()) sourceSaveDir.mkdirs();
+
+        File devSourceDir = resolveDevUploadDir(applicationPath);
+        if (devSourceDir != null && !devSourceDir.exists()) devSourceDir.mkdirs();
 
         List<ProductImage> images = new ArrayList<>();
         boolean isFirst = true;
 
         Collection<Part> parts = request.getParts();
         for (Part part : parts) {
-            if (part.getName().equals("images") && part.getSize() > 0) {
-                String fileName = UUID.randomUUID().toString() + "_" + extractFileName(part);
-                
-                part.write(uploadFilePath + File.separator + fileName);
-                
-                try {
-                    Files.copy(
-                        Paths.get(uploadFilePath + File.separator + fileName),
-                        Paths.get(sourceFilePath + File.separator + fileName),
-                        StandardCopyOption.REPLACE_EXISTING
-                    );
-                } catch (Exception e) {}
+            if ("images".equals(part.getName()) && part.getSize() > 0) {
+                String originalName = extractFileName(part);
+                if (isAllowedImageFile(originalName)) {
+                    String cleanName = sanitizeFileName(originalName);
+                    String fileName = UUID.randomUUID().toString().substring(0, 8) + "_" + cleanName;
 
-                ProductImage img = new ProductImage();
-                img.setImageUrl(UPLOAD_DIR + "/" + fileName);
-                img.setPrimary(isFirst);
-                images.add(img);
-                isFirst = false;
+                    part.write(uploadFilePath + File.separator + fileName);
+
+                    if (devSourceDir != null && devSourceDir.exists()) {
+                        try {
+                            Files.copy(
+                                Paths.get(uploadFilePath + File.separator + fileName),
+                                Paths.get(devSourceDir.getAbsolutePath() + File.separator + fileName),
+                                StandardCopyOption.REPLACE_EXISTING
+                            );
+                        } catch (Exception ignored) {}
+                    }
+
+                    ProductImage img = new ProductImage();
+                    img.setImageUrl(UPLOAD_DIR + "/" + fileName);
+                    img.setPrimary(isFirst);
+                    images.add(img);
+                    isFirst = false;
+                }
             }
         }
 
-        // 4. Lưu tất cả vào Database thông qua Service
+        // Kiểm tra bắt buộc ít nhất 1 ảnh
+        if (images.isEmpty()) {
+            request.setAttribute("imageError", "Vui lòng chọn ít nhất 1 hình ảnh chụp thực tế của sản phẩm (chấp nhận định dạng JPG, PNG, WEBP).");
+            populateFormAttributes(request, title, priceStr, description, categoryId, dealType, deliveryMethod, province, ward, addressDetail, specsMap);
+            loadBoostData(request);
+            request.getRequestDispatcher("03-dang-tin.jsp").forward(request, response);
+            return;
+        }
+
+        // 4. Tạo đối tượng Product
+        Product product = new Product();
+        product.setUserId(currentUser.getId());
+        product.setCategoryId(categoryId);
+        product.setTitle(title);
+        product.setDescription(description);
+        product.setPrice(price);
+        product.setStatus("ACTIVE");
+        product.setConditionStatus(conditionStatus);
+        product.setSpecifications(specsJson);
+        product.setProvince(province);
+        product.setWard(ward);
+        product.setAddressDetail(addressDetail);
+        product.setDeliveryMethod(deliveryMethod);
+        product.setDealType("give".equals(dealType) ? "GIVE" : "SELL");
+
+        // 5. Lưu vào Database thông qua Service
         boolean success = productService.createProductWithImages(product, images);
-
-        // 5. Chuyển hướng
-        if (success) {
-            if ("REJECTED".equals(moderatedStatus)) {
-                // Tin bị từ chối tự động
-                response.sendRedirect("home?message=post_rejected");
-            } else {
-                response.sendRedirect("home?message=post_success");
-            }
-        } else {
-            response.sendRedirect("03-dang-tin.jsp?message=error");
+        if (!success || product.getId() <= 0) {
+            request.setAttribute("generalError", "Không thể lưu tin đăng vào hệ thống. Vui lòng kiểm tra lại thông tin.");
+            populateFormAttributes(request, title, priceStr, description, categoryId, dealType, deliveryMethod, province, ward, addressDetail, specsMap);
+            loadBoostData(request);
+            request.getRequestDispatcher("03-dang-tin.jsp").forward(request, response);
+            return;
         }
+
+        // 6. Xử lý Gói Đẩy Tin (VIP Boost)
+        String vipBoost = request.getParameter("vip_boost");
+
+        // Trường hợp 1: Dùng 1 lượt đẩy có sẵn từ Ví lượt đẩy
+        if ("use_bump".equals(vipBoost)) {
+            int credits = userDao.getUserBumpCredits(currentUser.getId());
+            if (credits > 0 && productBoostDAO.useAvailableBump(product.getId(), currentUser.getId())) {
+                currentUser.setBumpCredits(userDao.getUserBumpCredits(currentUser.getId()));
+                session.setAttribute("user", currentUser);
+                response.sendRedirect(request.getContextPath() + "/home?message=post_boosted_success");
+                return;
+            }
+        }
+
+        // Trường hợp 2: Chọn gói VIP trả phí (ID gói > 0)
+        if (vipBoost != null && vipBoost.matches("\\d+")) {
+            int pkgId = Integer.parseInt(vipBoost);
+            if (pkgId > 0) {
+                BoostPackage pkg = boostPackageDAO.getPackageById(pkgId);
+                if (pkg != null && pkg.isActive()) {
+                    String tmnCode = config("VNPAY_TMN_CODE");
+                    String hashSecret = config("VNPAY_HASH_SECRET");
+                    String txnRef = "BST" + System.currentTimeMillis() + "_" + product.getId() + "_" + pkg.getId() + "_" + currentUser.getId();
+
+                    // Nếu môi trường test hoặc chưa điền key VNPay, tự động kích hoạt chế độ mô phỏng
+                    if (tmnCode.isEmpty() || hashSecret.isEmpty()) {
+                        productBoostDAO.applyBoostPackage(product.getId(), currentUser.getId(), pkg, txnRef, pkg.getPrice());
+                        currentUser.setBumpCredits(userDao.getUserBumpCredits(currentUser.getId()));
+                        session.setAttribute("user", currentUser);
+                        response.sendRedirect(request.getContextPath() + "/my-posts?message=post_and_boost_success");
+                        return;
+                    } else {
+                        // Chuyển hướng sang VNPay Sandbox để thanh toán
+                        String paymentUrl = buildVnPayPaymentUrl(request, currentUser, pkg, product.getId(), txnRef, tmnCode, hashSecret);
+                        response.sendRedirect(paymentUrl);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Trường hợp 3: Tin thường miễn phí thành công
+        response.sendRedirect(request.getContextPath() + "/home?message=post_success");
     }
 
-    // Hàm phụ để trích xuất tên file thật từ chuỗi header
+    private File resolveDevUploadDir(String applicationPath) {
+        String userDir = System.getProperty("user.dir");
+        if (userDir != null) {
+            File c1 = new File(userDir, "web" + File.separator + UPLOAD_DIR.replace("/", File.separator));
+            if (c1.exists()) return c1;
+            File c2 = new File(userDir, "ProjectTMDT" + File.separator + "web" + File.separator + UPLOAD_DIR.replace("/", File.separator));
+            if (c2.exists()) return c2;
+        }
+        try {
+            File current = new File(applicationPath);
+            for (int i = 0; i < 4 && current != null; i++) {
+                File checkWeb = new File(current, "web" + File.separator + UPLOAD_DIR.replace("/", File.separator));
+                if (checkWeb.exists()) return checkWeb;
+                current = current.getParentFile();
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private boolean isAllowedImageFile(String filename) {
+        if (filename == null || filename.trim().isEmpty()) return false;
+        String lower = filename.toLowerCase();
+        return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png")
+                || lower.endsWith(".webp") || lower.endsWith(".gif") || lower.endsWith(".bmp");
+    }
+
+    private String sanitizeFileName(String filename) {
+        if (filename == null) return "image.jpg";
+        String clean = Paths.get(filename).getFileName().toString();
+        clean = clean.replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (clean.length() > 50) {
+            int extIdx = clean.lastIndexOf(".");
+            String ext = extIdx > 0 ? clean.substring(extIdx) : "";
+            clean = clean.substring(0, Math.min(30, clean.length())) + ext;
+        }
+        return clean.isEmpty() ? "image.jpg" : clean;
+    }
+
     private String extractFileName(Part part) {
         String contentDisp = part.getHeader("content-disposition");
-        String[] items = contentDisp.split(";");
-        for (String s : items) {
-            if (s.trim().startsWith("filename")) {
-                return s.substring(s.indexOf("=") + 2, s.length() - 1);
+        if (contentDisp == null) return "";
+        for (String item : contentDisp.split(";")) {
+            if (item.trim().startsWith("filename")) {
+                String fn = item.substring(item.indexOf("=") + 2, item.length() - 1);
+                return Paths.get(fn).getFileName().toString();
             }
         }
         return "";
     }
 
+    private String buildVnPayPaymentUrl(HttpServletRequest request, User user, BoostPackage pkg, int productId,
+                                        String txnRef, String tmnCode, String hashSecret) {
+        Map<String, String> params = new TreeMap<>();
+        ZonedDateTime now = ZonedDateTime.now(VIETNAM_ZONE);
+        params.put("vnp_Version", "2.1.0");
+        params.put("vnp_Command", "pay");
+        params.put("vnp_TmnCode", tmnCode);
+        params.put("vnp_Amount", String.valueOf(Math.round(pkg.getPrice() * 100)));
+        params.put("vnp_CurrCode", "VND");
+        params.put("vnp_TxnRef", txnRef);
+        String orderInfo = pkg.isBumpPackage()
+                ? "Nap goi " + pkg.getBumpCount() + " luot day cho vi nguoi dung " + user.getId()
+                : "Thanh toan goi " + pkg.getPackageType() + " cho san pham " + productId;
+        params.put("vnp_OrderInfo", orderInfo);
+        params.put("vnp_OrderType", "other");
+        params.put("vnp_Locale", "vn");
+        params.put("vnp_ReturnUrl", buildReturnUrl(request));
+        params.put("vnp_IpAddr", clientIp(request));
+        params.put("vnp_CreateDate", now.format(VNPAY_DATE));
+        params.put("vnp_ExpireDate", now.plusMinutes(15).format(VNPAY_DATE));
+
+        String hashData = buildHashData(params);
+        return SANDBOX_URL + "?" + buildQuery(params) + "&vnp_SecureHash=" + hmacSha512(hashSecret, hashData);
+    }
+
+    private String buildReturnUrl(HttpServletRequest request) {
+        String scheme = request.getScheme();
+        String serverName = request.getServerName();
+        int serverPort = request.getServerPort();
+        String contextPath = request.getContextPath();
+
+        StringBuilder url = new StringBuilder();
+        url.append(scheme).append("://").append(serverName);
+        if (("http".equals(scheme) && serverPort != 80) || ("https".equals(scheme) && serverPort != 443)) {
+            url.append(":").append(serverPort);
+        }
+        url.append(contextPath).append("/boost-return");
+        return url.toString();
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) ip = request.getRemoteAddr();
+        if (ip != null && ip.contains(",")) ip = ip.split(",")[0].trim();
+        return ip == null ? "127.0.0.1" : ip;
+    }
+
+    private String buildHashData(Map<String, String> params) {
+        List<String> names = new ArrayList<>(params.keySet());
+        Collections.sort(names);
+        StringBuilder hashData = new StringBuilder();
+        for (String name : names) {
+            String value = params.get(name);
+            if (value == null || value.isEmpty()) continue;
+            if (hashData.length() > 0) hashData.append('&');
+            hashData.append(name).append('=').append(encode(value));
+        }
+        return hashData.toString();
+    }
+
+    private String buildQuery(Map<String, String> params) {
+        List<String> names = new ArrayList<>(params.keySet());
+        Collections.sort(names);
+        StringBuilder query = new StringBuilder();
+        for (String name : names) {
+            String value = params.get(name);
+            if (value == null || value.isEmpty()) continue;
+            if (query.length() > 0) query.append('&');
+            query.append(encode(name)).append('=').append(encode(value));
+        }
+        return query.toString();
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.US_ASCII);
+    }
+
+    private String hmacSha512(String key, String data) {
+        try {
+            Mac hmac = Mac.getInstance("HmacSHA512");
+            hmac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512"));
+            byte[] digest = hmac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(digest.length * 2);
+            for (byte b : digest) hex.append(String.format("%02x", b & 0xff));
+            return hex.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private String config(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.trim().isEmpty()) value = System.getProperty(name, "");
+        return value == null ? "" : value.trim();
+    }
 }

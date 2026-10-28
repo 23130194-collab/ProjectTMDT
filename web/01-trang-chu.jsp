@@ -231,8 +231,8 @@
         </div>
       </c:when>
       <c:otherwise>
-        <c:forEach var="p" items="${products}">
-          <div class="product-card bg-white rounded-xl ${p.vipActive ? (p.priorityLevel >= 2 ? 'ring-2 ring-purple-500 border border-purple-400 shadow-md shadow-purple-100/50' : 'ring-2 ring-amber-400 border border-amber-300 shadow-md shadow-amber-100/50') : 'border border-slate-200 shadow-sm'} overflow-hidden hover:shadow-lg transition flex flex-col group h-full cursor-pointer relative" data-category="${p.categoryId}" data-deal-type="<c:out value='${p.dealType}'/>" data-shipping="${p.deliveryMethod == 2 ? '3pl' : 'pickup'}" data-province="<c:out value='${p.province}'/>" data-ward="<c:out value='${p.ward}'/>" data-price="${p.price}" onclick="window.location.href='product-detail?id=${p.id}'">
+        <c:forEach var="p" items="${products}" varStatus="status">
+          <div class="product-card bg-white rounded-xl ${p.vipActive ? (p.priorityLevel >= 2 ? 'ring-2 ring-purple-500 border border-purple-400 shadow-md shadow-purple-100/50' : 'ring-2 ring-amber-400 border border-amber-300 shadow-md shadow-amber-100/50') : 'border border-slate-200 shadow-sm'} overflow-hidden hover:shadow-lg transition flex flex-col group h-full cursor-pointer relative" data-category="${p.categoryId}" data-deal-type="<c:out value='${p.dealType}'/>" data-shipping="${p.deliveryMethod == 2 ? '3pl' : 'pickup'}" data-province="<c:out value='${p.province}'/>" data-ward="<c:out value='${p.ward}'/>" data-price="${p.price}" data-vip="${p.vipActive}" data-priority="${p.priorityLevel}" data-initial-order="${status.index}" onclick="window.location.href='product-detail?id=${p.id}'">
             <div class="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0">
               <c:choose>
                 <c:when test="${not empty p.primaryImage}">
@@ -247,6 +247,11 @@
               <c:if test="${p.vipActive}">
                 <span class="absolute top-2.5 right-2.5 ${p.priorityLevel >= 2 ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-amber-500 to-orange-500'} text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wide">
                   <c:out value="${not empty p.badgeLabel ? p.badgeLabel : 'VIP'}"/>
+                </span>
+              </c:if>
+              <c:if test="${!p.vipActive && p.recentlyBumped}">
+                <span class="absolute top-2.5 right-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1">
+                  ⚡ Vừa Đẩy
                 </span>
               </c:if>
 
@@ -477,6 +482,25 @@
         return sortOrder === 'price_asc' ? priceA - priceB : priceB - priceA;
       });
       sorted.forEach(c => grid.appendChild(c));
+    } else {
+      // sortOrder === 'newest' (Mặc định)
+      const sorted = cards.sort((a, b) => {
+        if (activeCategory !== 'all') {
+          // Khi xem theo từng danh mục: Ghim bài VIP của danh mục lên đầu (Kim Cương priority 2, rồi Nổi Bật priority 1)
+          const vipA = a.getAttribute('data-vip') === 'true';
+          const vipB = b.getAttribute('data-vip') === 'true';
+          const prioA = vipA ? (parseInt(a.getAttribute('data-priority')) || 0) : 0;
+          const prioB = vipB ? (parseInt(b.getAttribute('data-priority')) || 0) : 0;
+          if (prioA !== prioB) {
+            return prioB - prioA;
+          }
+        }
+        // Giữ nguyên thứ tự ban đầu từ server (Đã xử lý Kim Cương ở đầu trang chủ & Đẩy tin mới nhất)
+        const orderA = parseInt(a.getAttribute('data-initial-order')) || 0;
+        const orderB = parseInt(b.getAttribute('data-initial-order')) || 0;
+        return orderA - orderB;
+      });
+      sorted.forEach(c => grid.appendChild(c));
     }
 
     // Update count text
@@ -610,6 +634,23 @@
       setTimeout(() => toast.remove(), 500);
     }
   }, 3000);
+</script>
+<% } else if ("post_boosted_success".equals(msg)) { %>
+<div id="boostedToast" class="fixed bottom-5 right-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-3.5 rounded-xl shadow-xl z-50 flex items-center gap-3 transition-opacity duration-500">
+  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+  <div>
+    <div class="font-bold text-sm">Đăng tin & Đẩy tin thành công!</div>
+    <div class="text-xs text-amber-100">Đã dùng 1 lượt đẩy từ Ví. Tin của bạn đã nhảy lên đầu danh mục!</div>
+  </div>
+</div>
+<script>
+  setTimeout(() => {
+    const toast = document.getElementById('boostedToast');
+    if (toast) {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 500);
+    }
+  }, 4500);
 </script>
 <% } else if ("post_rejected".equals(msg)) { %>
 <div id="rejectedToast" class="fixed bottom-5 right-5 bg-red-600 text-white px-6 py-4 rounded-xl shadow-lg z-50 flex items-start gap-3 transition-opacity duration-500" style="max-width:360px">

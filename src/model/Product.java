@@ -215,4 +215,15 @@ public class Product {
         if (pinnedUntil == null) return "";
         return new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(pinnedUntil);
     }
+
+    public boolean isRecentlyBumped() {
+        if (bumpedAt == null) return false;
+        long diff = System.currentTimeMillis() - bumpedAt.getTime();
+        return diff >= 0 && diff < 24L * 60 * 60 * 1000;
+    }
+
+    public String getBumpedAtFormatted() {
+        if (bumpedAt == null) return "";
+        return new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(bumpedAt);
+    }
 }
