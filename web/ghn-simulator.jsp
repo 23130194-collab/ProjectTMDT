@@ -58,14 +58,14 @@
           <p class="text-[11px] text-orange-100">Tích hợp giao vận thương mại điện tử MuaNgay</p>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="text-[11px] bg-black/25 px-2.5 py-1 rounded-full font-mono text-orange-100">
-          Môi trường Thử nghiệm • Demo
-        </span>
-        <a href="05-quan-ly-don-hang.jsp" class="text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-lg font-semibold transition">
-          Quay lại Đơn Hàng
-        </a>
-      </div>
+<%--      <div class="flex items-center gap-2">--%>
+<%--        <span class="text-[11px] bg-black/25 px-2.5 py-1 rounded-full font-mono text-orange-100">--%>
+<%--          Môi trường Thử nghiệm • Demo--%>
+<%--        </span>--%>
+<%--        <a href="05-quan-ly-don-hang.jsp" class="text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-lg font-semibold transition">--%>
+<%--          Quay lại Đơn Hàng--%>
+<%--        </a>--%>
+<%--      </div>--%>
     </div>
   </header>
 
@@ -272,9 +272,9 @@
             <a href="https://5sao.ghn.dev/ops-live" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold rounded-lg transition border border-orange-200 flex items-center gap-1" title="Mở trang quản trị 5sao.ghn.dev">
               <span>Mở 5sao.ghn.dev ↗</span>
             </a>
-            <button onclick="navigator.clipboard.writeText('<%= order.trackingCode %>'); alert('Đã sao chép mã vận đơn!');" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition border border-slate-300">
-              Sao chép mã
-            </button>
+<%--            <button onclick="navigator.clipboard.writeText('<%= order.trackingCode %>'); alert('Đã sao chép mã vận đơn!');" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition border border-slate-300">--%>
+<%--              Sao chép mã--%>
+<%--            </button>--%>
           </div>
         </div>
 
@@ -354,9 +354,9 @@
             </span>
             <span class="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded font-semibold">Demo Shipper</span>
           </div>
-          <p class="text-[11px] text-amber-800">
-            Vì không gọi API thật của GHN, người bán có thể click các nút dưới đây để mô phỏng shipper cập nhật trạng thái gói hàng theo thời gian thực:
-          </p>
+<%--          <p class="text-[11px] text-amber-800">--%>
+<%--            Vì không gọi API thật của GHN, người bán có thể click các nút dưới đây để mô phỏng shipper cập nhật trạng thái gói hàng theo thời gian thực:--%>
+<%--          </p>--%>
           <div class="flex flex-wrap items-center gap-2.5 pt-1">
             <form action="order-action" method="POST" class="inline">
               <input type="hidden" name="action" value="ghn_update_status">
@@ -364,7 +364,7 @@
               <input type="hidden" name="shippingStatus" value="CHO_LAY_HANG">
               <input type="hidden" name="redirectUrl" value="ghn-simulator?orderId=<%= order.id %>">
               <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs flex items-center gap-1 <%= "CHO_LAY_HANG".equalsIgnoreCase(currentShippingStatus) ? "bg-amber-600 text-white font-bold ring-2 ring-amber-400" : "bg-white border border-amber-300 hover:bg-amber-100 text-slate-800" %>">
-                <span>1. Mô phỏng: Bưu tá lấy hàng & nhập kho</span>
+                <span>1. Chờ bưu tá lây hàng</span>
                 <% if ("CHO_LAY_HANG".equalsIgnoreCase(currentShippingStatus)) { %>
                   <span class="text-[10px] bg-amber-800/80 text-white px-1.5 py-0.2 rounded">Hiện tại</span>
                 <% } %>
@@ -377,7 +377,7 @@
               <input type="hidden" name="shippingStatus" value="DANG_GIAO">
               <input type="hidden" name="redirectUrl" value="ghn-simulator?orderId=<%= order.id %>">
               <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs flex items-center gap-1 <%= "DANG_GIAO".equalsIgnoreCase(currentShippingStatus) ? "bg-orange-600 text-white font-bold ring-2 ring-orange-400" : "bg-white border border-amber-300 hover:bg-amber-100 text-slate-800" %>">
-                <span>2. Mô phỏng: Shipper đang đi giao tới người nhận</span>
+                <span>2. Bưu tá đang đi giao</span>
                 <% if ("DANG_GIAO".equalsIgnoreCase(currentShippingStatus)) { %>
                   <span class="text-[10px] bg-orange-800/80 text-white px-1.5 py-0.2 rounded">Hiện tại</span>
                 <% } %>
@@ -390,7 +390,7 @@
               <input type="hidden" name="shippingStatus" value="DA_GIAO">
               <input type="hidden" name="redirectUrl" value="ghn-simulator?orderId=<%= order.id %>">
               <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs flex items-center gap-1 <%= "DA_GIAO".equalsIgnoreCase(currentShippingStatus) ? "bg-green-700 text-white font-bold ring-2 ring-green-400" : "bg-green-600 hover:bg-green-700 text-white" %>">
-                <span>3. Mô phỏng: Shipper đã giao thành công ✓</span>
+                <span>3. Đã giao hàng thành công</span>
                 <% if ("DA_GIAO".equalsIgnoreCase(currentShippingStatus)) { %>
                   <span class="text-[10px] bg-green-900/80 text-white px-1.5 py-0.2 rounded">Hiện tại</span>
                 <% } %>
@@ -444,7 +444,7 @@
             ← Về Quản Lý Đơn Hàng
           </a>
           <a href="04-chat-tra-gia-vietqr.jsp" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition">
-            Mở Khung Chat Với Đối Tác →
+            Mở Khung Chat Với Đối Tác
           </a>
         </div>
       </div>
