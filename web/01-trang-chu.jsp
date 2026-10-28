@@ -34,7 +34,7 @@
       text-align: center;
       color: #ffffff;
       font-weight: 800;
-      font-size: 13.5px;
+      font-size: 25px;
       line-height: 1.1;
       background: linear-gradient(180deg, #ff1a13 0%, #e70000 100%);
       border-radius: 0 0 14px 14px;
@@ -65,6 +65,7 @@
       overflow-y: hidden;
       scroll-snap-type: x mandatory;
       scroll-behavior: smooth;
+      margin-top:15px;
       scrollbar-width: none;
       padding: 0 42px;
     }

@@ -1,7 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="java.util.*, model.BoostPackage, model.ProductBoost, java.text.NumberFormat" %>
 <%
-    String adminPage = "boost-packages";
+    request.setAttribute("adminPage", "boost-packages");
     List<BoostPackage> packages = (List<BoostPackage>) request.getAttribute("packages");
     List<ProductBoost> history = (List<ProductBoost>) request.getAttribute("history");
     Double totalRevenue = (Double) request.getAttribute("totalRevenue");
@@ -33,7 +33,7 @@
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px;">
     <div class="stat-card">
       <div class="stat-label">TỔNG DOANH THU BOOST</div>
-      <div class="stat-value" style="color:#d97706"><%= mf.format(totalRevenue) %> đ</div>
+      <div class="stat-value" style="color:#d97706"><%= mf.format(totalRevenue) %>đ</div>
       <div class="stat-sub">Thu nhập từ dịch vụ giá trị gia tăng</div>
     </div>
     <div class="stat-card">
@@ -79,10 +79,10 @@
           </td>
           <td>
             <span class="badge <%= p.isVipPackage() ? "badge-admin" : "badge-user" %>">
-              <%= p.isVipPackage() ? "👑 GHIM VIP" : "🚀 ĐẨY TIN (BUMP)" %>
+              <%= p.isVipPackage() ? "👑 GHIM VIP" : "🚀 ĐẨY TIN" %>
             </span>
           </td>
-          <td style="font-weight:700; color:#ea580c">
+          <td style="font-weight:700; color:#ea580c; white-space:nowrap">
             <%= mf.format(p.getPrice()) %> đ
           </td>
           <td style="font-size:12px">
@@ -161,7 +161,7 @@
               <%= b.getPackageName() != null ? b.getPackageName() : b.getPackageType() %>
             </span>
           </td>
-          <td style="font-weight:700; color:#16a34a"><%= mf.format(b.getAmountPaid()) %> đ</td>
+          <td style="font-weight:700; color:#16a34a; white-space:nowrap"><%= mf.format(b.getAmountPaid()) %> đ</td>
           <td style="font-size:11px; color:#475569">
             <%= b.getEndTime() != null ? sdf.format(b.getEndTime()) : (b.getRemainingBumps() > 0 ? ("Còn " + b.getRemainingBumps() + " bump") : "Đã kích hoạt") %>
           </td>
@@ -204,8 +204,8 @@
         <div>
           <label style="font-size:12px; font-weight:600; color:#334155; display:block; margin-bottom:4px">Loại Gói</label>
           <select id="pkgType" name="packageType" onchange="toggleTypeFields()" class="form-input" style="width:100%">
-            <option value="BUMP">🚀 Đẩy Tin (BUMP)</option>
-            <option value="VIP_PIN">👑 Ghim Tin VIP (VIP_PIN)</option>
+            <option value="BUMP">🚀 Đẩy Tin</option>
+            <option value="VIP_PIN">👑 Ghim Tin VIP</option>
           </select>
         </div>
         <div>
