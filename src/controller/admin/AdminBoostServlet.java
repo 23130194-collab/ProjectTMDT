@@ -30,6 +30,7 @@ public class AdminBoostServlet extends HttpServlet {
         request.setAttribute("history", history);
         request.setAttribute("totalRevenue", totalRevenue);
         request.setAttribute("totalOrders", totalOrders);
+        request.setAttribute("adminPage", "boost-packages");
 
         request.getRequestDispatcher("/admin/admin-boost-packages.jsp").forward(request, response);
     }

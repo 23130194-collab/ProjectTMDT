@@ -70,7 +70,7 @@
       <div class="lg:col-span-7 space-y-6">
 
         <!-- KHUNG ẢNH CHÍNH & THUMBNAILS THỰC TẾ -->
-        <div class="bg-white rounded-xl ${product.vipActive ? (product.priorityLevel >= 2 ? 'border-2 border-purple-400 shadow-md shadow-purple-100/50' : 'border-2 border-amber-300 shadow-md shadow-amber-100/50') : 'border border-slate-200'} overflow-hidden p-3 shadow-sm relative">
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden p-3 shadow-sm relative">
 
           <!-- OVERLAY TRẠNG THÁI TẠM KHÓA / ĐÃ BÁN -->
           <div id="imageLockOverlay"
@@ -226,7 +226,7 @@
       <div class="lg:col-span-5 space-y-5">
 
         <!-- THẺ GIÁ VÀ ĐIỀU HƯỚNG GIAO NHẬN -->
-        <div class="bg-white rounded-xl ${product.vipActive ? (product.priorityLevel >= 2 ? 'border-2 border-purple-400 shadow-sm shadow-purple-50' : 'border-2 border-amber-300 shadow-sm shadow-amber-50') : 'border border-slate-200'} p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
           <div>
             <div class="flex items-center gap-2 mb-2 flex-wrap">
               <c:if test="${product.vipActive}">

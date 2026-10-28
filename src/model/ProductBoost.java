@@ -83,4 +83,9 @@ public class ProductBoost {
 
     public String getBadgeColor() { return badgeColor; }
     public void setBadgeColor(String badgeColor) { this.badgeColor = badgeColor; }
+
+    public String getCreatedAtFormatted() {
+        if (createdAt == null) return "";
+        return new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(createdAt);
+    }
 }
