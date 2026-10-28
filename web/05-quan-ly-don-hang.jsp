@@ -19,7 +19,8 @@
             .replace("'", "&#39;");
   }
 
-  private String orderStatusText(String status) {
+  private String orderStatusText(String status, boolean freeGift) {
+    if (freeGift && ("DEPOSITED".equalsIgnoreCase(status) || "DEPOSIT_CONFIRMED".equalsIgnoreCase(status))) return "Chờ giao nhận";
     if ("DEPOSITED".equalsIgnoreCase(status) || "DEPOSIT_CONFIRMED".equalsIgnoreCase(status)) return "Đang giữ cọc";
     if ("DEPOSIT_PENDING".equalsIgnoreCase(status)) return "Chờ xác nhận cọc";
     if ("SHIPPING".equalsIgnoreCase(status)) return "Đang giao hàng / kiểm tra";
@@ -192,6 +193,7 @@
           String partnerName = mineBuy ? item.sellerName : item.buyerName;
           double remain = Math.max(0, item.agreedPrice - Math.max(item.depositAmount, item.totalPaid));
           boolean isDirect = item.deliveryMethod != 2;
+          boolean isGiftOrder = item.agreedPrice <= 0;
           boolean isCompleted = "COMPLETED".equalsIgnoreCase(item.status);
           boolean hasGhnTracking = item.trackingCode != null && !item.trackingCode.trim().isEmpty();
           boolean isOrderCancelled = "CANCELLED".equalsIgnoreCase(item.status) || "CANCELLED".equalsIgnoreCase(item.shippingStatus) || "CANCELED".equalsIgnoreCase(item.status);
@@ -220,9 +222,9 @@
             <% } %>
           </div>
           <div class="flex items-center gap-2">
-            <div class="<%= orderBadgeClass(item.status) %>">Đơn hàng: <%= h(orderStatusText(item.status)) %></div>
+            <div class="<%= orderBadgeClass(item.status) %>">Đơn hàng: <%= h(orderStatusText(item.status, isGiftOrder)) %></div>
             <% if ("PAID".equalsIgnoreCase(item.paymentStatus)) { %>
-              <div class="text-xs text-emerald-700 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">Thanh toán: Đã thanh toán</div>
+              <div class="text-xs text-emerald-700 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200"><%= isGiftOrder ? "Sản phẩm miễn phí" : "Thanh toán: Đã thanh toán" %></div>
             <% } else if ("PARTIALLY_PAID".equalsIgnoreCase(item.paymentStatus)) { %>
               <div class="text-xs text-amber-700 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200">Thanh toán: Đã đặt cọc</div>
             <% } %>
@@ -256,19 +258,23 @@
           <!-- BOX TIỀN CỌC & THANH TOÁN -->
           <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1 w-full md:w-72 shrink-0">
             <div class="flex justify-between">
-              <span class="text-slate-500">Tiền cọc sàn giữ (VNPay):</span>
+              <span class="text-slate-500"><%= isGiftOrder ? "Giá sản phẩm:" : "Tiền cọc sàn giữ (VNPay):" %></span>
               <span class="font-bold text-amber-700"><%= moneyFormat.format(Math.round(item.depositAmount)) %> đ</span>
             </div>
             <% if (item.totalPaid > item.depositAmount) { %>
             <div class="flex justify-between"><span class="text-slate-500">Đã thanh toán tổng cộng:</span><span class="font-bold text-emerald-700"><%= moneyFormat.format(Math.round(item.totalPaid)) %> đ</span></div>
             <% } %>
             <div class="flex justify-between">
-              <span class="text-slate-500"><%= isDirect ? "Tiền mặt thu tại chỗ:" : "Tiền thu hộ COD (GHN):" %></span>
+              <span class="text-slate-500"><%= isGiftOrder ? "Còn phải thanh toán:" : (isDirect ? "Tiền mặt thu tại chỗ:" : "Tiền thu hộ COD (GHN):") %></span>
               <span class="font-bold text-slate-900"><%= moneyFormat.format(Math.round(remain)) %> đ</span>
             </div>
             <div class="text-[11px] text-slate-500 pt-1 border-t border-slate-200">
-              <% if (isCompleted) { %>
+              <% if (isCompleted && isGiftOrder) { %>
+                <span class="text-green-700 font-bold">Đơn nhận sản phẩm miễn phí đã hoàn tất.</span>
+              <% } else if (isCompleted) { %>
                 <span class="text-green-700 font-bold">Tiền cọc đã giải ngân cho Người bán.</span>
+              <% } else if (isGiftOrder) { %>
+                <span class="text-slate-600">Không phát sinh thanh toán. Theo dõi tiến độ giao nhận bên dưới.</span>
               <% } else { %>
                 <span class="text-slate-600">Sàn đang bảo chứng tiền cọc 100%.</span>
               <% } %>
@@ -366,11 +372,11 @@
                 <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 <div>
                   <div class="font-bold text-amber-950 flex items-center gap-1.5">
-                    <span>Bạn đã gửi yêu cầu hủy đơn hàng &amp; hoàn cọc</span>
+                    <span><%= isGiftOrder ? "Bạn đã gửi yêu cầu hủy đơn nhận sản phẩm" : "Bạn đã gửi yêu cầu hủy đơn hàng &amp; hoàn cọc" %></span>
                     <span class="text-[10px] font-bold bg-amber-200/70 text-amber-800 px-2 py-0.5 rounded-full">Đang chờ Người Bán duyệt</span>
                   </div>
                   <div class="mt-0.5 text-slate-700">Lý do hủy: <em>"<%= (item.cancelReason != null && !item.cancelReason.trim().isEmpty()) ? h(item.cancelReason) : "Đổi ý không muốn mua nữa" %>"</em></div>
-                  <div class="mt-0.5 text-[11px] text-amber-700">Khi người bán bấm đồng ý, số tiền cọc <strong><%= moneyFormat.format(Math.round(item.depositAmount)) %> đ</strong> sẽ được hoàn lại cho bạn 100%.</div>
+                  <div class="mt-0.5 text-[11px] text-amber-700"><%= isGiftOrder ? "Khi người bán đồng ý, sản phẩm sẽ được mở nhận lại." : ("Khi người bán bấm đồng ý, số tiền cọc " + moneyFormat.format(Math.round(item.depositAmount)) + " đ sẽ được hoàn lại cho bạn 100%.") %></div>
                 </div>
               </div>
             </div>
@@ -387,15 +393,15 @@
                 Lý do từ người mua: <strong class="text-red-700">"<%= (item.cancelReason != null && !item.cancelReason.trim().isEmpty()) ? h(item.cancelReason) : "Đổi ý không muốn mua nữa" %>"</strong>
               </div>
               <div class="p-2.5 bg-white/80 border border-amber-200 rounded-lg text-[11px] text-slate-600 leading-relaxed">
-                ℹ️ <strong>Quy chế thỏa thuận:</strong> Nếu bạn đồng ý hủy, hệ thống sẽ hoàn 100% tiền cọc (<strong><%= moneyFormat.format(Math.round(item.depositAmount)) %> đ</strong>) lại cho khách mua, đồng thời <strong>tự động mở bán lại bài đăng</strong> để khách khác có thể mua ngay.
+                ℹ️ <strong>Quy chế thỏa thuận:</strong> <%= isGiftOrder ? "Nếu bạn đồng ý hủy, tin tặng sẽ được mở nhận lại để người khác có thể đăng ký nhận." : ("Nếu bạn đồng ý hủy, hệ thống sẽ hoàn 100% tiền cọc (" + moneyFormat.format(Math.round(item.depositAmount)) + " đ) lại cho khách mua, đồng thời tự động mở bán lại bài đăng để khách khác có thể mua ngay.") %>
               </div>
               <div class="flex flex-wrap items-center gap-2.5 pt-1">
-                <form action="order-action" method="POST" onsubmit="return confirm('Bạn xác nhận ĐỒNG Ý hủy đơn hàng này?\n\n- Tiền cọc <%= moneyFormat.format(Math.round(item.depositAmount)) %> đ sẽ được hoàn lại cho người mua.\n- Tin đăng sản phẩm sẽ được mở bán lại tự động.');">
+                <form action="order-action" method="POST" onsubmit="return confirm('<%= isGiftOrder ? "Bạn xác nhận đồng ý hủy đơn nhận sản phẩm miễn phí? Tin tặng sẽ được mở nhận lại." : ("Bạn xác nhận ĐỒNG Ý hủy đơn hàng này?\\n\\n- Tiền cọc " + moneyFormat.format(Math.round(item.depositAmount)) + " đ sẽ được hoàn lại cho người mua.\\n- Tin đăng sản phẩm sẽ được mở bán lại tự động.") %>');">
                   <input type="hidden" name="action" value="seller_accept_cancel">
                   <input type="hidden" name="orderId" value="<%= item.id %>">
                   <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    <span>Đồng Ý Hủy Đơn &amp; Hoàn Cọc</span>
+                    <span><%= isGiftOrder ? "Đồng Ý Hủy Đơn" : "Đồng Ý Hủy Đơn &amp; Hoàn Cọc" %></span>
                   </button>
                 </form>
                 <button type="button" onclick="openRejectCancelModal(<%= item.id %>)" class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5">
@@ -425,7 +431,7 @@
                 && ((isDirect && !item.sellerConfirmed) || (!isDirect && (!hasGhnTracking || "CHO_LAY_HANG".equalsIgnoreCase(item.shippingStatus))));
             %>
             <% if (canBuyerCancel) { %>
-              <button type="button" onclick="openRequestCancelModal(<%= item.id %>, '<%= h(item.productTitle) %>', <%= Math.round(item.depositAmount) %>)" class="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs rounded-lg transition shadow-xs text-center flex items-center gap-1" title="Gửi yêu cầu hủy đơn và hoàn cọc cho người bán">
+              <button type="button" onclick="openRequestCancelModal(<%= item.id %>, '<%= h(item.productTitle) %>', <%= Math.round(item.depositAmount) %>, <%= isGiftOrder %>)" class="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs rounded-lg transition shadow-xs text-center flex items-center gap-1" title="<%= isGiftOrder ? "Gửi yêu cầu hủy đơn nhận sản phẩm cho người bán" : "Gửi yêu cầu hủy đơn và hoàn cọc cho người bán" %>">
                 <svg class="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 <span>Yêu Cầu Hủy Đơn</span>
               </button>
@@ -964,10 +970,10 @@
 
           <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900">
             <div class="flex items-center justify-between">
-              <span>Số tiền cọc dự kiến hoàn lại:</span>
+              <span id="cancelModalRefundLabel">Số tiền cọc dự kiến hoàn lại:</span>
               <strong id="cancelModalDeposit" class="text-sm text-emerald-700">0 đ</strong>
             </div>
-            <div class="mt-1 text-[11px] text-slate-600 leading-relaxed">
+            <div id="cancelModalRefundNote" class="mt-1 text-[11px] text-slate-600 leading-relaxed">
               Tiền cọc sẽ được hoàn lại <strong>100%</strong> cho bạn ngay khi Người Bán bấm đồng ý yêu cầu hủy.
             </div>
           </div>
@@ -1409,10 +1415,14 @@
 
   <!-- SCRIPT XỬ LÝ TOÀN BỘ LOGIC FLOW ĐƠN HÀNG, KHIẾU NẠI VÀ DUAL HANDSHAKE -->
   <script>
-    function openRequestCancelModal(orderId, productTitle, depositAmount) {
+    function openRequestCancelModal(orderId, productTitle, depositAmount, isGiftOrder) {
       document.getElementById('cancelModalOrderId').value = orderId;
       document.getElementById('cancelModalProductTitle').textContent = productTitle;
       document.getElementById('cancelModalDeposit').textContent = new Intl.NumberFormat('vi-VN').format(depositAmount) + ' đ';
+      document.getElementById('cancelModalRefundLabel').textContent = isGiftOrder ? 'Sản phẩm miễn phí:' : 'Số tiền cọc dự kiến hoàn lại:';
+      document.getElementById('cancelModalRefundNote').innerHTML = isGiftOrder
+        ? 'Không phát sinh khoản hoàn tiền. Khi Người Bán đồng ý, tin tặng sẽ được mở nhận lại.'
+        : 'Tiền cọc sẽ được hoàn lại <strong>100%</strong> cho bạn ngay khi Người Bán bấm đồng ý yêu cầu hủy.';
       const select = document.getElementById('cancelReasonPreset');
       if (select) {
         select.selectedIndex = 0;

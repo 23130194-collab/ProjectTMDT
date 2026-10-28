@@ -2,6 +2,7 @@ package controller;
 
 import dao.ProductDAO;
 import dao.FavoriteDAO;
+import dao.OrderDAO;
 import dao.ProductImageDAO;
 import dao.UserDao;
 import model.Product;
@@ -28,6 +29,7 @@ public class ProductDetailController extends HttpServlet {
     private ProductImageDAO productImageDAO = new ProductImageDAO();
     private UserDao userDao = new UserDao();
     private FavoriteDAO favoriteDAO = new FavoriteDAO();
+    private OrderDAO orderDAO = new OrderDAO();
 
     // Thứ tự chuẩn của specs theo từng danh mục (phải khớp với key lưu trong PostAdController)
     private static final Map<Integer, List<String>> SPEC_ORDER = new LinkedHashMap<>();
@@ -65,8 +67,10 @@ public class ProductDetailController extends HttpServlet {
                     User currentUser = (sess != null) ? (User) sess.getAttribute("user") : null;
                     boolean isOwner = currentUser != null && currentUser.getId() == product.getUserId();
                     boolean isAdmin = currentUser != null && "ADMIN".equalsIgnoreCase(currentUser.getRole());
+                    String productTransactionState = currentUser == null ? "" :
+                            orderDAO.getUserProductTransactionState(id, currentUser.getId());
 
-                    if (!isActive && !isOwner && !isAdmin) {
+                    if (!isActive && !isOwner && !isAdmin && productTransactionState.isEmpty()) {
                         resp.sendRedirect(req.getContextPath() + "/home?message=not_found");
                         return;
                     }
@@ -103,6 +107,7 @@ public class ProductDetailController extends HttpServlet {
 
                     req.setAttribute("product", product);
                     req.setAttribute("isProductOwner", isOwner);
+                    req.setAttribute("productTransactionState", productTransactionState);
                     req.setAttribute("images", images);
                     req.setAttribute("productSpecs", specsList);
                     req.setAttribute("seller", seller);
