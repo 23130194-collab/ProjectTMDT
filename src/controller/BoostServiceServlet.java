@@ -248,9 +248,13 @@ public class BoostServiceServlet extends HttpServlet {
 
                         session.setAttribute("boostFlashSuccess", true);
                         if (pkg.isBumpPackage()) {
-                            session.setAttribute("boostFlashMessage", "Chúc mừng! Bạn đã nạp thành công " + pkg.getBumpCount() + " lượt đẩy vào Ví Lượt Đẩy.");
+                            if (productId > 0) {
+                                session.setAttribute("boostFlashMessage", "Chúc mừng! Tin đăng #" + productId + " đã được đẩy lên đầu danh mục ngay lập tức và bạn được nhận thêm " + Math.max(0, pkg.getBumpCount() - 1) + " lượt vào Ví Lượt Đẩy.");
+                            } else {
+                                session.setAttribute("boostFlashMessage", "Chúc mừng! Bạn đã nạp thành công " + pkg.getBumpCount() + " lượt đẩy vào Ví Lượt Đẩy.");
+                            }
                         } else {
-                            session.setAttribute("boostFlashMessage", "Chúc mừng! Bạn đã thanh toán thành công gói " + pkg.getName() + " cho tin đăng #" + productId);
+                            session.setAttribute("boostFlashMessage", "Chúc mừng! Bạn đã kích hoạt thành công gói " + pkg.getName() + " cho tin đăng #" + productId + ".");
                         }
                         response.sendRedirect(request.getContextPath() + "/my-posts");
                         return;

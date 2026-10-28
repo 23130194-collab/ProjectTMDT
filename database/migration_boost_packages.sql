@@ -132,10 +132,10 @@ DEALLOCATE PREPARE stmt;
 INSERT INTO boost_packages (id, name, package_type, price, duration_days, bump_count, priority_level, badge_label, badge_color, description, is_active, sort_order)
 VALUES
 (1, 'Đẩy Tin Nhanh (1 Lượt)', 'BUMP', 5000.00, 0, 1, 0, 'ĐẨY TIN', 'blue', 'Đưa tin đăng lên đầu danh mục ngay lập tức như bài vừa đăng.', 1, 1),
-(2, 'Combo Đẩy Tin (5 Lượt)', 'BUMP', 20000.00, 0, 5, 0, 'COMBO 5 BUMP', 'emerald', 'Tiết kiệm 20%. Bạn có 5 lượt đẩy tin tùy ý bất kỳ lúc nào để đón đầu khung giờ vàng.', 1, 2),
-(3, 'Gói VIP Nổi Bật (3 Ngày)', 'VIP_PIN', 30000.00, 3, 0, 1, '⭐ NỔI BẬT', 'amber', 'Ghim cố định ở đầu trang chủ & danh mục trong 3 ngày. Viền nổi bật thu hút lượt xem tối đa.', 1, 3),
-(4, 'Gói VIP Kim Cương (7 Ngày)', 'VIP_PIN', 60000.00, 7, 0, 2, '👑 VIP KIM CƯƠNG', 'purple', 'Vị trí ưu tiên cao nhất trong 7 ngày, huy hiệu VIP sang trọng, tăng gấp 5 lần lượt tiếp cận.', 1, 4),
-(5, 'Combo Tiết Kiệm (15 Lượt)', 'BUMP', 50000.00, 0, 15, 0, 'COMBO 15 BUMP', 'purple', 'Tiết kiệm 33%. 15 lượt đẩy sẵn trong ví tài khoản, đẩy tin thả ga đón mọi khung giờ vàng.', 1, 5)
+(2, 'Combo Đẩy Tin (5 Lượt)', 'BUMP', 20000.00, 0, 5, 0, 'COMBO 5', 'emerald', 'Tiết kiệm 20%. Bạn có 5 lượt đẩy tin tùy ý bất kỳ lúc nào để đón đầu khung giờ vàng.', 1, 2),
+(5, 'Combo Tiết Kiệm (15 Lượt)', 'BUMP', 50000.00, 0, 15, 0, 'COMBO 15', 'purple', 'Tiết kiệm 33%. 15 lượt đẩy sẵn trong ví tài khoản, đẩy tin thả ga đón mọi khung giờ vàng.', 1, 3),
+(3, 'Gói VIP Nổi Bật (3 Ngày)', 'VIP_PIN', 30000.00, 3, 0, 1, '⭐ NỔI BẬT', 'amber', 'Ghim cố định ở đầu danh mục trong 3 ngày. Viền nổi bật thu hút khách mua đúng nhu cầu.', 1, 4),
+(4, 'Gói VIP Kim Cương (7 Ngày)', 'VIP_PIN', 60000.00, 7, 0, 2, '👑 VIP KIM CƯƠNG', 'purple', 'Vị trí ưu tiên cao nhất trong 7 ngày, huy hiệu VIP sang trọng, tăng gấp 5 lần lượt tiếp cận.', 1, 5)
 ON DUPLICATE KEY UPDATE 
     name = VALUES(name), 
     price = VALUES(price), 

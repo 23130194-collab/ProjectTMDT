@@ -79,7 +79,7 @@
           </td>
           <td>
             <span class="badge <%= p.isVipPackage() ? "badge-admin" : "badge-user" %>">
-              <%= p.isVipPackage() ? "👑 GHIM VIP" : "🚀 ĐẨY TIN" %>
+              <%= p.isVipPackage() ? "GHIM VIP" : "ĐẨY TIN" %>
             </span>
           </td>
           <td style="font-weight:700; color:#ea580c; white-space:nowrap">
@@ -152,7 +152,7 @@
                 #<%= b.getProductId() %> • <%= b.getProductTitle() != null ? b.getProductTitle() : "Tin đăng" %>
               </a>
             <% } else { %>
-              <span style="color:#6366f1; font-weight:700">🚀 Nạp Ví Lượt Đẩy</span>
+              <span style="color:#6366f1; font-weight:700">Nạp Lượt Đẩy Tin</span>
             <% } %>
           </td>
           <td style="font-size:12px"><%= b.getUserFullName() != null ? b.getUserFullName() : ("User #" + b.getUserId()) %></td>
@@ -204,8 +204,8 @@
         <div>
           <label style="font-size:12px; font-weight:600; color:#334155; display:block; margin-bottom:4px">Loại Gói</label>
           <select id="pkgType" name="packageType" onchange="toggleTypeFields()" class="form-input" style="width:100%">
-            <option value="BUMP">🚀 Đẩy Tin</option>
-            <option value="VIP_PIN">👑 Ghim Tin VIP</option>
+            <option value="BUMP">Đẩy Tin</option>
+            <option value="VIP_PIN">Ghim Tin VIP</option>
           </select>
         </div>
         <div>

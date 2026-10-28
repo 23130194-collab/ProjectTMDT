@@ -193,10 +193,10 @@ public class EditPostController extends HttpServlet {
                         // Xử lý ảnh: nếu user upload ảnh mới thì thay thế ảnh cũ
                         String applicationPath = req.getServletContext().getRealPath("");
                         String uploadFilePath = applicationPath + File.separator + UPLOAD_DIR.replace("/", File.separator);
-                        String sourceFilePath = "e:" + File.separator + "ProjectTMDT" + File.separator + "web" + File.separator + UPLOAD_DIR.replace("/", File.separator);
-
                         new File(uploadFilePath).mkdirs();
-                        new File(sourceFilePath).mkdirs();
+
+                        File devSourceDir = resolveDevUploadDir(applicationPath);
+                        if (devSourceDir != null && !devSourceDir.exists()) devSourceDir.mkdirs();
 
                         List<ProductImage> newImages = new ArrayList<>();
                         boolean isFirst = true;
@@ -206,13 +206,15 @@ public class EditPostController extends HttpServlet {
                                 if ("images".equals(part.getName()) && part.getSize() > 0) {
                                     String fileName = UUID.randomUUID() + "_" + extractFileName(part);
                                     part.write(uploadFilePath + File.separator + fileName);
-                                    try {
-                                        Files.copy(
-                                            Paths.get(uploadFilePath + File.separator + fileName),
-                                            Paths.get(sourceFilePath + File.separator + fileName),
-                                            StandardCopyOption.REPLACE_EXISTING
-                                        );
-                                    } catch (Exception ignored) {}
+                                    if (devSourceDir != null && devSourceDir.exists()) {
+                                        try {
+                                            Files.copy(
+                                                Paths.get(uploadFilePath + File.separator + fileName),
+                                                Paths.get(devSourceDir.getAbsolutePath() + File.separator + fileName),
+                                                StandardCopyOption.REPLACE_EXISTING
+                                            );
+                                        } catch (Exception ignored) {}
+                                    }
                                     ProductImage img = new ProductImage();
                                     img.setProductId(productId);
                                     img.setImageUrl(UPLOAD_DIR + "/" + fileName);
@@ -259,5 +261,24 @@ public class EditPostController extends HttpServlet {
             }
         }
         return "upload";
+    }
+
+    private File resolveDevUploadDir(String applicationPath) {
+        String userDir = System.getProperty("user.dir");
+        if (userDir != null) {
+            File c1 = new File(userDir, "web" + File.separator + UPLOAD_DIR.replace("/", File.separator));
+            if (c1.exists()) return c1;
+            File c2 = new File(userDir, "ProjectTMDT" + File.separator + "web" + File.separator + UPLOAD_DIR.replace("/", File.separator));
+            if (c2.exists()) return c2;
+        }
+        try {
+            File current = new File(applicationPath);
+            for (int i = 0; i < 4 && current != null; i++) {
+                File checkWeb = new File(current, "web" + File.separator + UPLOAD_DIR.replace("/", File.separator));
+                if (checkWeb.exists()) return checkWeb;
+                current = current.getParentFile();
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 }

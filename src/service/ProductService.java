@@ -18,6 +18,7 @@ public class ProductService {
         int productId = productDAO.insertProduct(product);
         
         if (productId > 0) {
+            product.setId(productId);
             // 2. Cập nhật productId cho từng ảnh
             for (ProductImage img : images) {
                 img.setProductId(productId);

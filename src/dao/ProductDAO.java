@@ -53,6 +53,7 @@ public class ProductDAO {
             ResultSet rs = ps.getGeneratedKeys();
             if (rs.next()) {
                 generatedId = rs.getInt(1);
+                product.setId(generatedId);
             }
 
         } catch (SQLException e) {
@@ -107,15 +108,14 @@ public class ProductDAO {
         return p;
     }
 
-    // Hàm lấy danh sách sản phẩm để hiển thị trang chủ — CHỈ bài ACTIVE, ưu tiên VIP (xoay vòng ngẫu nhiên công bằng) và Đẩy tin
+    // Hàm lấy danh sách sản phẩm để hiển thị trang chủ — CHỈ bài ACTIVE, ưu tiên VIP Kim Cương (xoay vòng ngẫu nhiên công bằng) và Đẩy tin
     public List<Product> getRecentProducts() {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
                      "WHERE p.status = 'ACTIVE' " +
-                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW()) DESC, " +
-                     "p.priority_level DESC, " +
-                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW()) THEN RAND() ELSE 0 END, " +
+                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) DESC, " +
+                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) THEN RAND() ELSE 0 END, " +
                      "COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC";
 
         try (Connection conn = DBContext.getConnection();
@@ -131,16 +131,15 @@ public class ProductDAO {
         return list;
     }
 
-    // Hàm lấy tối đa các sản phẩm mới nhất — CHỈ bài ACTIVE, ưu tiên VIP (xoay vòng ngẫu nhiên công bằng) và Đẩy tin
+    // Hàm lấy tối đa các sản phẩm mới nhất — CHỈ bài ACTIVE, ưu tiên VIP Kim Cương (xoay vòng ngẫu nhiên công bằng) và Đẩy tin
     public List<Product> getNewestProducts(int limit) {
         List<Product> list = new ArrayList<>();
         int safeLimit = limit > 0 ? Math.min(limit, 20) : 10;
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
                      "WHERE p.status = 'ACTIVE' " +
-                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW()) DESC, " +
-                     "p.priority_level DESC, " +
-                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW()) THEN RAND() ELSE 0 END, " +
+                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) DESC, " +
+                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) THEN RAND() ELSE 0 END, " +
                      "COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC LIMIT ?";
 
         try (Connection conn = DBContext.getConnection();
@@ -157,15 +156,14 @@ public class ProductDAO {
         return list;
     }
 
-    // Tìm kiếm sản phẩm theo từ khóa — CHỈ bài ACTIVE, ưu tiên VIP (xoay vòng ngẫu nhiên công bằng) và Đẩy tin
+    // Tìm kiếm sản phẩm theo từ khóa — CHỈ bài ACTIVE, ưu tiên VIP Kim Cương (xoay vòng ngẫu nhiên công bằng) và Đẩy tin
     public List<Product> searchProducts(String keyword) {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
                      "WHERE p.status = 'ACTIVE' AND (p.title LIKE ? OR p.description LIKE ?) " +
-                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW()) DESC, " +
-                     "p.priority_level DESC, " +
-                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW()) THEN RAND() ELSE 0 END, " +
+                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) DESC, " +
+                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) THEN RAND() ELSE 0 END, " +
                      "COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC";
 
         try (Connection conn = DBContext.getConnection();
