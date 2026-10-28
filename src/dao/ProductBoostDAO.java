@@ -338,4 +338,89 @@ public class ProductBoostDAO {
         }
         return 0;
     }
+
+    /**
+     * Lấy N giao dịch gói dịch vụ mới nhất cho Dashboard
+     */
+    public List<ProductBoost> getRecentBoostHistory(int limit) {
+        List<ProductBoost> list = new ArrayList<>();
+        int safeLimit = limit > 0 ? limit : 5;
+        String sql = "SELECT pb.*, bp.name AS package_name, bp.badge_label, bp.badge_color, " +
+                     "p.title AS product_title, u.full_name AS user_fullname " +
+                     "FROM product_boosts pb " +
+                     "LEFT JOIN boost_packages bp ON pb.package_id = bp.id " +
+                     "LEFT JOIN products p ON pb.product_id = p.id " +
+                     "LEFT JOIN users u ON pb.user_id = u.id " +
+                     "ORDER BY pb.id DESC LIMIT ?";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, safeLimit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ProductBoost b = new ProductBoost();
+                    b.setId(rs.getInt("id"));
+                    b.setProductId(rs.getInt("product_id"));
+                    b.setUserId(rs.getInt("user_id"));
+                    b.setPackageId(rs.getInt("package_id"));
+                    b.setPackageType(rs.getString("package_type"));
+                    b.setAmountPaid(rs.getDouble("amount_paid"));
+                    b.setStartTime(rs.getTimestamp("start_time"));
+                    b.setEndTime(rs.getTimestamp("end_time"));
+                    b.setRemainingBumps(rs.getInt("remaining_bumps"));
+                    b.setVnpTxnRef(rs.getString("vnp_txn_ref"));
+                    b.setStatus(rs.getString("status"));
+                    b.setCreatedAt(rs.getTimestamp("created_at"));
+                    b.setPackageName(rs.getString("package_name"));
+                    b.setBadgeLabel(rs.getString("badge_label"));
+                    b.setBadgeColor(rs.getString("badge_color"));
+                    b.setProductTitle(rs.getString("product_title"));
+                    b.setUserFullName(rs.getString("user_fullname"));
+                    list.add(b);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    /**
+     * Đếm số lượng tin đăng hiện đang kích hoạt VIP còn hạn
+     */
+    public int getActiveVipCount() {
+        String sql = "SELECT COUNT(*) FROM products WHERE is_pinned = 1 AND pinned_until > NOW()";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    /**
+     * Doanh thu dịch vụ trong khoảng ngày [fromDate, toDate]
+     */
+    public double getRevenueBetween(String fromDate, String toDate) {
+        String sql = "SELECT COALESCE(SUM(amount_paid), 0) FROM product_boosts " +
+                     "WHERE created_at >= ? AND created_at < DATE_ADD(?, INTERVAL 1 DAY)";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, fromDate);
+            ps.setString(2, toDate);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 }
+
