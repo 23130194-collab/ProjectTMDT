@@ -7,6 +7,7 @@ import model.ProductImage;
 import model.User;
 import service.ModerationService;
 import util.JsonUtil;
+import util.ProductEmbeddingCache;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
@@ -229,6 +230,11 @@ public class EditPostController extends HttpServlet {
                             // Xóa ảnh cũ trong DB (giữ file vật lý để an toàn), sau đó insert ảnh mới
                             productImageDAO.deleteImagesByProductId(productId);
                             productImageDAO.insertImages(newImages);
+                            try {
+                                String cleanRel = newImages.get(0).getImageUrl().replace(UPLOAD_DIR + "/", "");
+                                String absPath = uploadFilePath + File.separator + cleanRel;
+                                util.ProductEmbeddingCache.asyncIndex(productId, absPath);
+                            } catch (Exception ignored) {}
                         }
                         // Nếu không upload ảnh mới thì giữ nguyên ảnh cũ
 

@@ -86,7 +86,7 @@
         <!-- NÚT TÌM KIẾM BẰNG HÌNH ẢNH (AI CLIP) -->
         <button type="button" id="visualSearchTriggerBtn"
                 class="absolute right-20 top-1 bottom-1 px-2.5 text-slate-500 hover:text-blue-600 rounded-md transition flex items-center justify-center group"
-                title="Tìm kiếm bằng hình ảnh (AI CLIP)">
+                title="Tìm kiếm bằng hình ảnh">
           <svg class="w-4 h-4 transition-transform group-hover:scale-110 text-slate-500 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -713,7 +713,7 @@
 <div id="visualSearchModal" class="hidden fixed inset-0 z-[100] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
   <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
     <!-- Header Modal -->
-    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
+    <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
       <div class="flex items-center gap-2.5">
         <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -722,8 +722,7 @@
           </svg>
         </div>
         <div>
-          <h3 class="text-sm font-bold text-slate-900">Tìm kiếm bằng hình ảnh (AI CLIP)</h3>
-          <p class="text-[11px] text-slate-500">So khớp đặc trưng thị giác 512 chiều với mô hình OpenAI ViT-B/32</p>
+          <h2 class="text-sm font-bold text-slate-900">Tìm kiếm bằng hình ảnh</h2>
         </div>
       </div>
       <button type="button" id="closeVisualSearchModal" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg transition">
@@ -732,7 +731,31 @@
     </div>
 
     <!-- Body Modal -->
-    <div class="p-5 max-h-[80vh] overflow-y-auto">
+    <div class="p-5 max-h-[85vh] overflow-y-auto">
+
+      <!-- Trạng thái Chụp ảnh trực tiếp từ Camera / Webcam -->
+      <div id="vsCameraState" class="hidden py-4 text-center">
+        <div class="relative w-full max-w-md mx-auto aspect-video rounded-xl overflow-hidden bg-black mb-3.5 shadow-md">
+          <video id="vsCameraVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+          <canvas id="vsCameraCanvas" class="hidden"></canvas>
+          <div class="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-semibold px-2 py-0.5 rounded backdrop-blur-xs flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+            <span>Camera trực tiếp</span>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-2.5">
+          <button type="button" id="vsCaptureBtn" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs transition flex items-center gap-1.5">
+            <span>Chụp & Tìm kiếm</span>
+          </button>
+          <button type="button" id="vsSwitchCameraBtn" class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition">
+            Đổi Camera
+          </button>
+          <button type="button" id="vsCloseCameraBtn" class="px-3.5 py-2.5 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition">
+            Quay lại
+          </button>
+        </div>
+      </div>
+
       <!-- Trạng thái Đang quét ảnh (Loading) -->
       <div id="vsLoadingState" class="py-12 flex flex-col items-center justify-center text-center">
         <div class="relative w-16 h-16 mb-4">
@@ -744,7 +767,7 @@
           </div>
         </div>
         <h4 class="text-sm font-bold text-slate-800 mb-1">Đang phân tích hình ảnh...</h4>
-        <p class="text-xs text-slate-500 max-w-sm">Mô hình AI CLIP đang trích xuất vector đặc trưng và so sánh Cosine Similarity với các tin đăng trên sàn MuaNgay.</p>
+        <p class="text-xs text-slate-500 max-w-sm">Hệ thống đang tìm các sản phẩm hiện có trên hệ thống MuaNgay.</p>
       </div>
 
       <!-- Trạng thái Lỗi -->
@@ -753,40 +776,95 @@
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
         </div>
         <h4 id="vsErrorMessage" class="text-xs font-semibold text-red-600 mb-4">Đã xảy ra lỗi khi tìm kiếm hình ảnh</h4>
-        <button type="button" id="vsRetryBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition">
-          Thử chọn ảnh khác
-        </button>
+        <div class="flex items-center justify-center gap-2">
+          <button type="button" id="vsRetryBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition">
+            Chọn ảnh khác
+          </button>
+          <button type="button" id="vsOpenCameraFromErrorBtn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition">
+            Chụp bằng Camera
+          </button>
+        </div>
       </div>
 
       <!-- Trạng thái Kết quả -->
       <div id="vsResultState" class="hidden grid grid-cols-1 md:grid-cols-12 gap-5">
-        <!-- Cột trái: Ảnh query -->
+        <!-- Cột trái: Ảnh query & Hành động -->
         <div class="md:col-span-4 bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col items-center">
           <span class="text-[11px] font-bold text-slate-600 mb-2.5 uppercase tracking-wide">Ảnh bạn vừa tìm kiếm</span>
           <div class="w-full aspect-square rounded-lg overflow-hidden bg-white border border-slate-200 shadow-xs mb-3 flex items-center justify-center">
             <img id="vsPreviewImg" src="" alt="Ảnh tìm kiếm" class="w-full h-full object-cover">
           </div>
-          <button type="button" id="vsChangeImgBtn" class="w-full py-2 px-3 border border-slate-200 text-slate-700 hover:bg-white text-xs font-semibold rounded-lg shadow-xs transition">
-            🔄 Đổi ảnh khác
-          </button>
+          <div class="w-full space-y-2">
+            <button type="button" id="vsChangeImgBtn" class="w-full py-2 px-3 border border-slate-200 text-slate-700 hover:bg-white text-xs font-semibold rounded-lg shadow-2xs transition">
+              Đổi ảnh từ máy
+            </button>
+            <button type="button" id="vsOpenCameraFromResultsBtn" class="w-full py-2 px-3 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 text-xs font-semibold rounded-lg shadow-2xs transition">
+              Chụp ảnh qua Camera
+            </button>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-200 w-full text-center">
+            <p class="text-[10px] text-slate-400">Mẹo: Bạn có thể nhấn <strong>Ctrl + V</strong> ở bất kỳ đâu để dán ảnh tìm kiếm nhanh!</p>
+          </div>
         </div>
 
-        <!-- Cột phải: Danh sách sản phẩm tương đồng -->
-        <div class="md:col-span-8">
-          <div class="flex items-center justify-between mb-3">
-            <h4 class="text-xs font-bold text-slate-800">
-              Sản phẩm tương đồng phát hiện: <span id="vsCountText" class="text-blue-600">0</span>
-            </h4>
-            <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Sắp xếp theo độ khớp cao nhất</span>
+        <!-- Cột phải: Bộ lọc kết hợp (Hybrid Search) & Danh sách sản phẩm -->
+        <div class="md:col-span-8 flex flex-col">
+          <!-- BỘ LỌC HYBRID KẾT HỢP (TỈNH/THÀNH, GIÁ, SẮP XẾP) -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1">Tỉnh / Thành phố:</label>
+              <select id="vsProvinceFilter" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-slate-700 font-medium focus:ring-1 focus:ring-blue-500 cursor-pointer">
+                <option value="all">Toàn quốc</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1">Khoảng giá:</label>
+              <select id="vsPriceFilter" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-slate-700 font-medium focus:ring-1 focus:ring-blue-500 cursor-pointer">
+                <option value="all">Tất cả mức giá</option>
+                <option value="0-500000">Dưới 500.000 đ</option>
+                <option value="500000-2000000">500.000 đ - 2 triệu</option>
+                <option value="2000000-5000000">2 triệu - 5 triệu</option>
+                <option value="5000000-10000000">5 triệu - 10 triệu</option>
+                <option value="10000000-999999999">Trên 10 triệu</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1">Sắp xếp:</label>
+              <select id="vsSortFilter" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-slate-700 font-medium focus:ring-1 focus:ring-blue-500 cursor-pointer">
+                <option value="relevance">Độ khớp cao nhất</option>
+                <option value="price_asc">Giá tăng dần</option>
+                <option value="price_desc">Giá giảm dần</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h4 class="text-xs font-bold text-slate-800">
+                Sản phẩm tương đồng: <span id="vsCountText" class="text-blue-600">0</span>
+              </h4>
+            </div>
           </div>
 
           <div id="vsProductList" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[460px] overflow-y-auto pr-1">
             <!-- Render bằng JavaScript -->
           </div>
 
-          <div id="vsEmptyList" class="hidden py-8 text-center text-slate-500">
-            <svg class="w-10 h-10 mx-auto mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <p class="text-xs">Không tìm thấy sản phẩm nào có độ tương đồng đủ cao với bức ảnh này.</p>
+          <div id="vsEmptyList" class="hidden py-8 px-4 text-center">
+            <div class="w-12 h-12 mx-auto mb-2 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center border border-amber-200">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h4 class="text-xs font-bold text-slate-800 mb-1">Chưa có sản phẩm trùng khớp chính xác</h4>
+            <p class="text-[11px] text-slate-500 max-w-sm mx-auto mb-4 leading-relaxed">
+             Hệ thống đã đối sánh đặc trưng hình ảnh nhưng các tin đăng hiện có trong kho không đạt chuẩn tương đồng (hệ thống tự động loại bỏ các sản phẩm lệch chủng loại).
+            </p>
+            <div class="flex items-center justify-center">
+              <button type="button" onclick="document.getElementById('vsChangeImgBtn').click()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-2xs transition">
+                Thử ảnh khác
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -807,40 +885,239 @@
     const loadingState = document.getElementById('vsLoadingState');
     const errorState = document.getElementById('vsErrorState');
     const resultState = document.getElementById('vsResultState');
+    const cameraState = document.getElementById('vsCameraState');
     const errorMessage = document.getElementById('vsErrorMessage');
     const countText = document.getElementById('vsCountText');
+    const intentBadge = document.getElementById('vsIntentBadge');
+    const intentText = document.getElementById('vsIntentText');
     const productList = document.getElementById('vsProductList');
     const emptyList = document.getElementById('vsEmptyList');
 
+    // Camera elements
+    const cameraVideo = document.getElementById('vsCameraVideo');
+    const cameraCanvas = document.getElementById('vsCameraCanvas');
+    const captureBtn = document.getElementById('vsCaptureBtn');
+    const switchCameraBtn = document.getElementById('vsSwitchCameraBtn');
+    const closeCameraBtn = document.getElementById('vsCloseCameraBtn');
+    const openCameraFromResultsBtn = document.getElementById('vsOpenCameraFromResultsBtn');
+    const openCameraFromErrorBtn = document.getElementById('vsOpenCameraFromErrorBtn');
+
+    // Filter elements
+    const provinceFilter = document.getElementById('vsProvinceFilter');
+    const priceFilter = document.getElementById('vsPriceFilter');
+    const sortFilter = document.getElementById('vsSortFilter');
+
+    // Tự động tải tất cả 63 tỉnh/thành phố từ API giống như trong trang Đăng tin
+    const FALLBACK_PROVINCES = [
+      'Thành phố Hà Nội', 'Thành phố Hồ Chí Minh', 'Thành phố Đà Nẵng', 'Thành phố Hải Phòng', 'Thành phố Cần Thơ',
+      'Thành phố Huế', 'Tỉnh An Giang', 'Tỉnh Bà Rịa - Vũng Tàu', 'Tỉnh Bắc Giang', 'Tỉnh Bắc Kạn', 'Tỉnh Bạc Liêu',
+      'Tỉnh Bắc Ninh', 'Tỉnh Bến Tre', 'Tỉnh Bình Định', 'Tỉnh Bình Dương', 'Tỉnh Bình Phước', 'Tỉnh Bình Thuận',
+      'Tỉnh Cà Mau', 'Tỉnh Cao Bằng', 'Tỉnh Đắk Lắk', 'Tỉnh Đắk Nông', 'Tỉnh Điện Biên', 'Tỉnh Đồng Nai',
+      'Tỉnh Đồng Tháp', 'Tỉnh Gia Lai', 'Tỉnh Hà Giang', 'Tỉnh Hà Nam', 'Tỉnh Hà Tĩnh', 'Tỉnh Hải Dương',
+      'Tỉnh Hậu Giang', 'Tỉnh Hòa Bình', 'Tỉnh Hưng Yên', 'Tỉnh Khánh Hòa', 'Tỉnh Kiên Giang', 'Tỉnh Kon Tum',
+      'Tỉnh Lai Châu', 'Tỉnh Lâm Đồng', 'Tỉnh Lạng Sơn', 'Tỉnh Lào Cai', 'Tỉnh Long An', 'Tỉnh Nam Định',
+      'Tỉnh Nghệ An', 'Tỉnh Ninh Bình', 'Tỉnh Ninh Thuận', 'Tỉnh Phú Thọ', 'Tỉnh Phú Yên', 'Tỉnh Quảng Bình',
+      'Tỉnh Quảng Nam', 'Tỉnh Quảng Ngãi', 'Tỉnh Quảng Ninh', 'Tỉnh Quảng Trị', 'Tỉnh Sóc Trăng', 'Tỉnh Sơn La',
+      'Tỉnh Tây Ninh', 'Tỉnh Thái Bình', 'Tỉnh Thái Nguyên', 'Tỉnh Thanh Hóa', 'Tỉnh Trà Vinh', 'Tỉnh Tuyên Quang',
+      'Tỉnh Vĩnh Long', 'Tỉnh Vĩnh Phúc', 'Tỉnh Yên Bái'
+    ];
+
+    async function loadVisualSearchProvinces() {
+      if (!provinceFilter) return;
+      try {
+        const response = await fetch('https://provinces.open-api.vn/api/v2/p/');
+        if (!response.ok) throw new Error('Không tải được tỉnh/thành');
+        const provinces = await response.json();
+        const currentVal = provinceFilter.value || 'all';
+        provinceFilter.innerHTML = '<option value="all">Toàn quốc</option>';
+        provinces.forEach((item) => {
+          const option = new Option(item.name, item.name);
+          option.dataset.code = item.code;
+          provinceFilter.add(option);
+        });
+        if (currentVal && [...provinceFilter.options].some(o => o.value === currentVal)) {
+          provinceFilter.value = currentVal;
+        }
+      } catch (error) {
+        if (provinceFilter.options.length <= 1) {
+          provinceFilter.innerHTML = '<option value="all">Toàn quốc</option>';
+          FALLBACK_PROVINCES.forEach(name => provinceFilter.add(new Option(name, name)));
+        }
+      }
+    }
+    loadVisualSearchProvinces();
+
+    let currentSearchFile = null;
+    let cameraStream = null;
+    let currentFacingMode = 'environment'; // Ưu tiên camera sau trên điện thoại
+
     if (!triggerBtn || !fileInput) return;
 
-    // Bấm nút Camera -> Mở chọn file
-    triggerBtn.addEventListener('click', () => {
-      fileInput.click();
-    });
-
-    changeImgBtn?.addEventListener('click', () => {
-      fileInput.click();
-    });
-
-    retryBtn?.addEventListener('click', () => {
-      fileInput.click();
-    });
+    // 1. Mở modal & chọn file
+    triggerBtn.addEventListener('click', () => fileInput.click());
+    changeImgBtn?.addEventListener('click', () => fileInput.click());
+    retryBtn?.addEventListener('click', () => fileInput.click());
 
     closeBtn?.addEventListener('click', () => {
+      closeCamera();
       modal.classList.add('hidden');
     });
 
     modal?.addEventListener('click', (e) => {
-      if (e.target === modal) modal.classList.add('hidden');
+      if (e.target === modal) {
+        closeCamera();
+        modal.classList.add('hidden');
+      }
     });
 
-    // Khi người dùng đã chọn file ảnh
+    // 2. Kéo & Thả ảnh (Drag & Drop)
+    const searchForm = document.getElementById('searchForm');
+    if (searchForm) {
+      ['dragenter', 'dragover'].forEach(evtName => {
+        searchForm.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          searchForm.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50/50');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(evtName => {
+        searchForm.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          searchForm.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50/50');
+        });
+      });
+
+      searchForm.addEventListener('drop', (e) => {
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const file = e.dataTransfer.files[0];
+          if (file.type.startsWith('image/')) {
+            executeVisualSearch(file);
+          }
+        }
+      });
+    }
+
+    // Modal cũng hỗ trợ kéo thả ảnh vào
+    modal.addEventListener('dragover', (e) => e.preventDefault());
+    modal.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        if (file.type.startsWith('image/')) {
+          closeCamera();
+          executeVisualSearch(file);
+        }
+      }
+    });
+
+    // 3. Dán ảnh từ Clipboard (Ctrl + V)
+    window.addEventListener('paste', (e) => {
+      // Tránh can thiệp khi người dùng đang gõ text vào input/textarea thông thường
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+      if ((activeTag === 'input' || activeTag === 'textarea') && (!e.clipboardData || !e.clipboardData.files || e.clipboardData.files.length === 0)) {
+        return;
+      }
+
+      if (e.clipboardData && e.clipboardData.items) {
+        for (let i = 0; i < e.clipboardData.items.length; i++) {
+          const item = e.clipboardData.items[i];
+          if (item.type.indexOf('image') !== -1) {
+            const blob = item.getAsFile();
+            if (blob) {
+              e.preventDefault();
+              closeCamera();
+              executeVisualSearch(blob);
+              break;
+            }
+          }
+        }
+      }
+    });
+
+    // 4. Khi người dùng chọn file từ Input
     fileInput.addEventListener('change', () => {
       if (!fileInput.files || fileInput.files.length === 0) return;
       const file = fileInput.files[0];
+      executeVisualSearch(file);
+    });
 
-      // Đọc preview ảnh
+    // 5. Chụp ảnh từ Camera / Webcam
+    function startCamera() {
+      loadingState.classList.add('hidden');
+      errorState.classList.add('hidden');
+      resultState.classList.add('hidden');
+      cameraState.classList.remove('hidden');
+      modal.classList.remove('hidden');
+
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({
+          video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } }
+        }).then(stream => {
+          cameraStream = stream;
+          cameraVideo.srcObject = stream;
+        }).catch(err => {
+          console.error("Lỗi mở camera:", err);
+          cameraState.classList.add('hidden');
+          errorState.classList.remove('hidden');
+          errorMessage.textContent = "Không thể truy cập camera. Vui lòng cấp quyền cho trình duyệt.";
+        });
+      } else {
+        cameraState.classList.add('hidden');
+        errorState.classList.remove('hidden');
+        errorMessage.textContent = "Thiết bị hoặc trình duyệt không hỗ trợ camera.";
+      }
+    }
+
+    function closeCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+      }
+      cameraState.classList.add('hidden');
+    }
+
+    openCameraFromResultsBtn?.addEventListener('click', startCamera);
+    openCameraFromErrorBtn?.addEventListener('click', startCamera);
+
+    closeCameraBtn?.addEventListener('click', () => {
+      closeCamera();
+      if (currentSearchFile) {
+        resultState.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    });
+
+    switchCameraBtn?.addEventListener('click', () => {
+      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      closeCamera();
+      startCamera();
+    });
+
+    captureBtn?.addEventListener('click', () => {
+      if (!cameraVideo) return;
+      const width = cameraVideo.videoWidth || 640;
+      const height = cameraVideo.videoHeight || 480;
+      cameraCanvas.width = width;
+      cameraCanvas.height = height;
+      const ctx = cameraCanvas.getContext('2d');
+      ctx.drawImage(cameraVideo, 0, 0, width, height);
+
+      cameraCanvas.toBlob(blob => {
+        closeCamera();
+        if (blob) {
+          executeVisualSearch(blob);
+        }
+      }, 'image/jpeg', 0.9);
+    });
+
+    // 6. Thực thi tìm kiếm bằng hình ảnh (kèm bộ lọc Hybrid)
+    function executeVisualSearch(file) {
+      currentSearchFile = file;
+
+      // Preview ảnh
       const reader = new FileReader();
       reader.onload = (e) => {
         previewImg.src = e.target.result;
@@ -852,37 +1129,77 @@
       loadingState.classList.remove('hidden');
       errorState.classList.add('hidden');
       resultState.classList.add('hidden');
+      cameraState.classList.add('hidden');
+
+      // Đọc bộ lọc
+      const province = provinceFilter ? provinceFilter.value : 'all';
+      const priceRange = priceFilter ? priceFilter.value : 'all';
+      const sort = sortFilter ? sortFilter.value : 'relevance';
+
+      let minPrice = '';
+      let maxPrice = '';
+      if (priceRange !== 'all') {
+        const parts = priceRange.split('-');
+        if (parts.length === 2) {
+          minPrice = parts[0];
+          maxPrice = parts[1];
+        }
+      }
 
       // Gửi AJAX lên /visual-search
       const formData = new FormData();
-      formData.append('searchImage', file);
+      formData.append('searchImage', file, 'query_image.jpg');
+      if (province && province !== 'all') formData.append('province', province);
+      if (minPrice) formData.append('minPrice', minPrice);
+      if (maxPrice) formData.append('maxPrice', maxPrice);
+      if (sort) formData.append('sort', sort);
 
       fetch('${pageContext.request.contextPath}/visual-search', {
         method: 'POST',
         body: formData
       })
-              .then(async res => {
-                const data = await res.json();
-                if (!res.ok) {
-                  throw new Error(data.message || 'Lỗi xử lý hình ảnh');
-                }
-                return data;
-              })
-              .then(data => {
-                loadingState.classList.add('hidden');
-                resultState.classList.remove('hidden');
-                renderVisualResults(data.products || []);
-              })
-              .catch(err => {
-                loadingState.classList.add('hidden');
-                errorState.classList.remove('hidden');
-                errorMessage.textContent = err.message || 'Không thể kết nối đến hệ thống AI';
-              })
-              .finally(() => {
-                fileInput.value = ''; // Reset input để có thể chọn lại ảnh giống cũ
-              });
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Lỗi xử lý hình ảnh');
+        }
+        return data;
+      })
+      .then(data => {
+        loadingState.classList.add('hidden');
+        resultState.classList.remove('hidden');
+
+        if (intentBadge && intentText) {
+          if (data.predicted_intent_name && data.predicted_intent_name !== 'Sản phẩm khác') {
+            intentBadge.classList.remove('hidden');
+            intentText.textContent = data.predicted_intent_name;
+          } else {
+            intentBadge.classList.add('hidden');
+          }
+        }
+
+        renderVisualResults(data.products || []);
+      })
+      .catch(err => {
+        loadingState.classList.add('hidden');
+        errorState.classList.remove('hidden');
+        errorMessage.textContent = err.message || 'Không thể kết nối đến hệ thống';
+      })
+      .finally(() => {
+        fileInput.value = '';
+      });
+    }
+
+    // Khi người dùng thay đổi bộ lọc Hybrid trên modal
+    [provinceFilter, priceFilter, sortFilter].forEach(el => {
+      el?.addEventListener('change', () => {
+        if (currentSearchFile) {
+          executeVisualSearch(currentSearchFile);
+        }
+      });
     });
 
+    // 7. Render danh sách sản phẩm kết quả
     function renderVisualResults(products) {
       productList.innerHTML = '';
       countText.textContent = products.length;
@@ -895,12 +1212,12 @@
 
       products.forEach(p => {
         const card = document.createElement('div');
-        card.className = 'flex gap-3 p-2.5 bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition group';
+        card.className = 'flex gap-3 p-2.5 bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition group cursor-pointer';
+        card.onclick = () => window.location.href = 'product-detail?id=' + p.id;
 
         const priceFormatted = new Intl.NumberFormat('vi-VN').format(p.price) + ' đ';
         const imgPath = p.image ? p.image : 'assets/images/no-image.png';
 
-        // Badge phần trăm tương đồng
         let badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
         if (p.similarity_percent < 70) {
           badgeColor = 'bg-blue-100 text-blue-800 border-blue-200';
@@ -909,21 +1226,19 @@
         card.innerHTML = `
           <div class="w-20 h-20 rounded-lg overflow-hidden bg-slate-100 shrink-0 relative">
             <img src="\${imgPath}" alt="\${escapeHtml(p.title)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-            <span class="absolute top-1 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded \${badgeColor} border shadow-2xs">
-              \${p.similarity_percent}% khớp
-            </span>
           </div>
           <div class="flex-1 min-w-0 flex flex-col justify-between">
             <div>
-              <a href="02-chi-tiet-san-pham.jsp?id=\${p.id}" class="text-xs font-bold text-slate-900 hover:text-blue-600 line-clamp-1 transition">
+              <a href="product-detail?id=\${p.id}" class="text-xs font-bold text-slate-900 hover:text-blue-600 line-clamp-1 transition">
                 \${escapeHtml(p.title)}
               </a>
               <div class="text-xs font-extrabold text-blue-600 mt-0.5">\${priceFormatted}</div>
-              <div class="text-[10px] text-slate-500 mt-0.5 truncate">📍 \${escapeHtml(p.province || 'Toàn quốc')}</div>
+              <div class="text-[10px] text-slate-500 mt-0.5 truncate">\${escapeHtml(p.province || 'Toàn quốc')}</div>
             </div>
-            <a href="02-chi-tiet-san-pham.jsp?id=\${p.id}" class="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 mt-1">
-              Xem ngay &rarr;
-            </a>
+            <div class="flex items-center justify-between text-[11px] font-semibold text-blue-600 group-hover:text-blue-700 mt-1">
+              <span>Xem chi tiết</span>
+              <span>&rarr;</span>
+            </div>
           </div>
         `;
         productList.appendChild(card);

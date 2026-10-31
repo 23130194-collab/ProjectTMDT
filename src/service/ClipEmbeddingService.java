@@ -39,12 +39,31 @@ public class ClipEmbeddingService {
         }
     }
 
+    public static class AnalysisResult {
+        private final float[] embedding;
+        private final String predictedIntent;
+        private final String predictedIntentName;
+        private final double intentConfidence;
+
+        public AnalysisResult(float[] embedding, String predictedIntent, String predictedIntentName, double intentConfidence) {
+            this.embedding = embedding != null ? embedding : new float[0];
+            this.predictedIntent = predictedIntent != null ? predictedIntent : "";
+            this.predictedIntentName = predictedIntentName != null ? predictedIntentName : "";
+            this.intentConfidence = intentConfidence;
+        }
+
+        public float[] getEmbedding() { return embedding; }
+        public String getPredictedIntent() { return predictedIntent; }
+        public String getPredictedIntentName() { return predictedIntentName; }
+        public double getIntentConfidence() { return intentConfidence; }
+    }
+
     /**
-     * Gửi mảng byte của ảnh đến AI service để nhận về vector 512 chiều
+     * Gửi mảng byte của ảnh đến AI service để nhận về vector 512 chiều kèm dự đoán ý định (Zero-Shot Intent)
      */
-    public static float[] getEmbeddingFromBytes(byte[] imageBytes, String filename) throws IOException, InterruptedException {
+    public static AnalysisResult getAnalysisFromBytes(byte[] imageBytes, String filename) throws IOException, InterruptedException {
         if (imageBytes == null || imageBytes.length == 0) {
-            return new float[0];
+            return new AnalysisResult(new float[0], "", "", 0);
         }
 
         String boundary = "---ClipBoundary" + UUID.randomUUID().toString().replace("-", "");
@@ -62,14 +81,27 @@ public class ClipEmbeddingService {
         if (response.statusCode() == 200) {
             JsonNode root = MAPPER.readTree(response.body());
             JsonNode embeddingNode = root.get("embedding");
+            float[] vector = new float[0];
             if (embeddingNode != null && embeddingNode.isArray()) {
-                return MAPPER.convertValue(embeddingNode, float[].class);
+                vector = MAPPER.convertValue(embeddingNode, float[].class);
             }
+            String intent = root.has("predicted_intent") ? root.get("predicted_intent").asText("") : "";
+            String intentName = root.has("predicted_intent_name") ? root.get("predicted_intent_name").asText("") : "";
+            double confidence = root.has("intent_confidence") ? root.get("intent_confidence").asDouble(0.0) : 0.0;
+
+            return new AnalysisResult(vector, intent, intentName, confidence);
         } else {
             System.err.println("[ClipEmbeddingService] Lỗi từ AI service: HTTP " + response.statusCode() + " - " + response.body());
         }
 
-        return new float[0];
+        return new AnalysisResult(new float[0], "", "", 0);
+    }
+
+    /**
+     * Gửi mảng byte của ảnh đến AI service để nhận về vector 512 chiều
+     */
+    public static float[] getEmbeddingFromBytes(byte[] imageBytes, String filename) throws IOException, InterruptedException {
+        return getAnalysisFromBytes(imageBytes, filename).getEmbedding();
     }
 
     /**
