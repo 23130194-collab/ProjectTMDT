@@ -2,6 +2,7 @@ package controller;
 
 import dao.ProductDAO;
 import model.User;
+import util.ProductEmbeddingCache;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -31,6 +32,7 @@ public class DeletePostController extends HttpServlet {
                 int productId = Integer.parseInt(idStr);
                 boolean deleted = productDAO.deleteProduct(productId, user.getId());
                 if (deleted) {
+                    util.ProductEmbeddingCache.remove(productId);
                     session.setAttribute("profileMessage", "Đã xóa bài đăng thành công.");
                 } else {
                     session.setAttribute("profileMessage", "Không thể xóa bài đăng. Bạn không phải chủ bài đăng hoặc bài đăng không tồn tại.");

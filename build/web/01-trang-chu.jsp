@@ -339,61 +339,61 @@
 
 <!-- NỘI DUNG CHÍNH: BẢNG TIN SẢN PHẨM TOÀN SÀN -->
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-  <!-- ==================== BANNER CAROUSEL: TIN VIP NỔI BẬT (XOAY TỚI XOAY LUI) ==================== -->
-  <c:if test="${not empty vipProducts}">
-    <section class="vip-products-shell rounded-2xl px-4 pb-4 pt-8 sm:px-5 sm:pb-5 sm:pt-8 mt-2 mb-10">
-      <div class="vip-products-title-tab">Tin VIP nổi bật</div>
+<%--  <!-- ==================== BANNER CAROUSEL: TIN VIP NỔI BẬT (XOAY TỚI XOAY LUI) ==================== -->--%>
+<%--  <c:if test="${not empty vipProducts}">--%>
+<%--    <section class="vip-products-shell rounded-2xl px-4 pb-4 pt-8 sm:px-5 sm:pb-5 sm:pt-8 mt-2 mb-10">--%>
+<%--      <div class="vip-products-title-tab">TIN VIP NỔI BẬT</div>--%>
 
-      <div class="vip-products-wrap" onmouseenter="pauseVipAutoScroll()" onmouseleave="resumeVipAutoScroll()">
-        <button type="button" onclick="scrollVipProducts(-1)" class="vip-products-nav prev" aria-label="Xem tin VIP trước">‹</button>
-        <div id="vipProductsScroller" class="vip-products-marquee">
-          <div class="vip-products-track gap-4 py-1">
-            <c:forEach var="vp" items="${vipProducts}">
-              <div class="vip-product-slide bg-white rounded-xl overflow-hidden hover:shadow-md transition flex flex-col group cursor-pointer ${vp.priorityLevel >= 2 ? 'ring-2 ring-purple-400 border border-purple-300' : 'ring-2 ring-amber-400 border border-amber-300'}" onclick="window.location.href='product-detail?id=${vp.id}'">
-                <div class="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0">
-                  <c:choose>
-                    <c:when test="${not empty vp.primaryImage}">
-                      <img src="${vp.primaryImage}" alt="${vp.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                    </c:when>
-                    <c:otherwise>
-                      <div class="w-full h-full flex items-center justify-center text-slate-400 bg-slate-200 text-xs">Không có ảnh</div>
-                    </c:otherwise>
-                  </c:choose>
-                  
-                  <!-- BADGE VIP TỐI GIẢN - KHÔNG DÙNG ICON -->
-                  <c:choose>
-                    <c:when test="${vp.priorityLevel >= 2}">
-                      <span class="absolute top-2.5 right-2.5 bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">
-                        <c:out value="${not empty vp.badgeLabel ? vp.badgeLabel : 'VIP Kim Cương'}"/>
-                      </span>
-                    </c:when>
-                    <c:otherwise>
-                      <span class="absolute top-2.5 right-2.5 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">
-                        <c:out value="${not empty vp.badgeLabel ? vp.badgeLabel : 'Nổi Bật'}"/>
-                      </span>
-                    </c:otherwise>
-                  </c:choose>
-                </div>
-                <div class="p-4 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div class="text-base font-bold text-green-600"><fmt:formatNumber value="${vp.price}" pattern="#,###"/> đ</div>
-                    <h3 class="font-semibold text-slate-900 text-xs mt-1.5 group-hover:text-amber-600 line-clamp-2 leading-relaxed h-9">
-                      ${vp.title}
-                    </h3>
-                  </div>
-                  <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px] text-slate-500">
-                    <span class="truncate pr-1"><c:out value="${vp.displayLocation}"/></span>
-                    <span class="text-amber-600 font-medium text-[11px] whitespace-nowrap">Được tài trợ</span>
-                  </div>
-                </div>
-              </div>
-            </c:forEach>
-          </div>
-        </div>
-        <button type="button" onclick="scrollVipProducts(1)" class="vip-products-nav next" aria-label="Xem tin VIP tiếp theo">›</button>
-      </div>
-    </section>
-  </c:if>
+<%--      <div class="vip-products-wrap" onmouseenter="pauseVipAutoScroll()" onmouseleave="resumeVipAutoScroll()">--%>
+<%--        <button type="button" onclick="scrollVipProducts(-1)" class="vip-products-nav prev" aria-label="Xem tin VIP trước">‹</button>--%>
+<%--        <div id="vipProductsScroller" class="vip-products-marquee">--%>
+<%--          <div class="vip-products-track gap-4 py-1">--%>
+<%--            <c:forEach var="vp" items="${vipProducts}">--%>
+<%--              <div class="vip-product-slide bg-white rounded-xl overflow-hidden hover:shadow-md transition flex flex-col group cursor-pointer ${vp.priorityLevel >= 2 ? 'ring-2 ring-purple-400 border border-purple-300' : 'ring-2 ring-amber-400 border border-amber-300'}" onclick="window.location.href='product-detail?id=${vp.id}'">--%>
+<%--                <div class="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0">--%>
+<%--                  <c:choose>--%>
+<%--                    <c:when test="${not empty vp.primaryImage}">--%>
+<%--                      <img src="${vp.primaryImage}" alt="${vp.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">--%>
+<%--                    </c:when>--%>
+<%--                    <c:otherwise>--%>
+<%--                      <div class="w-full h-full flex items-center justify-center text-slate-400 bg-slate-200 text-xs">Không có ảnh</div>--%>
+<%--                    </c:otherwise>--%>
+<%--                  </c:choose>--%>
+<%--                  --%>
+<%--                  <!-- BADGE VIP TỐI GIẢN - KHÔNG DÙNG ICON -->--%>
+<%--                  <c:choose>--%>
+<%--                    <c:when test="${vp.priorityLevel >= 2}">--%>
+<%--                      <span class="absolute top-2.5 right-2.5 bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">--%>
+<%--                        <c:out value="${not empty vp.badgeLabel ? vp.badgeLabel : 'VIP Kim Cương'}"/>--%>
+<%--                      </span>--%>
+<%--                    </c:when>--%>
+<%--                    <c:otherwise>--%>
+<%--                      <span class="absolute top-2.5 right-2.5 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">--%>
+<%--                        <c:out value="${not empty vp.badgeLabel ? vp.badgeLabel : 'Nổi Bật'}"/>--%>
+<%--                      </span>--%>
+<%--                    </c:otherwise>--%>
+<%--                  </c:choose>--%>
+<%--                </div>--%>
+<%--                <div class="p-4 flex-1 flex flex-col justify-between">--%>
+<%--                  <div>--%>
+<%--                    <div class="text-base font-bold text-green-600"><fmt:formatNumber value="${vp.price}" pattern="#,###"/> đ</div>--%>
+<%--                    <h3 class="font-semibold text-slate-900 text-xs mt-1.5 group-hover:text-amber-600 line-clamp-2 leading-relaxed h-9">--%>
+<%--                      ${vp.title}--%>
+<%--                    </h3>--%>
+<%--                  </div>--%>
+<%--                  <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px] text-slate-500">--%>
+<%--                    <span class="truncate pr-1"><c:out value="${vp.displayLocation}"/></span>--%>
+<%--                    <span class="text-amber-600 font-medium text-[11px] whitespace-nowrap">Được tài trợ</span>--%>
+<%--                  </div>--%>
+<%--                </div>--%>
+<%--              </div>--%>
+<%--            </c:forEach>--%>
+<%--          </div>--%>
+<%--        </div>--%>
+<%--        <button type="button" onclick="scrollVipProducts(1)" class="vip-products-nav next" aria-label="Xem tin VIP tiếp theo">›</button>--%>
+<%--      </div>--%>
+<%--    </section>--%>
+<%--  </c:if>--%>
 
   <!-- TIÊU ĐỀ KHU VỰC VÀ BỘ LỌC ĐA TIÊU CHÍ (THEO USE CASE UC06) -->
   <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between pb-6 border-b border-slate-200 gap-4">
@@ -543,7 +543,7 @@
     </div>
   </c:if>
   <section class="new-products-shell rounded-2xl px-4 pb-4 pt-8 sm:px-5 sm:pb-5 sm:pt-8 mt-12">
-    <div class="new-products-title-tab">Sản phẩm mới</div>
+    <div class="new-products-title-tab">SẢN PHẨM MỚI</div>
 
     <div class="new-products-wrap">
       <button type="button" onclick="scrollNewProducts(-1)" class="new-products-nav prev" aria-label="Xem sản phẩm mới trước">‹</button>
