@@ -2234,11 +2234,16 @@
         return;
       }
 
+      if (window.isQuickBumping) {
+        return; // Đang xử lý, không cho bấm liên tục
+      }
+
       const postName = productTitle ? ('"' + productTitle + '"') : ('#' + productId);
       if (!confirm('Bạn có chắc muốn dùng 1 lượt đẩy tin từ Ví chung (Hiện còn ' + currentWalletCredits + ' lượt) để đưa tin ' + postName + ' lên đầu trang không?')) {
         return;
       }
 
+      window.isQuickBumping = true;
       const formData = new URLSearchParams();
       formData.append('action', 'use_bump');
       formData.append('productId', productId);
@@ -2256,6 +2261,8 @@
           }
           alert(res.message || 'Đẩy tin thành công!');
           window.location.reload();
+        } else if (res.status === 'cooldown') {
+          alert('⏱️ ' + res.message);
         } else if (res.status === 'no_credits') {
           if (confirm(res.message + '\nBạn có muốn nạp thêm lượt đẩy ngay bây giờ không?')) {
             openBumpWalletModal();
@@ -2266,6 +2273,9 @@
       })
       .catch(err => {
         alert('Lỗi kết nối máy chủ: ' + err);
+      })
+      .finally(() => {
+        window.isQuickBumping = false;
       });
     }
 
