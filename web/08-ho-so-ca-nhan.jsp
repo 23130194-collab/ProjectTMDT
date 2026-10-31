@@ -619,25 +619,11 @@
                     <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
                     Nhắn tin
                   </a>
-                  <button type="button"
-                    onclick='openBuyerOrderDetail({
-                      id: <%= bo.id %>,
-                      productId: <%= bo.productId %>,
-                      productTitle: "<%= h(bo.productTitle).replace("\"", "\\\"") %>",
-                      productImage: "<%= h(bo.productImage != null && !bo.productImage.trim().isEmpty() ? bo.productImage : "assets/images/products/iphone-13-pro-max.jpg") %>",
-                      sellerName: "<%= h(bo.sellerName != null ? bo.sellerName : "Người bán").replace("\"", "\\\"") %>",
-                      finalPrice: "<%= nfOrder.format(finalPrice) %>",
-                      depositAmount: "<%= nfOrder.format(bo.depositAmount) %>",
-                      remainPrice: "<%= nfOrder.format(remainPrice) %>",
-                      status: "<%= bo.status %>",
-                      statusText: "<%= orderStatusText(bo.status) %>",
-                      badgeClass: "<%= orderBadgeClass(bo.status) %>",
-                      createdAt: "<%= bo.createdAt != null ? sdfOrder.format(bo.createdAt) : "" %>"
-                    })'
+                  <a href="product-detail?id=<%= bo.productId %>"
                     class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition flex items-center gap-1 shadow-xs">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                    Xem Chi Tiết Đơn Hàng
-                  </button>
+                    Xem sản phẩm
+                  </a>
                 </div>
               </div>
 
@@ -2248,11 +2234,16 @@
         return;
       }
 
+      if (window.isQuickBumping) {
+        return; // Đang xử lý, không cho bấm liên tục
+      }
+
       const postName = productTitle ? ('"' + productTitle + '"') : ('#' + productId);
       if (!confirm('Bạn có chắc muốn dùng 1 lượt đẩy tin từ Ví chung (Hiện còn ' + currentWalletCredits + ' lượt) để đưa tin ' + postName + ' lên đầu trang không?')) {
         return;
       }
 
+      window.isQuickBumping = true;
       const formData = new URLSearchParams();
       formData.append('action', 'use_bump');
       formData.append('productId', productId);
@@ -2270,6 +2261,8 @@
           }
           alert(res.message || 'Đẩy tin thành công!');
           window.location.reload();
+        } else if (res.status === 'cooldown') {
+          alert('⏱️ ' + res.message);
         } else if (res.status === 'no_credits') {
           if (confirm(res.message + '\nBạn có muốn nạp thêm lượt đẩy ngay bây giờ không?')) {
             openBumpWalletModal();
@@ -2280,6 +2273,9 @@
       })
       .catch(err => {
         alert('Lỗi kết nối máy chủ: ' + err);
+      })
+      .finally(() => {
+        window.isQuickBumping = false;
       });
     }
 

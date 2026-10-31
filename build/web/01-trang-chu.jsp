@@ -34,7 +34,7 @@
       text-align: center;
       color: #ffffff;
       font-weight: 800;
-      font-size: 13.5px;
+      font-size: 25px;
       line-height: 1.1;
       background: linear-gradient(180deg, #ff1a13 0%, #e70000 100%);
       border-radius: 0 0 14px 14px;
@@ -65,8 +65,9 @@
       overflow-y: hidden;
       scroll-snap-type: x mandatory;
       scroll-behavior: smooth;
+      margin-top: 15px;
       scrollbar-width: none;
-      padding: 0 42px;
+      padding: 8px 42px 14px;
     }
     .new-products-marquee::-webkit-scrollbar {
       display: none;
@@ -80,9 +81,38 @@
       width: calc((100% - 48px) / 4);
       min-width: calc((100% - 48px) / 4);
       scroll-snap-align: start;
-      border-radius: 14px;
-      border-color: #ffe1f0 !important;
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+      border-radius: 0.75rem;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+    @media (max-width: 1024px) {
+      .new-product-slide {
+        flex: 0 0 calc((100% - 32px) / 3);
+        width: calc((100% - 32px) / 3);
+        min-width: calc((100% - 32px) / 3);
+      }
+    }
+    @media (max-width: 768px) {
+      .new-product-slide {
+        flex: 0 0 calc((100% - 16px) / 2);
+        width: calc((100% - 16px) / 2);
+        min-width: calc((100% - 16px) / 2);
+      }
+      .new-products-title-tab {
+        font-size: 19px;
+        min-width: 200px;
+        padding: 4px 16px 5px;
+      }
+    }
+    @media (max-width: 480px) {
+      .new-product-slide {
+        flex: 0 0 82%;
+        width: 82%;
+        min-width: 82%;
+      }
     }
     .new-products-nav {
       position: absolute;
@@ -110,6 +140,146 @@
       left: 8px;
     }
     .new-products-nav.next {
+      right: 8px;
+    }
+
+    /* ==================== VIP PRODUCTS BANNER CAROUSEL (MINIMALIST & FRESH) ==================== */
+    .vip-products-shell {
+      position: relative;
+      background: #fffbeb;
+      border: 1px solid #fef08a;
+      box-shadow: 0 4px 20px rgba(245, 158, 11, 0.08);
+      padding-top: 32px;
+      border-radius: 16px;
+    }
+
+    .vip-products-title-tab {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 170px;
+      padding: 4px 18px 5px;
+      text-align: center;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 25px;
+      line-height: 1.1;
+      background: #f59e0b;
+      border-radius: 0 0 14px 14px;
+      box-shadow: 0 3px 8px rgba(245, 158, 11, 0.2);
+      white-space: nowrap;
+    }
+    .vip-products-title-tab::before,
+    .vip-products-title-tab::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      width: 14px;
+      height: 14px;
+      background: #d97706;
+    }
+    .vip-products-title-tab::before {
+      left: -14px;
+      clip-path: polygon(100% 0, 100% 100%, 0 0);
+    }
+    .vip-products-title-tab::after {
+      right: -14px;
+      clip-path: polygon(0 0, 100% 0, 0 100%);
+    }
+
+    .vip-products-wrap {
+      position: relative;
+    }
+    .vip-products-marquee {
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      margin-top: 10px;
+      scrollbar-width: none;
+      padding: 8px 42px 14px;
+    }
+    .vip-products-marquee::-webkit-scrollbar {
+      display: none;
+    }
+    .vip-products-track {
+      display: flex;
+      width: 100%;
+    }
+    .vip-product-slide {
+      flex: 0 0 calc((100% - 48px) / 4);
+      width: calc((100% - 48px) / 4);
+      min-width: calc((100% - 48px) / 4);
+      scroll-snap-align: start;
+      border-radius: 0.75rem;
+      background: #ffffff;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      transition: transform 150ms ease, box-shadow 150ms ease;
+    }
+    .vip-product-slide:hover {
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    }
+    @media (max-width: 1024px) {
+      .vip-product-slide {
+        flex: 0 0 calc((100% - 32px) / 3);
+        width: calc((100% - 32px) / 3);
+        min-width: calc((100% - 32px) / 3);
+      }
+    }
+    @media (max-width: 768px) {
+      .vip-product-slide {
+        flex: 0 0 calc((100% - 16px) / 2);
+        width: calc((100% - 16px) / 2);
+        min-width: calc((100% - 16px) / 2);
+      }
+      .vip-products-title-tab {
+        font-size: 19px;
+        min-width: 200px;
+        padding: 4px 16px 5px;
+      }
+    }
+    @media (max-width: 480px) {
+      .vip-product-slide {
+        flex: 0 0 82%;
+        width: 82%;
+        min-width: 82%;
+      }
+    }
+
+    .vip-products-nav {
+      position: absolute;
+      top: 50%;
+      z-index: 10;
+      width: 38px;
+      height: 38px;
+      transform: translateY(-50%);
+      border-radius: 999px;
+      border: 1px solid #fde68a;
+      background: #ffffff;
+      color: #d97706;
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 150ms ease;
+      cursor: pointer;
+    }
+    .vip-products-nav:hover {
+      background: #f59e0b;
+      color: #ffffff;
+      border-color: #f59e0b;
+      transform: translateY(-50%) scale(1.05);
+    }
+    .vip-products-nav.prev {
+      left: 8px;
+    }
+    .vip-products-nav.next {
       right: 8px;
     }
   </style>
@@ -169,6 +339,62 @@
 
 <!-- NỘI DUNG CHÍNH: BẢNG TIN SẢN PHẨM TOÀN SÀN -->
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+<%--  <!-- ==================== BANNER CAROUSEL: TIN VIP NỔI BẬT (XOAY TỚI XOAY LUI) ==================== -->--%>
+<%--  <c:if test="${not empty vipProducts}">--%>
+<%--    <section class="vip-products-shell rounded-2xl px-4 pb-4 pt-8 sm:px-5 sm:pb-5 sm:pt-8 mt-2 mb-10">--%>
+<%--      <div class="vip-products-title-tab">TIN VIP NỔI BẬT</div>--%>
+
+<%--      <div class="vip-products-wrap" onmouseenter="pauseVipAutoScroll()" onmouseleave="resumeVipAutoScroll()">--%>
+<%--        <button type="button" onclick="scrollVipProducts(-1)" class="vip-products-nav prev" aria-label="Xem tin VIP trước">‹</button>--%>
+<%--        <div id="vipProductsScroller" class="vip-products-marquee">--%>
+<%--          <div class="vip-products-track gap-4 py-1">--%>
+<%--            <c:forEach var="vp" items="${vipProducts}">--%>
+<%--              <div class="vip-product-slide bg-white rounded-xl overflow-hidden hover:shadow-md transition flex flex-col group cursor-pointer ${vp.priorityLevel >= 2 ? 'ring-2 ring-purple-400 border border-purple-300' : 'ring-2 ring-amber-400 border border-amber-300'}" onclick="window.location.href='product-detail?id=${vp.id}'">--%>
+<%--                <div class="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0">--%>
+<%--                  <c:choose>--%>
+<%--                    <c:when test="${not empty vp.primaryImage}">--%>
+<%--                      <img src="${vp.primaryImage}" alt="${vp.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">--%>
+<%--                    </c:when>--%>
+<%--                    <c:otherwise>--%>
+<%--                      <div class="w-full h-full flex items-center justify-center text-slate-400 bg-slate-200 text-xs">Không có ảnh</div>--%>
+<%--                    </c:otherwise>--%>
+<%--                  </c:choose>--%>
+<%--                  --%>
+<%--                  <!-- BADGE VIP TỐI GIẢN - KHÔNG DÙNG ICON -->--%>
+<%--                  <c:choose>--%>
+<%--                    <c:when test="${vp.priorityLevel >= 2}">--%>
+<%--                      <span class="absolute top-2.5 right-2.5 bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">--%>
+<%--                        <c:out value="${not empty vp.badgeLabel ? vp.badgeLabel : 'VIP Kim Cương'}"/>--%>
+<%--                      </span>--%>
+<%--                    </c:when>--%>
+<%--                    <c:otherwise>--%>
+<%--                      <span class="absolute top-2.5 right-2.5 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">--%>
+<%--                        <c:out value="${not empty vp.badgeLabel ? vp.badgeLabel : 'Nổi Bật'}"/>--%>
+<%--                      </span>--%>
+<%--                    </c:otherwise>--%>
+<%--                  </c:choose>--%>
+<%--                </div>--%>
+<%--                <div class="p-4 flex-1 flex flex-col justify-between">--%>
+<%--                  <div>--%>
+<%--                    <div class="text-base font-bold text-green-600"><fmt:formatNumber value="${vp.price}" pattern="#,###"/> đ</div>--%>
+<%--                    <h3 class="font-semibold text-slate-900 text-xs mt-1.5 group-hover:text-amber-600 line-clamp-2 leading-relaxed h-9">--%>
+<%--                      ${vp.title}--%>
+<%--                    </h3>--%>
+<%--                  </div>--%>
+<%--                  <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px] text-slate-500">--%>
+<%--                    <span class="truncate pr-1"><c:out value="${vp.displayLocation}"/></span>--%>
+<%--                    <span class="text-amber-600 font-medium text-[11px] whitespace-nowrap">Được tài trợ</span>--%>
+<%--                  </div>--%>
+<%--                </div>--%>
+<%--              </div>--%>
+<%--            </c:forEach>--%>
+<%--          </div>--%>
+<%--        </div>--%>
+<%--        <button type="button" onclick="scrollVipProducts(1)" class="vip-products-nav next" aria-label="Xem tin VIP tiếp theo">›</button>--%>
+<%--      </div>--%>
+<%--    </section>--%>
+<%--  </c:if>--%>
+
   <!-- TIÊU ĐỀ KHU VỰC VÀ BỘ LỌC ĐA TIÊU CHÍ (THEO USE CASE UC06) -->
   <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between pb-6 border-b border-slate-200 gap-4">
     <div>
@@ -277,22 +503,55 @@
     </div>
   </div>
 
-  <!-- NÚT XEM THÊM (CÓ LOGIC NẠP THÊM CARD MẪU) -->
-  <div class="text-center mt-10">
-    <button id="loadMoreBtn" onclick="loadMoreProducts()" class="px-6 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition">
-      Xem Thêm Tin Đăng Khác
-    </button>
-  </div>
+  <!-- THANH PHÂN TRANG PAGINATION CHUYÊN NGHIỆP -->
+  <c:if test="${totalPages > 1}">
+    <div class="flex flex-wrap items-center justify-center gap-2 mt-10">
+      <c:if test="${currentPage > 1}">
+        <a href="home?page=${currentPage - 1}" class="px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs flex items-center gap-1">
+          ‹ Trang trước
+        </a>
+      </c:if>
+
+      <div class="flex items-center gap-1">
+        <c:forEach var="i" begin="1" end="${totalPages}">
+          <c:choose>
+            <c:when test="${i == currentPage}">
+              <span class="w-9 h-9 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                ${i}
+              </span>
+            </c:when>
+            <c:when test="${i <= 3 || i >= totalPages - 1 || (i >= currentPage - 1 && i <= currentPage + 1)}">
+              <a href="home?page=${i}" class="w-9 h-9 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs flex items-center justify-center transition shadow-2xs">
+                ${i}
+              </a>
+            </c:when>
+            <c:when test="${i == 4 && totalPages > 6 && currentPage > 4}">
+              <span class="w-6 text-center text-slate-400 text-xs font-bold">...</span>
+            </c:when>
+            <c:when test="${i == totalPages - 2 && totalPages > 6 && currentPage < totalPages - 3}">
+              <span class="w-6 text-center text-slate-400 text-xs font-bold">...</span>
+            </c:when>
+          </c:choose>
+        </c:forEach>
+      </div>
+
+      <c:if test="${currentPage < totalPages}">
+        <a href="home?page=${currentPage + 1}" class="px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs flex items-center gap-1">
+          Trang sau ›
+        </a>
+      </c:if>
+    </div>
+  </c:if>
   <section class="new-products-shell rounded-2xl px-4 pb-4 pt-8 sm:px-5 sm:pb-5 sm:pt-8 mt-12">
-    <div class="new-products-title-tab">Sản phẩm mới</div>
+    <div class="new-products-title-tab">SẢN PHẨM MỚI</div>
 
     <div class="new-products-wrap">
       <button type="button" onclick="scrollNewProducts(-1)" class="new-products-nav prev" aria-label="Xem sản phẩm mới trước">‹</button>
       <div id="newProductsScroller" class="new-products-marquee">
-        <div class="new-products-track gap-4 pb-1">
+        <div class="new-products-track gap-4 py-1">
           <c:forEach var="p" items="${newProducts}">
-            <div class="new-product-slide bg-white overflow-hidden transition flex flex-col group cursor-pointer" onclick="window.location.href='product-detail?id=${p.id}'">
-              <div class="relative w-full h-36 bg-slate-100 overflow-hidden shrink-0">
+            <div class="new-product-slide bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg transition flex flex-col group cursor-pointer" onclick="window.location.href='product-detail?id=${p.id}'">
+              <div class="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0">
                 <c:choose>
                   <c:when test="${not empty p.primaryImage}">
                     <img src="${p.primaryImage}" alt="${p.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
@@ -305,12 +564,12 @@
                   <span class="absolute top-2.5 left-2.5 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">Mới</span>
                 </c:if>
               </div>
-              <div class="p-3 flex-1 flex flex-col justify-between">
+              <div class="p-4 flex-1 flex flex-col justify-between">
                 <div>
-                  <div class="text-sm font-bold text-green-600"><fmt:formatNumber value="${p.price}" pattern="#,###"/> đ</div>
+                  <div class="text-base font-bold text-green-600"><fmt:formatNumber value="${p.price}" pattern="#,###"/> đ</div>
                   <h3 class="font-semibold text-slate-900 text-xs mt-1.5 group-hover:text-blue-600 line-clamp-2 leading-relaxed h-9">${p.title}</h3>
                 </div>
-                <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px] text-slate-500">
+                <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px] text-slate-500">
                   <span class="truncate"><c:out value="${p.displayLocation}"/></span>
                   <c:if test="${p.newProduct}">
                     <span class="whitespace-nowrap text-red-600 font-semibold">Mới</span>
@@ -476,6 +735,16 @@
     // Sorting visible cards
     if (sortOrder === 'price_asc' || sortOrder === 'price_desc') {
       const sorted = cards.sort((a, b) => {
+        const vipA = a.getAttribute('data-vip') === 'true';
+        const vipB = b.getAttribute('data-vip') === 'true';
+        if (vipA !== vipB) {
+          return vipB ? 1 : -1;
+        }
+        const prioA = vipA ? (parseInt(a.getAttribute('data-priority')) || 0) : 0;
+        const prioB = vipB ? (parseInt(b.getAttribute('data-priority')) || 0) : 0;
+        if (prioA !== prioB) {
+          return prioB - prioA;
+        }
         const priceA = parseFloat(a.getAttribute('data-price')) || 0;
         const priceB = parseFloat(b.getAttribute('data-price')) || 0;
         return sortOrder === 'price_asc' ? priceA - priceB : priceB - priceA;
@@ -484,17 +753,18 @@
     } else {
       // sortOrder === 'newest' (Mặc định)
       const sorted = cards.sort((a, b) => {
-        if (activeCategory !== 'all') {
-          // Khi xem theo từng danh mục: Ghim bài VIP của danh mục lên đầu (Kim Cương priority 2, rồi Nổi Bật priority 1)
-          const vipA = a.getAttribute('data-vip') === 'true';
-          const vipB = b.getAttribute('data-vip') === 'true';
-          const prioA = vipA ? (parseInt(a.getAttribute('data-priority')) || 0) : 0;
-          const prioB = vipB ? (parseInt(b.getAttribute('data-priority')) || 0) : 0;
-          if (prioA !== prioB) {
-            return prioB - prioA;
-          }
+        // Luôn ghim bài VIP (Kim Cương priority 2, rồi Nổi Bật priority 1) lên đầu ở cả trang chủ lẫn từng danh mục
+        const vipA = a.getAttribute('data-vip') === 'true';
+        const vipB = b.getAttribute('data-vip') === 'true';
+        if (vipA !== vipB) {
+          return vipB ? 1 : -1;
         }
-        // Giữ nguyên thứ tự ban đầu từ server (Đã xử lý Kim Cương ở đầu trang chủ & Đẩy tin mới nhất)
+        const prioA = vipA ? (parseInt(a.getAttribute('data-priority')) || 0) : 0;
+        const prioB = vipB ? (parseInt(b.getAttribute('data-priority')) || 0) : 0;
+        if (prioA !== prioB) {
+          return prioB - prioA;
+        }
+        // Giữ nguyên thứ tự ban đầu từ server (Đã xử lý Kim Cương & Nổi Bật ở đầu trang chủ & Đẩy tin mới nhất)
         const orderA = parseInt(a.getAttribute('data-initial-order')) || 0;
         const orderB = parseInt(b.getAttribute('data-initial-order')) || 0;
         return orderA - orderB;
@@ -522,6 +792,42 @@
     applyFilters();
   });
 
+
+  // Carousel Cuộn Tin VIP Nổi Bật (Xoay tới xoay lui)
+  let vipAutoScrollTimer = null;
+  function startVipAutoScroll() {
+    if (vipAutoScrollTimer) clearInterval(vipAutoScrollTimer);
+    vipAutoScrollTimer = setInterval(() => scrollVipProducts(1), 3500);
+  }
+  function pauseVipAutoScroll() {
+    if (vipAutoScrollTimer) {
+      clearInterval(vipAutoScrollTimer);
+      vipAutoScrollTimer = null;
+    }
+  }
+  function resumeVipAutoScroll() {
+    startVipAutoScroll();
+  }
+
+  function scrollVipProducts(direction) {
+    const scroller = document.getElementById('vipProductsScroller');
+    if (!scroller) return;
+    const card = scroller.querySelector('.vip-product-slide');
+    if (!card) return;
+    const gap = 16;
+    const step = card.getBoundingClientRect().width + gap;
+    const maxScroll = scroller.scrollWidth - scroller.clientWidth;
+    const nextLeft = scroller.scrollLeft + (direction * step);
+
+    if (nextLeft > maxScroll - 2) {
+      scroller.scrollTo({ left: 0, behavior: 'smooth' });
+    } else if (nextLeft < 0) {
+      scroller.scrollTo({ left: maxScroll, behavior: 'smooth' });
+    } else {
+      scroller.scrollBy({ left: direction * step, behavior: 'smooth' });
+    }
+  }
+  startVipAutoScroll();
 
   function scrollNewProducts(direction) {
     const scroller = document.getElementById('newProductsScroller');

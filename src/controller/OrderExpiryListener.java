@@ -23,7 +23,10 @@ public class OrderExpiryListener implements ServletContextListener {
         scheduler.scheduleAtFixedRate(() -> {
             try { new VnPayPaymentDAO().expireUnpaidBalanceOrders(); }
             catch (RuntimeException e) { event.getServletContext().log("Không thể xử lý đơn quá hạn thanh toán", e); }
-        }, 1, 1, TimeUnit.MINUTES);
+
+            try { new dao.ProductBoostDAO().scanAndProcessBoostExpiry(); }
+            catch (Exception e) { event.getServletContext().log("Lỗi quét hạn gói VIP", e); }
+        }, 1, 2, TimeUnit.MINUTES);
     }
 
     @Override

@@ -23,32 +23,6 @@
   <!-- THANH ĐIỀU HƯỚNG CHÍNH -->
   <jsp:include page="includes/header.jsp" />
 
-  <!-- THANH ĐIỀU KHIỂN KỊCH BẢN FLOW (SCENARIO SWITCHER FOR DEMO) -->
-  <c:if test="${product.dealType ne 'GIVE' and product.price gt 0 and not isProductOwner}">
-  <section id="scenarioDemoControls" class="bg-slate-900 text-white py-2 px-4 text-xs">
-    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-      <div class="flex items-center gap-2">
-        <span class="px-2 py-0.5 rounded bg-blue-600 font-bold uppercase text-[10px]">Trình diễn Kịch bản Flow</span>
-        <span class="text-slate-300">Chuyển đổi trạng thái bài đăng thực tế:</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <button onclick="setScenario('open')" id="scen-open"
-          class="px-2.5 py-1 rounded font-bold text-xs bg-blue-600 text-white transition">
-          1. Đang Mở Bán Tự Do
-        </button>
-        <button onclick="setScenario('locked')" id="scen-locked"
-          class="px-2.5 py-1 rounded font-medium text-xs bg-slate-800 text-slate-300 hover:text-white transition">
-          2. Đã Nhận Cọc (Tạm Khóa Tin)
-        </button>
-        <button onclick="setScenario('sold')" id="scen-sold"
-          class="px-2.5 py-1 rounded font-medium text-xs bg-slate-800 text-slate-300 hover:text-white transition">
-          3. Đã Bán Thành Công
-        </button>
-      </div>
-    </div>
-  </section>
-  </c:if>
-
   <!-- ĐƯỜNG DẪN BREADCRUMB PHÂN CẤP -->
   <div class="bg-white border-b border-slate-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-xs text-slate-500 flex items-center gap-2">
@@ -272,9 +246,13 @@
             </button>
             </c:when>
             <c:when test="${product.dealType eq 'GIVE' or product.price == 0}">
+            <button id="btnBuyGift" type="button" onclick="buyGiftProduct(this)"
+              class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">
+              Mua ngay
+            </button>
             <a id="btnMessageGift" href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}"
-              class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">
-              Nhắn tin
+              class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">
+              <c:choose><c:when test="${product.deliveryMethod == 2}">Nhắn tin</c:when><c:otherwise>Vào khung chat xác nhận địa chỉ gặp mặt</c:otherwise></c:choose>
             </a>
             </c:when>
             <c:otherwise>
@@ -397,9 +375,45 @@
 
   <!-- SCRIPT XỬ LÝ ĐỔI ẢNH VÀ CHUYỂN ĐỔI KỊCH BẢN FLOW -->
   <script>
-    const ACTUAL_PRODUCT_SOLD = '${product.status}' === 'SOLD';
+    const PRODUCT_TRANSACTION_STATE = '${productTransactionState}';
+    const IS_PRODUCT_OWNER = ${isProductOwner};
+    const PRODUCT_DETAIL_CHAT_URL = '04-chat-tra-gia-vietqr.jsp?productId=${product.id}';
+    const FREE_GIFT_ORDER_URL = '${pageContext.request.contextPath}/order-action';
+    const IS_GHN_TRANSACTION = PRODUCT_TRANSACTION_STATE.endsWith('_GHN');
+    const IS_DEPOSITED_TRANSACTION = PRODUCT_TRANSACTION_STATE.startsWith('DEPOSITED_');
+    const ACTUAL_PRODUCT_SOLD = ['PAID_DIRECT', 'PAID_GHN', 'COMPLETED'].includes(PRODUCT_TRANSACTION_STATE) ||
+      ('${product.status}' === 'SOLD' && !IS_DEPOSITED_TRANSACTION);
     const listedProductPrice = Number('${product.price}') || 0;
     const IS_GIFT_PRODUCT = '${product.dealType}' === 'GIVE' || listedProductPrice <= 0;
+    async function buyGiftProduct(button) {
+      if (!button || button.disabled) return;
+      const originalText = button.innerText;
+      button.disabled = true;
+      button.innerText = 'Đang tạo đơn...';
+      try {
+        const response = await fetch(FREE_GIFT_ORDER_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+          body: new URLSearchParams({action: 'claim_free_gift', productId: '${product.id}'})
+        });
+        const result = await response.json();
+        if (response.status === 401 || result.message === 'Vui lòng đăng nhập để thực hiện thao tác này.') {
+          alert(result.message || 'Vui lòng đăng nhập để nhận sản phẩm.');
+          window.location.href = '${pageContext.request.contextPath}/07-dang-nhap-xac-thuc.jsp';
+          return;
+        }
+        if (!response.ok || !result.success) {
+          alert(result.message || 'Không thể tạo đơn nhận sản phẩm.');
+          return;
+        }
+        window.location.href = result.redirectUrl;
+      } catch (error) {
+        alert('Không thể kết nối để tạo đơn. Vui lòng thử lại.');
+      } finally {
+        button.disabled = false;
+        button.innerText = originalText;
+      }
+    }
     const listedDepositAmount = listedProductPrice > 100000 ? Math.round(listedProductPrice * 0.10) : (listedProductPrice >= 10000 && listedProductPrice <= 50000 ? Math.round(listedProductPrice) : Math.round(listedProductPrice * 0.50));
     const listedDepositRate = listedProductPrice > 100000 ? "10%" : (listedProductPrice >= 10000 && listedProductPrice <= 50000 ? "100%" : "50%");
     const listedDepositText = new Intl.NumberFormat('vi-VN').format(listedDepositAmount) + ' đ';
@@ -448,16 +462,9 @@
       alert('Đã tiếp nhận báo cáo của bạn về tin đăng "' + title + '". Bộ phận Kiểm duyệt Admin MuaNgay sẽ xác minh trong vòng 15 phút.');
     }
 
-    // CHUYỂN ĐỔI KỊCH BẢN FLOW (SCENARIO SWITCHER)
+    // Hiển thị trạng thái và hành động dựa trên giao dịch thực tế.
     function setScenario(scen) {
-      if (ACTUAL_PRODUCT_SOLD && scen !== 'reserved') return;
-      // Reset nút điều khiển
-      ['open', 'locked', 'sold'].forEach(s => {
-        const b = document.getElementById('scen-' + s);
-        b.className = 'px-2.5 py-1 rounded font-medium text-xs bg-slate-800 text-slate-300 hover:text-white transition';
-      });
-      const selectedScenarioButton = document.getElementById('scen-' + scen);
-      if (selectedScenarioButton) selectedScenarioButton.className = 'px-2.5 py-1 rounded font-bold text-xs bg-blue-600 text-white transition';
+      if (ACTUAL_PRODUCT_SOLD && scen !== 'reserved' && scen !== 'sold') return;
 
       const overlay = document.getElementById('imageLockOverlay');
       const box = document.getElementById('scenarioNoticeBox');
@@ -471,8 +478,10 @@
           box.className = 'p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 leading-relaxed';
           title.innerText = 'Nhận sản phẩm miễn phí:';
           content.innerText = 'Sản phẩm được tặng miễn phí. Nhắn tin với người tặng để thống nhất cách nhận.';
+          const giftContactLabel = Number('${product.deliveryMethod}') === 2 ? 'Nhắn tin' : 'Vào khung chat xác nhận địa chỉ gặp mặt';
           actionContainer.innerHTML = `
-            <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">Nhắn tin</a>
+            <button type="button" onclick="buyGiftProduct(this)" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">Mua ngay</button>
+            <a href="\${PRODUCT_DETAIL_CHAT_URL}" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-lg flex items-center justify-center shadow-sm transition">\${giftContactLabel}</a>
             <button id="favoriteBtn" onclick="toggleFavorite()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-lg transition">Lưu tin vào danh sách yêu thích</button>`;
           syncFavoriteButton();
           return;
@@ -508,65 +517,135 @@
         `;
         syncFavoriteButton();
       } else if (scen === 'locked') {
+        const isDepositGhn = IS_GHN_TRANSACTION;
         overlay.classList.remove('hidden');
         document.getElementById('overlayBadge').innerText = 'ĐÃ NHẬN CỌC ' + listedDepositText.toUpperCase();
         document.getElementById('overlayBadge').className = 'px-3 py-1 bg-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-md mb-2';
-        document.getElementById('overlayTitle').innerText = 'Bài Đăng Đang Tạm Khóa Giao Dịch';
-        document.getElementById('overlayDesc').innerText = 'Người mua đã đặt cọc ' + listedDepositRate + ' giá sản phẩm (' + listedDepositText + ') thành công. Hai bên đang hẹn gặp để kiểm tra sản phẩm.';
+        document.getElementById('overlayTitle').innerText = IS_PRODUCT_OWNER
+          ? (isDepositGhn ? 'Sản Phẩm Của Bạn Đang Chờ Giao Qua GHN' : 'Sản Phẩm Của Bạn Đang Được Giữ Cho Giao Dịch')
+          : (isDepositGhn ? 'Sản Phẩm Đang Được Giữ Để Giao Qua GHN' : 'Bài Đăng Đang Tạm Khóa Giao Dịch');
+        document.getElementById('overlayDesc').innerText = IS_PRODUCT_OWNER
+          ? (isDepositGhn
+            ? 'Người mua đã đặt cọc ' + listedDepositText + '. Vui lòng chuẩn bị hàng và tạo hoặc theo dõi vận đơn GHN trong Quản lý đơn hàng.'
+            : 'Người mua đã đặt cọc ' + listedDepositText + '. Vui lòng theo dõi đơn hàng và phối hợp hẹn gặp để giao nhận sản phẩm.')
+          : (isDepositGhn
+            ? 'Bạn đã đặt cọc ' + listedDepositText + '. Người bán đang chuẩn bị giao hàng qua GHN; hãy theo dõi tiến độ trong Quản lý đơn hàng.'
+            : 'Người mua đã đặt cọc ' + listedDepositRate + ' giá sản phẩm (' + listedDepositText + ') thành công. Hai bên đang hẹn gặp để kiểm tra sản phẩm.');
 
         box.className = 'p-3.5 bg-amber-100 border-2 border-amber-400 rounded-lg text-xs text-amber-950 leading-relaxed';
-        title.innerText = 'TRẠNG THÁI: ĐÃ TẠM KHÓA BÀI ĐĂNG (ĐẶT CỌC ' + listedDepositText.toUpperCase() + ')';
-        content.innerText = 'Tin đăng này đã được tạm khóa để bảo vệ người mua đã đặt cọc. Không ai khác có thể cọc đè. Vui lòng theo dõi hoặc mở khung chat nếu bạn là người mua/người bán của đơn hàng.';
+        title.innerText = IS_PRODUCT_OWNER
+          ? (isDepositGhn ? 'TRẠNG THÁI: ĐANG CHỜ NGƯỜI BÁN GỬI GHN' : 'TRẠNG THÁI: SẢN PHẨM ĐANG ĐƯỢC GIỮ CHO ĐƠN HÀNG')
+          : (isDepositGhn ? 'TRẠNG THÁI: ĐÃ ĐẶT CỌC - CHỜ GIAO QUA GHN' : 'TRẠNG THÁI: ĐÃ TẠM KHÓA BÀI ĐĂNG (ĐẶT CỌC ' + listedDepositText.toUpperCase() + ')');
+        content.innerText = IS_PRODUCT_OWNER
+          ? (isDepositGhn
+            ? 'Vui lòng vào Quản lý đơn hàng để tạo vận đơn GHN, cập nhật giao hàng và xác nhận đơn sau khi bàn giao.'
+            : 'Người mua đã đặt cọc ' + listedDepositText + '. Vui lòng mở Quản lý đơn hàng để theo dõi và xác nhận giao nhận khi hoàn tất.')
+          : (isDepositGhn
+            ? 'Tin đăng này đã được tạm khóa để bảo vệ người mua đã đặt cọc. Không ai khác có thể cọc đè. Theo dõi tiến độ vận chuyển qua GHN trong Quản lý đơn hàng.'
+            : 'Tin đăng này đã được tạm khóa để bảo vệ người mua đã đặt cọc. Không ai khác có thể cọc đè. Vui lòng mở khung chat để thống nhất địa điểm hẹn và giao nhận.');
 
         actionContainer.innerHTML = `
           <button disabled class="w-full py-3 bg-slate-300 text-slate-500 font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center cursor-not-allowed">
-            Tin đăng đang tạm khóa (đã nhận cọc \${listedDepositText})
+            \${IS_PRODUCT_OWNER ? (isDepositGhn ? 'Đơn hàng đang chờ gửi GHN' : 'Sản phẩm đang được giữ cho đơn hàng') : (isDepositGhn ? 'Đơn hàng đang xử lý giao GHN' : 'Tin đăng đang tạm khóa (đã nhận cọc ' + listedDepositText + ')')}
           </button>
-          <a href="04-chat-tra-gia-vietqr.jsp?productId=${product.id}" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
-            Vào Khung Chat Xem Địa Điểm Hẹn & Xác Nhận Giao Nhận ->
+          <a href="\${isDepositGhn ? '05-quan-ly-don-hang.jsp' : PRODUCT_DETAIL_CHAT_URL}" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
+            \${isDepositGhn ? (IS_PRODUCT_OWNER ? 'Mở Quản Lý Đơn Hàng & Tạo Vận Đơn GHN ->' : 'Theo Dõi Đơn Hàng Giao Qua GHN ->') : (IS_PRODUCT_OWNER ? 'Mở Khung Chat Để Hẹn Gặp & Thống Nhất Giao Nhận ->' : 'Vào Khung Chat Xem Địa Điểm Hẹn & Xác Nhận Giao Nhận ->')}
           </a>
-          <a href="05-quan-ly-don-hang.jsp" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg flex items-center justify-center transition border border-slate-200">
-            Xem Tiến Độ Đơn Hàng Tại Quản Lý Đơn
-          </a>
+          \${isDepositGhn ? '' : '<a href="05-quan-ly-don-hang.jsp" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg flex items-center justify-center transition border border-slate-200">Xem Tiến Độ Đơn Hàng Tại Quản Lý Đơn</a>'}
         `;
       } else if (scen === 'reserved') {
+        const reservedBadge = IS_PRODUCT_OWNER ? 'ĐANG CÓ ĐƠN HÀNG' : 'SẢN PHẨM ĐÃ HẾT';
+        const reservedTitle = IS_PRODUCT_OWNER
+          ? 'Sản Phẩm Của Bạn Đang Được Giữ Cho Giao Dịch'
+          : 'Sản Phẩm Đã Được Đặt Cọc';
+        const reservedDescription = IS_PRODUCT_OWNER
+          ? 'Sản phẩm đang được giữ cho người mua đã đặt cọc. Vui lòng theo dõi đơn hàng và phối hợp giao nhận với người mua.'
+          : 'Đơn hàng đã được xác nhận. Sản phẩm hiện không nhận thêm trả giá hoặc đặt cọc.';
         overlay.classList.remove('hidden');
-        document.getElementById('overlayBadge').innerText = 'SẢN PHẨM ĐÃ HẾT';
+        document.getElementById('overlayBadge').innerText = reservedBadge;
         document.getElementById('overlayBadge').className = 'px-3 py-1 bg-red-600 text-white font-bold text-xs uppercase tracking-wider rounded-md mb-2';
-        document.getElementById('overlayTitle').innerText = 'Sản Phẩm Đã Được Đặt Cọc';
-        document.getElementById('overlayDesc').innerText = 'Đơn hàng đã được xác nhận. Sản phẩm hiện không nhận thêm trả giá hoặc đặt cọc.';
+        document.getElementById('overlayTitle').innerText = reservedTitle;
+        document.getElementById('overlayDesc').innerText = reservedDescription;
         box.className = 'p-3.5 bg-red-50 border-2 border-red-300 rounded-lg text-xs text-red-900 leading-relaxed';
-        title.innerText = 'TRẠNG THÁI: SẢN PHẨM ĐÃ HẾT';
-        content.innerText = 'Sản phẩm đã có đơn đặt cọc và đang được giữ cho giao dịch. Không thể tiếp tục trả giá hoặc đặt cọc sản phẩm này.';
+        title.innerText = IS_PRODUCT_OWNER ? 'TRẠNG THÁI: ĐANG GIỮ CHO ĐƠN HÀNG' : 'TRẠNG THÁI: SẢN PHẨM ĐÃ HẾT';
+        content.innerText = IS_PRODUCT_OWNER
+          ? 'Vui lòng mở Quản lý đơn hàng để xem tiến độ, xử lý giao nhận và xác nhận khi giao dịch hoàn tất.'
+          : 'Sản phẩm đã có đơn đặt cọc và đang được giữ cho giao dịch. Không thể tiếp tục trả giá hoặc đặt cọc sản phẩm này.';
         actionContainer.innerHTML = `
-          <button disabled class="w-full py-3 bg-slate-200 text-slate-500 font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center cursor-not-allowed">Sản phẩm đã hết</button>
-          <a href="home" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center justify-center shadow-sm transition">Xem sản phẩm khác</a>
+          <button disabled class="w-full py-3 bg-slate-200 text-slate-500 font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center cursor-not-allowed">\${IS_PRODUCT_OWNER ? 'Đơn hàng đang được xử lý' : 'Sản phẩm đã hết'}</button>
+          <a href="\${IS_PRODUCT_OWNER ? '05-quan-ly-don-hang.jsp' : 'home'}" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center justify-center shadow-sm transition">\${IS_PRODUCT_OWNER ? 'Mở Quản Lý Đơn Hàng' : 'Xem sản phẩm khác'}</a>
         `;
       } else if (scen === 'sold') {
+        const isCompleted = PRODUCT_TRANSACTION_STATE === 'COMPLETED';
+        const isGhnPayment = PRODUCT_TRANSACTION_STATE === 'PAID_GHN';
+        const isDirectPayment = PRODUCT_TRANSACTION_STATE === 'PAID_DIRECT';
+        const isUnknownSold = !isCompleted && !isGhnPayment && !isDirectPayment;
+        const statusBadge = isCompleted ? 'ĐÃ BÁN THÀNH CÔNG' : isUnknownSold ? 'SẢN PHẨM ĐÃ HẾT' : 'ĐÃ THANH TOÁN ĐỦ';
+        const statusHeading = isCompleted
+          ? (IS_PRODUCT_OWNER ? 'Bạn Đã Hoàn Tất Giao Dịch' : 'Giao Dịch Đã Hoàn Tất Thành Công')
+          : isUnknownSold ? 'Sản Phẩm Không Còn Mở Bán'
+            : isGhnPayment ? 'Đang Chờ Giao Hàng Qua GHN' : 'Đang Chờ Giao Nhận Trực Tiếp';
+        const statusDescription = isCompleted
+          ? (IS_PRODUCT_OWNER
+            ? 'Bạn và người mua đã xác nhận hoàn tất giao dịch. Đơn hàng đã kết thúc thành công.'
+            : 'Người mua và người bán đã xác nhận giao dịch hoàn tất.')
+          : isUnknownSold ? 'Sản phẩm hiện không còn được mở bán.'
+            : isGhnPayment
+            ? (IS_PRODUCT_OWNER
+              ? 'Người mua đã thanh toán đủ. Vui lòng chuẩn bị giao hàng theo quy trình GHN và theo dõi tiến độ trong Quản lý đơn hàng.'
+              : 'Bạn đã thanh toán đủ. Đơn hàng đang chờ được giao qua GHN; vui lòng theo dõi tiến độ trong Quản lý đơn hàng.')
+            : (IS_PRODUCT_OWNER
+              ? 'Người mua đã thanh toán đủ. Vui lòng gặp người mua để kiểm tra, bàn giao sản phẩm và xác nhận giao nhận.'
+              : 'Bạn đã thanh toán đủ. Vui lòng gặp người bán để kiểm tra sản phẩm và xác nhận giao nhận trong Quản lý đơn hàng.');
         overlay.classList.remove('hidden');
-        document.getElementById('overlayBadge').innerText = 'ĐÃ BÁN THÀNH CÔNG';
+        document.getElementById('overlayBadge').innerText = statusBadge;
         document.getElementById('overlayBadge').className = 'px-3 py-1 bg-green-600 text-white font-bold text-xs uppercase tracking-wider rounded-md mb-2';
-        document.getElementById('overlayTitle').innerText = 'Giao Dịch Đã Hoàn Tất Thành Công';
-        document.getElementById('overlayDesc').innerText = 'Hai bên đã kiểm tra máy, thanh toán tiền mặt và cùng xác nhận thành công. Sàn đã hoàn tất chuyển cọc cho người bán.';
+        document.getElementById('overlayTitle').innerText = statusHeading;
+        document.getElementById('overlayDesc').innerText = statusDescription;
 
         box.className = 'p-3.5 bg-green-100 border-2 border-green-400 rounded-lg text-xs text-green-950 leading-relaxed';
-        title.innerText = 'TRẠNG THÁI: ĐÃ BÁN THÀNH CÔNG';
-        content.innerText = 'Giao dịch đã kết thúc tốt đẹp. Khoản cọc theo mức giá của đơn hàng đã được chuyển cho người bán sau khi hai bên xác nhận hoàn tất.';
+        title.innerText = isCompleted ? 'TRẠNG THÁI: ĐÃ BÁN THÀNH CÔNG' : isUnknownSold ? 'TRẠNG THÁI: SẢN PHẨM ĐÃ HẾT' : 'TRẠNG THÁI: ĐÃ THANH TOÁN ĐỦ';
+        content.innerText = isCompleted
+          ? (IS_PRODUCT_OWNER
+            ? 'Bạn và người mua đã xác nhận hoàn tất giao dịch. Đơn hàng đã kết thúc thành công.'
+            : 'Người mua và người bán đã xác nhận giao dịch hoàn tất.')
+          : isUnknownSold ? 'Sản phẩm hiện không còn được mở bán.'
+            : isGhnPayment
+            ? (IS_PRODUCT_OWNER
+              ? 'Vui lòng giao sản phẩm theo quy trình GHN. Cập nhật và theo dõi trạng thái đơn trong Quản lý đơn hàng.'
+              : 'Sản phẩm đang chờ được giao qua GHN. Theo dõi trạng thái giao hàng trong Quản lý đơn hàng.')
+            : (IS_PRODUCT_OWNER
+              ? 'Vui lòng gặp người mua để bàn giao sản phẩm và xác nhận giao nhận trong Quản lý đơn hàng.'
+              : 'Vui lòng gặp người bán để nhận sản phẩm và xác nhận giao nhận trong Quản lý đơn hàng.');
 
+        const isGhnDelivery = isGhnPayment || (isCompleted && Number('${product.deliveryMethod}') === 2);
+        const actionUrl = isUnknownSold
+          ? 'home'
+          : isCompleted || isGhnDelivery || IS_PRODUCT_OWNER
+            ? '05-quan-ly-don-hang.jsp'
+            : PRODUCT_DETAIL_CHAT_URL;
+        const actionLabel = isUnknownSold
+          ? 'Xem sản phẩm khác tại Trang Chủ ->'
+          : isCompleted
+            ? 'Xem đơn hàng trong Quản Lý Đơn Hàng ->'
+            : isGhnDelivery
+              ? (IS_PRODUCT_OWNER ? 'Mở Quản Lý Đơn Hàng & Tạo Vận Đơn GHN ->' : 'Theo Dõi Tiến Độ Giao Hàng GHN ->')
+              : (IS_PRODUCT_OWNER ? 'Mở Quản Lý Đơn Hàng & Xác Nhận Bàn Giao Trực Tiếp ->' : 'Vào Khung Chat Để Thống Nhất Địa Điểm Hẹn ->');
         actionContainer.innerHTML = `
           <button disabled class="w-full py-3 bg-slate-200 text-slate-500 font-bold text-xs sm:text-sm rounded-lg flex items-center justify-center cursor-not-allowed">
-            Món Đồ Này Đã Được Bán
+            \${isCompleted ? (IS_PRODUCT_OWNER ? 'Đơn hàng đã hoàn tất' : 'Món Đồ Này Đã Được Bán') : isUnknownSold ? 'Sản phẩm đã hết' : 'Đã thanh toán đủ - chờ hoàn tất giao nhận'}
           </button>
-          <a href="home" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
-            Xem Các Tin Đăng Điện Thoại Khác Tại Trang Chủ ->
+          <a href="\${actionUrl}" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center justify-center shadow-sm transition">
+            \${actionLabel}
           </a>
         `;
       }
     }
 
-    if (ACTUAL_PRODUCT_SOLD) {
-      document.getElementById('scenarioDemoControls').classList.add('hidden');
-      setScenario('reserved');
+    if (IS_DEPOSITED_TRANSACTION) {
+      setScenario('locked');
+    } else if (ACTUAL_PRODUCT_SOLD) {
+      setScenario(['PAID_DIRECT', 'PAID_GHN', 'COMPLETED'].includes(PRODUCT_TRANSACTION_STATE) ? 'sold' : 'reserved');
     }
   </script>
 

@@ -60,8 +60,14 @@ public class ChatDataServlet extends HttpServlet {
                 // Không để ID 0 rơi xuống logic mặc định chọn nhầm chat người mua khác.
                 role = "seller";
                 selectedId = chatDAO.findLatestSellerConversationForProduct(productId, currentUser.getId());
+                if (selectedId <= 0) {
+                    selectedId = chatDAO.findOrCreateConversationForProductOrder(productId, currentUser.getId());
+                }
             } else if (productOwnerId > 0) {
                 selectedId = chatDAO.findOrCreateConversationForProduct(productId, currentUser.getId());
+                if (selectedId <= 0) {
+                    selectedId = chatDAO.findOrCreateConversationForProductOrder(productId, currentUser.getId());
+                }
                 if (selectedId > 0) {
                     role = "buyer";
                 }

@@ -10,6 +10,7 @@ import model.User;
 import service.ModerationService;
 import service.ProductService;
 import util.JsonUtil;
+import util.ProductEmbeddingCache;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
@@ -307,6 +308,16 @@ public class PostAdController extends HttpServlet {
             request.getRequestDispatcher("03-dang-tin.jsp").forward(request, response);
             return;
         }
+
+        // Tự động trích xuất Vector AI CLIP ngầm cho sản phẩm mới
+        try {
+            if (!images.isEmpty()) {
+                String primaryImgRel = images.get(0).getImageUrl();
+                String cleanRel = primaryImgRel.replace(UPLOAD_DIR + "/", "");
+                String absPath = uploadFilePath + File.separator + cleanRel;
+                util.ProductEmbeddingCache.asyncIndex(product.getId(), absPath);
+            }
+        } catch (Exception ignored) {}
 
         // 6. Xử lý Gói Đẩy Tin (VIP Boost)
         String vipBoost = request.getParameter("vip_boost");
