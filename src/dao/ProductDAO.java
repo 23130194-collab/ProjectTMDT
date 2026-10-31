@@ -108,14 +108,15 @@ public class ProductDAO {
         return p;
     }
 
-    // Hàm lấy danh sách sản phẩm để hiển thị trang chủ — CHỈ bài ACTIVE, ưu tiên VIP Kim Cương (xoay vòng ngẫu nhiên công bằng) và Đẩy tin
+    // Hàm lấy danh sách sản phẩm để hiển thị trang chủ — CHỈ bài ACTIVE, ưu tiên các gói ghim VIP (Kim Cương và Nổi Bật) và Đẩy tin
     public List<Product> getRecentProducts() {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
                      "WHERE p.status = 'ACTIVE' " +
-                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) DESC, " +
-                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) THEN RAND() ELSE 0 END, " +
+                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW()) DESC, " +
+                     "p.priority_level DESC, " +
+                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW()) THEN RAND() ELSE 0 END, " +
                      "COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC";
 
         try (Connection conn = DBContext.getConnection();
@@ -131,15 +132,99 @@ public class ProductDAO {
         return list;
     }
 
-    // Hàm lấy tối đa các sản phẩm mới nhất — CHỈ bài ACTIVE, ưu tiên VIP Kim Cương (xoay vòng ngẫu nhiên công bằng) và Đẩy tin
+    // 1. Dành riêng hàng đầu tiên cho "Tin VIP Nổi Bật Hôm Nay" (Ad Density Control)
+    // Lấy danh sách các bài VIP đang còn hạn (Kim Cương priority 2, Nổi Bật priority 1) kết hợp Seeded Random
+    public List<Product> getActiveVipProducts(int seed, int limit) {
+        List<Product> list = new ArrayList<>();
+        int safeLimit = limit > 0 ? limit : 8;
+        String randClause = seed > 0 ? "RAND(?)" : "RAND()";
+        String sql = "SELECT p.*, pi.image_url FROM products p " +
+                     "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
+                     "WHERE p.status = 'ACTIVE' AND p.is_pinned = 1 AND p.pinned_until > NOW() " +
+                     "ORDER BY p.priority_level DESC, " + randClause + " LIMIT ?";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (seed > 0) {
+                ps.setInt(1, seed);
+                ps.setInt(2, safeLimit);
+            } else {
+                ps.setInt(1, safeLimit);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToProduct(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // 2. Lấy danh sách sản phẩm phân trang kết hợp Seeded Random (Giải quyết The Pagination + RAND() Dilemma)
+    // Đảm bảo trong suốt phiên của người dùng, trang 1, 2, 3... hoàn toàn nhất quán, không trùng lặp và không sót bài
+    public List<Product> getPaginatedProducts(int page, int pageSize, int seed) {
+        List<Product> list = new ArrayList<>();
+        int safePage = Math.max(1, page);
+        int safeSize = pageSize > 0 ? pageSize : 12;
+        int offset = (safePage - 1) * safeSize;
+
+        String randClause = seed > 0 ? "RAND(?)" : "RAND()";
+        String sql = "SELECT p.*, pi.image_url FROM products p " +
+                     "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
+                     "WHERE p.status = 'ACTIVE' " +
+                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW()) DESC, " +
+                     "p.priority_level DESC, " +
+                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW()) THEN " + randClause + " ELSE 0 END, " +
+                     "COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC LIMIT ? OFFSET ?";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (seed > 0) {
+                ps.setInt(1, seed);
+                ps.setInt(2, safeSize);
+                ps.setInt(3, offset);
+            } else {
+                ps.setInt(1, safeSize);
+                ps.setInt(2, offset);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToProduct(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // Đếm tổng số bài đăng ACTIVE phục vụ tính tổng số trang
+    public int countActiveProducts() {
+        String sql = "SELECT COUNT(*) FROM products WHERE status = 'ACTIVE'";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    // Hàm lấy tối đa các sản phẩm mới nhất — CHỈ bài ACTIVE, ưu tiên các gói ghim VIP (Kim Cương và Nổi Bật) và Đẩy tin
     public List<Product> getNewestProducts(int limit) {
         List<Product> list = new ArrayList<>();
         int safeLimit = limit > 0 ? Math.min(limit, 20) : 10;
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
                      "WHERE p.status = 'ACTIVE' " +
-                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) DESC, " +
-                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) THEN RAND() ELSE 0 END, " +
+                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW()) DESC, " +
+                     "p.priority_level DESC, " +
+                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW()) THEN RAND() ELSE 0 END, " +
                      "COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC LIMIT ?";
 
         try (Connection conn = DBContext.getConnection();
@@ -156,14 +241,15 @@ public class ProductDAO {
         return list;
     }
 
-    // Tìm kiếm sản phẩm theo từ khóa — CHỈ bài ACTIVE, ưu tiên VIP Kim Cương (xoay vòng ngẫu nhiên công bằng) và Đẩy tin
+    // Tìm kiếm sản phẩm theo từ khóa — CHỈ bài ACTIVE, ưu tiên các gói ghim VIP (Kim Cương và Nổi Bật) và Đẩy tin
     public List<Product> searchProducts(String keyword) {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, pi.image_url FROM products p " +
                      "LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 " +
                      "WHERE p.status = 'ACTIVE' AND (p.title LIKE ? OR p.description LIKE ?) " +
-                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) DESC, " +
-                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW() AND p.priority_level >= 2) THEN RAND() ELSE 0 END, " +
+                     "ORDER BY (p.is_pinned = 1 AND p.pinned_until > NOW()) DESC, " +
+                     "p.priority_level DESC, " +
+                     "CASE WHEN (p.is_pinned = 1 AND p.pinned_until > NOW()) THEN RAND() ELSE 0 END, " +
                      "COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC";
 
         try (Connection conn = DBContext.getConnection();

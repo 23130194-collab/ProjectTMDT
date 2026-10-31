@@ -150,7 +150,7 @@ public class ProductBoostDAO {
     }
 
     /**
-     * Người bán sử dụng 1 lượt đẩy tin từ Ví Lượt Đẩy Chung của tài khoản
+     * Người bán sử dụng 1 lượt đẩy tin từ Ví Lượt Đẩy Chung của tài khoản (có kiểm tra Cooldown 5 phút chống spam)
      */
     public boolean useAvailableBump(int productId, int userId) {
         String checkWalletSql = "SELECT bump_credits FROM users WHERE id = ? FOR UPDATE";
@@ -158,13 +158,39 @@ public class ProductBoostDAO {
         String bumpProductSql = "UPDATE products SET bumped_at = NOW() WHERE id = ? AND user_id = ?";
 
         // Hỗ trợ dự phòng lượt đẩy cũ gắn trên từng sản phẩm (nếu có từ trước)
-        String checkProductSql = "SELECT remaining_bumps FROM products WHERE id = ? AND user_id = ? FOR UPDATE";
+        String checkProductSql = "SELECT bumped_at, remaining_bumps FROM products WHERE id = ? AND user_id = ? FOR UPDATE";
         String updateProductBumpSql = "UPDATE products SET bumped_at = NOW(), remaining_bumps = remaining_bumps - 1 " +
                                       "WHERE id = ? AND user_id = ? AND remaining_bumps > 0";
 
         try (Connection conn = DBContext.getConnection()) {
             conn.setAutoCommit(false);
             try {
+                // 0. Cooldown Anti-Spam: Kiểm tra xem bài đăng vừa được đẩy trong vòng 5 phút qua không
+                Timestamp lastBumped = null;
+                int prodBumps = 0;
+                try (PreparedStatement psCheckProd = conn.prepareStatement(checkProductSql)) {
+                    psCheckProd.setInt(1, productId);
+                    psCheckProd.setInt(2, userId);
+                    try (ResultSet rsProd = psCheckProd.executeQuery()) {
+                        if (rsProd.next()) {
+                            lastBumped = rsProd.getTimestamp("bumped_at");
+                            prodBumps = rsProd.getInt("remaining_bumps");
+                        } else {
+                            conn.rollback();
+                            return false;
+                        }
+                    }
+                }
+
+                if (lastBumped != null) {
+                    long diffMillis = System.currentTimeMillis() - lastBumped.getTime();
+                    long cooldownMillis = 5L * 60 * 1000; // 5 phút
+                    if (diffMillis < cooldownMillis) {
+                        conn.rollback();
+                        return false; // Còn trong thời gian cooldown
+                    }
+                }
+
                 // 1. Kiểm tra Ví lượt đẩy chung của tài khoản trước
                 int walletCredits = 0;
                 try (PreparedStatement ps = conn.prepareStatement(checkWalletSql)) {
@@ -209,7 +235,7 @@ public class ProductBoostDAO {
                 }
 
                 // 2. Dự phòng: Kiểm tra lượt đẩy riêng trên sản phẩm (nếu có tồn từ phiên bản trước)
-                int prodBumps = 0;
+                prodBumps = 0;
                 try (PreparedStatement psProd = conn.prepareStatement(checkProductSql)) {
                     psProd.setInt(1, productId);
                     psProd.setInt(2, userId);
@@ -421,6 +447,84 @@ public class ProductBoostDAO {
             e.printStackTrace();
         }
         return 0;
+    }
+
+    /**
+     * Tự động quét và xử lý:
+     * 1. Bài VIP đã hết hạn: gỡ is_pinned = 0, priority_level = 0, chuyển status = 'EXPIRED', gửi thông báo đã hoàn thành.
+     * 2. Bài VIP sắp hết hạn trong 24h: gửi thông báo nhắc gia hạn để giữ vị trí VIP (không gửi trùng trong 24h).
+     */
+    public void scanAndProcessBoostExpiry() {
+        try (Connection conn = DBContext.getConnection()) {
+            NotificationDAO notiDAO = new NotificationDAO();
+
+            // 1. Xử lý các bài VIP ĐÃ HẾT HẠN (pinned_until <= NOW())
+            String expiredSql = "SELECT id, user_id, title FROM products WHERE is_pinned = 1 AND pinned_until <= NOW()";
+            List<int[]> expiredList = new ArrayList<>();
+            List<String> expiredTitles = new ArrayList<>();
+            try (PreparedStatement ps = conn.prepareStatement(expiredSql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    expiredList.add(new int[]{rs.getInt("id"), rs.getInt("user_id")});
+                    expiredTitles.add(rs.getString("title"));
+                }
+            }
+
+            for (int i = 0; i < expiredList.size(); i++) {
+                int prodId = expiredList.get(i)[0];
+                int userId = expiredList.get(i)[1];
+                String title = expiredTitles.get(i);
+
+                // Cập nhật bảng products
+                try (PreparedStatement psUp = conn.prepareStatement("UPDATE products SET is_pinned = 0, priority_level = 0 WHERE id = ?")) {
+                    psUp.setInt(1, prodId);
+                    psUp.executeUpdate();
+                }
+
+                // Cập nhật product_boosts
+                try (PreparedStatement psBoost = conn.prepareStatement("UPDATE product_boosts SET status = 'EXPIRED' WHERE product_id = ? AND status = 'ACTIVE' AND end_time <= NOW()")) {
+                    psBoost.setInt(1, prodId);
+                    psBoost.executeUpdate();
+                }
+
+                // Gửi thông báo hết hạn
+                notiDAO.createNotification(conn, userId,
+                    "⌛ Gói VIP đã hoàn thành",
+                    "Tin đăng '" + title + "' đã hoàn thành thời gian ghim VIP. Bạn có thể gia hạn bất kỳ lúc nào để tiếp tục ghim đầu trang!",
+                    "SYSTEM",
+                    "product-detail?id=" + prodId);
+            }
+
+            // 2. Xử lý các bài VIP SẮP HẾT HẠN trong vòng 24 giờ
+            String expiringSql = "SELECT p.id, p.user_id, p.title, p.pinned_until FROM products p " +
+                                 "WHERE p.is_pinned = 1 AND p.pinned_until > NOW() " +
+                                 "AND p.pinned_until <= DATE_ADD(NOW(), INTERVAL 24 HOUR) " +
+                                 "AND NOT EXISTS (" +
+                                 "  SELECT 1 FROM notifications n WHERE n.user_id = p.user_id " +
+                                 "  AND n.type = 'BOOST_EXPIRING' AND n.target_url = CONCAT('product-detail?id=', p.id) " +
+                                 "  AND n.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)" +
+                                 ")";
+
+            try (PreparedStatement psExp = conn.prepareStatement(expiringSql);
+                 ResultSet rsExp = psExp.executeQuery()) {
+                while (rsExp.next()) {
+                    int prodId = rsExp.getInt("id");
+                    int userId = rsExp.getInt("user_id");
+                    String title = rsExp.getString("title");
+                    Timestamp pUntil = rsExp.getTimestamp("pinned_until");
+                    String dateStr = pUntil != null ? new java.text.SimpleDateFormat("HH:mm dd/MM").format(pUntil) : "sớm";
+
+                    notiDAO.createNotification(conn, userId,
+                        "⏳ Gói VIP sắp hết hạn trong 24h",
+                        "Tin đăng '" + title + "' sẽ hết hạn VIP vào lúc " + dateStr + ". Hãy gia hạn ngay hôm nay để duy trì vị trí ghim nổi bật!",
+                        "BOOST_EXPIRING",
+                        "product-detail?id=" + prodId);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
 
