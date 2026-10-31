@@ -909,9 +909,9 @@
         card.innerHTML = `
           <div class="w-20 h-20 rounded-lg overflow-hidden bg-slate-100 shrink-0 relative">
             <img src="\${imgPath}" alt="\${escapeHtml(p.title)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-            <span class="absolute top-1 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded \${badgeColor} border shadow-2xs">
-              \${p.similarity_percent}% khớp
-            </span>
+<!--            <span class="absolute top-1 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded \${badgeColor} border shadow-2xs">-->
+<!--              \${p.similarity_percent}% khớp-->
+<!--            </span>-->
           </div>
           <div class="flex-1 min-w-0 flex flex-col justify-between">
             <div>
