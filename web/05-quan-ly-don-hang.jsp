@@ -432,7 +432,6 @@
             %>
             <% if (canBuyerCancel) { %>
               <button type="button" onclick="openRequestCancelModal(<%= item.id %>, '<%= h(item.productTitle) %>', <%= Math.round(item.depositAmount) %>, <%= isGiftOrder %>)" class="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs rounded-lg transition shadow-xs text-center flex items-center gap-1" title="<%= isGiftOrder ? "Gửi yêu cầu hủy đơn nhận sản phẩm cho người bán" : "Gửi yêu cầu hủy đơn và hoàn cọc cho người bán" %>">
-                <svg class="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 <span>Yêu Cầu Hủy Đơn</span>
               </button>
             <% } %>
@@ -477,7 +476,6 @@
                       <input type="hidden" name="action" value="confirm_receipt">
                       <input type="hidden" name="orderId" value="<%= item.id %>">
                       <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5 ring-2 ring-green-300">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         <span>Xác Nhận Đã Nhận Hàng</span>
                       </button>
                     </form>

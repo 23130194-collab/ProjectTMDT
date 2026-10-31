@@ -141,11 +141,11 @@
       <!-- NÚT CHUYỂN TABS -->
       <div class="flex items-center gap-2 border-b border-slate-200 pb-3 text-xs font-bold">
         <button id="tabBtnProducts" onclick="switchSellerTab('products')" class="px-4 py-2.5 rounded-xl bg-blue-600 text-white shadow-xs transition flex items-center gap-1.5">
-          <span>📦 Các Bài Đăng Của Người Bán</span>
+          <span>Các Bài Đăng Của Người Bán</span>
           <span class="bg-white/20 text-white px-2 py-0.5 rounded-full text-[10px]"><%= sellerProducts.size() %></span>
         </button>
         <button id="tabBtnReviews" onclick="switchSellerTab('reviews')" class="px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition flex items-center gap-1.5">
-          <span>⭐ Đánh Giá Từ Người Mua</span>
+          <span>Đánh Giá Từ Người Mua</span>
           <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px]"><%= sellerReviews.size() %></span>
         </button>
       </div>
